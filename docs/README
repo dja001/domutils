@@ -1,0 +1,19 @@
+
+This works in domutils_dev
+    source activate domutils_dev
+
+----------------------------------------------
+For running the tests:
+
+run  
+    touch *.rst
+    make doctest 
+to test whether the included tests pass
+
+----------------------------------------------
+For making docs web page:
+
+run
+    make clean
+    make html 
+

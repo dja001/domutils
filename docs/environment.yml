@@ -1,0 +1,14 @@
+name: docsenv
+
+channels:
+      - conda-forge
+
+dependencies:
+      - python=3.7
+      - numpy
+      - scipy 
+      - cartopy 
+      - matplotlib
+      - h5py
+      - conda-forge::sphinx-autodoc-typehints 
+      - conda-forge::sphinx-gallery

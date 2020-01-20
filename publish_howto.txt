@@ -1,0 +1,38 @@
+
+Notes for me to remember steps involved in publishing this package
+
+- adjust version number in VERSION
+
+- commit everything and push to github
+
+- check that documentation builds on RTD
+
+- make bundle by running:
+    - You probably want to cleanup
+    python setup.py clean --all
+    rm -rf dist
+python setup.py sdist bdist_wheel
+
+- upload to TEST pypi
+twine upload --repository-url https://test.pypi.org/legacy/ dist/*
+
+- upload to official pypi repo
+twine upload dist/*
+
+For CONDA package
+
+- go in conda_build directory 
+        Command for adding conda build tools
+        conda install anaconda-client conda-build
+  run
+conda skeleton pypi domplotutils
+conda build domutils
+    this will automatically upload to anaconda.org
+
+        - Can test local build with:
+        conda install -c file:///home/ords/mrd/rpndat/dja001/python_miniconda3/envs/test1/conda-bld/ domutils
+        
+        - test the conda package in a frest conda environment with:
+        conda install -c dja001 domutils
+
+

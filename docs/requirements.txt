@@ -1,0 +1,3 @@
+sphinx-autodoc-typehints
+sphinx-gallery
+sphinx-rtd-theme

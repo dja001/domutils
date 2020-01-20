@@ -1,0 +1,16 @@
+
+
+"""
+Get radar data
+==============================================
+
+   High level interface for geting radar data in various format
+
+   Features:
+   - Seemlessly get radar datafrom various sources
+   - Perform conversion to and from dBZ to precipitation rates
+   - interpolation to user-defined grid
+   - Generate accumulations on the fly
+
+"""
+

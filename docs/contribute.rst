@@ -1,0 +1,76 @@
+
+New feature, bug fix, etc. 
+------------------------------------
+
+If you want **domutils** to be modified in any way, start by openning an issue
+on github. 
+
+   #. Create an issue on *domutils* `github <https://github.com/dja001/domutils>`_ page. 
+      We will discuss the changes to be made and define a strategy for doing so. 
+
+   #. Once the issue is created, fork the project. This will create your own repo where 
+      you can make changes. 
+
+   #. On your computer, clone the source and go in the package directory
+      code
+        .. code-block:: bash
+
+           git clone git@gitlab.science.gc.ca:<your-username>/domutils.git 
+           cd domutils
+
+   #. Create a new branch whose name is related to the issue you oppened at step 1 above.   
+      For example:
+        .. code-block:: bash
+
+           git checkout -b issue-#666-include-cool-new-feature
+
+   #. Create a clean `Anaconda <https://wiki.cmc.ec.gc.ca/wiki/Anaconda>`_ developmemt environment 
+      and activate it. 
+      You will need internet access for this. 
+        .. code-block:: bash
+
+           conda env create --name domutils_dev_env -f docs/environment.yml
+           conda activate domutils_dev_env
+   
+   #. Modify the code to adress the issue. Make sure to include examples and/or tests in the docstrings.  
+      New functionality should be described in the documentation.
+
+   #. Run the 
+      tests
+        .. code-block:: bash
+
+           cd docs
+           make doctest
+      
+      Make sure that there are no failures in the tests.
+
+   #. If you modified the documentation in functions docstrings, you probably want to check the 
+      changes by creating your local version of the documentation.
+
+        .. code-block:: bash
+      
+           cd docs
+           make html
+
+      You can see the output in any web browser 
+      pointing to:
+        .. code-block:: bash
+  
+           domcmc/docs/_build/html/
+
+   #. While you are working, it is normal to commit changes several times on you local branch. 
+      Before you push to your fork on github, it is probably a good idea to 
+      `squash <https://blog.carbonfive.com/2017/08/28/always-squash-and-rebase-your-git-commits/>`_
+      all you intermediate commits 
+      into one or a few commits that clearly link to the issue being worked on. 
+      Try to make it such that the resulting squashed commits pass the tests. 
+
+   #. Once you are happy with the modifications, push the new version
+      on your fork on gitlab 
+        .. code-block:: bash
+
+           git push -u origin feature_branch_name
+
+   #. From the gitlab web interface, create a pull request to me. We will then 
+      discuss the changes until they are accepted and merged into the master branch. 
+
