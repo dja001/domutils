@@ -15,7 +15,7 @@ on github.
       code
         .. code-block:: bash
 
-           git clone git@gitlab.science.gc.ca:<your-username>/domutils.git 
+           git clone git@github.com:<your-username>/domutils.git 
            cd domutils
 
    #. Create a new branch whose name is related to the issue you oppened at step 1 above.   

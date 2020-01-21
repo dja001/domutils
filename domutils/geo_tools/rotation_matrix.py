@@ -18,7 +18,7 @@ def rotation_matrix(axis: Any,
 
         Example:
             >>> import numpy as np
-            >>> import geo_tools 
+            >>> import domutils.geo_tools as geo_tools
             >>> #a rotation axis [x,y,z] pointing straight up
             >>> axis = [0.,0.,1.]
             >>> # rotation of 45 degrees = pi/4 ratians

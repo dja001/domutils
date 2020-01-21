@@ -3,6 +3,7 @@ Legs Tutorial
 
 A **leg** can 
 be `defined <https://www.merriam-webster.com/dictionary/leg/>`_ as:
+
     * *a portion of a trip* 
     * *one section of a relay race*
 

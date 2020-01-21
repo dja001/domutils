@@ -1,4 +1,4 @@
-domradar
+radar_tools demo
 ====================================
 
 The module radar_tools allows to access radar mosaics in various formats
@@ -21,4 +21,3 @@ This tutorial demonstrates the different operations that can be performed.
 
    radarTutorial
 
-.. include:: radarTutorial

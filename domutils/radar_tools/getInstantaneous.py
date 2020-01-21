@@ -59,6 +59,7 @@ def getInstantaneous(validDate:       Optional[Any]   = None,
         verbose:         Set >=1 to print info on execution steps
 
     Returns:
+
         None             If no file matching the desired time is found
 
         or

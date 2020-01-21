@@ -41,8 +41,11 @@ def readFstComposite(fstFile:    str=None,
     Example:
 
            >>> #read fst file
+           >>> import os, inspect
            >>> import domutils.radar_tools as radar_tools
-           >>> outDict = radar_tools.readFstComposite('/home/ords/mrd/rpndat/dja001/shared_stuff/files/python_test_data/2019103116_30ref_4.0km.stnd')
+           >>> currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+           >>> parentdir = os.path.dirname(currentdir) #directory where this package lives
+           >>> outDict = radar_tools.readFstComposite(parentdir + '/test_data/std_radar_mosaics/2019103116_30ref_4.0km.stnd')
            >>> reflectivity      = outDict['reflectivity']         
            >>> totalQualityIndex = outDict['totalQualityIndex']    
            >>> validDate         = outDict['validDate']            
@@ -64,7 +67,7 @@ def readFstComposite(fstFile:    str=None,
     currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
     parentdir = os.path.dirname(currentdir)
     sys.path.insert(0,parentdir) 
-    import domutils.fst_tools as fst_tools
+    import domcmc.fst_tools as fst_tools
 
 
     #checks that filename was provided and is valid

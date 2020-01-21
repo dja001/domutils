@@ -49,6 +49,8 @@ def _findNearest(sourceLon:  Any,
     import scipy.spatial
     import cartopy.crs as ccrs
 
+    from .lat_lon_extend   import lat_lon_extend
+
 
     #insure numpy arrays
     source_xx=np.asarray(sourceLon)

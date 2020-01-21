@@ -43,7 +43,7 @@ def lat_lon_extend( lon1_in:  Any,
            Extend one point.
 
            >>> import numpy as np
-           >>> import geo_tools 
+           >>> import domutils.geo_tools as geo_tools
            >>> # coordinates of pt1 
            >>> lat1 = 0.; lon1 = 0.
            >>> # coordinates of pt2 
@@ -77,6 +77,8 @@ def lat_lon_extend( lon1_in:  Any,
 
     import numpy as np
     import cartopy.crs as ccrs
+
+    from .rotation_matrix  import rotation_matrix
 
 
 

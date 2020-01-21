@@ -49,8 +49,11 @@ def readH5Composite( odimFile:   str=None,
     Example:
 
            >>> #read odim H5 file
+           >>> import os, inspect
            >>> import domutils.radar_tools as radar_tools
-           >>> outDict = radar_tools.readH5Composite('/home/ords/mrd/rpndat/dja001/shared_stuff/files/python_test_data/qcomp_201910311630.h5')
+           >>> currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+           >>> parentdir = os.path.dirname(currentdir) #directory where this package lives
+           >>> outDict = radar_tools.readH5Composite(parentdir + '/test_data/odimh5_radar_composites/2019/10/31/qcomp_201910311630.h5')
            >>> h5reflectivity      = outDict['reflectivity']         
            >>> h5totalQualityIndex = outDict['totalQualityIndex']    
            >>> h5validDate         = outDict['validDate']            
@@ -61,7 +64,7 @@ def readH5Composite( odimFile:   str=None,
 
 
     """
-    import os
+    import os, inspect
     import datetime
     import warnings
     import pickle
@@ -83,9 +86,9 @@ def readH5Composite( odimFile:   str=None,
     if latlonFile is None :
         #reference standard file which contains RPN domain for composite
         #Should composites one day be generated on a different grid, other files should be added here
-        #for std file
-        #latlonFile = '/home/ords/mrd/rpndat/dja001/shared_stuff/files/radar_continental_2.5km.fst'
-        latlonFile = '/home/ords/mrd/rpndat/dja001/shared_stuff/files/radar_continental_2.5km_2882x2032.pickle'
+        # and use the latlonFile keyword
+        currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+        latlonFile = currentdir + '/radar_continental_2.5km_2882x2032.pickle'
 
     #read latitudes and longitudes if desired
     if latlon :

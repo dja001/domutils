@@ -15,7 +15,7 @@ data that we will be reading:
     ...     import matplotlib.pyplot as plt
     ...     import cartopy.crs as ccrs
     ...     import cartopy.feature as cfeature
-    ...     import geo_tools
+    ...     import domutils.geo_tools as geo_tools
     ... 
     ...     #pixel density of image to plot
     ...     ratio = .8
@@ -79,7 +79,7 @@ Let's also initialize some color mapping objects for the different
 quantities that will be displayed.
 See :ref:`legsTutorial` for details.
 
-    >>> import legs
+    >>> import domutils.legs as legs
     >>>
     >>> #flags
     >>> undetect = -3333.
@@ -122,14 +122,17 @@ Baltrad ODIM H5
     Let's read reflectivity fields from an ODIM H5 composite file using the
     *getInstantaneous* method.
 
+    >>> import os, inspect
     >>> import datetime
-    >>> import radar_tools
+    >>> import domutils.radar_tools as radar_tools
     >>>
     >>> #when we want data
     >>> thisDate = datetime.datetime(2019, 10, 31, 16, 30, 0)
     >>>
     >>> #where is the data
-    >>> dataPath='/home/ords/mrd/rpndat/dja001/shared_code/python_test_data/odimh5_radar_composites/'
+    >>> currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+    >>> parentdir = os.path.dirname(currentdir) #directory where this package lives
+    >>> dataPath = parentdir + '/test_data/odimh5_radar_composites/'
     >>>
     >>> #how to construct filename. 
     >>> #   See documentation for the *strftime* method in the datetime module
@@ -176,6 +179,7 @@ Baltrad ODIM H5
 
     Reading URP reflectivity mosaics is only a matter of 
     changing the file extension to:
+
         - .fst
         - .std
         - .stnd
@@ -187,7 +191,7 @@ Baltrad ODIM H5
     
     >>> thisDate = datetime.datetime(2019, 10, 31, 16, 30, 0)
     >>> #URP 4km reflectivity mosaics
-    >>> dataPath='/home/ords/mrd/rpndat/dja001/shared_code/python_test_data/operation.radar.Composite-USACDN-4km.precipet.std-rpn/'
+    >>> dataPath = parentdir + '/test_data/std_radar_mosaics/'
     >>> #note the *.stnd* extension specifying that a standard file will be read
     >>> dataRecipe = '%Y%m%d%H_%Mref_4.0km.stnd'
     >>> 
@@ -221,46 +225,6 @@ Baltrad ODIM H5
     .. image:: _static/URP4km_reflectivity.svg
         :align: center
 
-Another 'mosaic' product 
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    The *mosaic* product is also supported.
-
-    >>> #2km reflectivity mosaics
-    >>> thisDate = datetime.datetime(2019, 10, 31, 16, 30, 0)
-    >>> dataPath='/home/ords/mrd/rpndat/dja001/shared_code/python_test_data/operation.radar.mosaic/'
-    >>> #Note how these files have no extensions
-    >>> dataRecipe = '%Y%m%d%H_%Mref_2km_et'
-    >>> 
-    >>> #exactly the same command as before
-    >>> datDict = radar_tools.getInstantaneous(validDate=thisDate, 
-    ...                                        dataPath=dataPath,
-    ...                                        dataRecipe=dataRecipe,
-    ...                                        latlon=True)
-    >>> for key in datDict.keys():
-    ...     if key == 'validDate':
-    ...         print(key,datDict[key])
-    ...     else:
-    ...         print(key,datDict[key].shape)
-    reflectivity (3130, 2788)
-    totalQualityIndex (3130, 2788)
-    validDate 2019-10-31 16:30:00+00:00
-    latitudes (3130, 2788)
-    longitudes (3130, 2788)
-    >>> 
-    >>> #show data
-    >>> figName ='_static/mosaic2km_reflectivity.svg' 
-    >>> title = 'operation.mosaic 2km reflectivity'
-    >>> units = '[dBZ]'
-    >>> data       = datDict['reflectivity']
-    >>> latitudes  = datDict['latitudes']
-    >>> longitudes = datDict['longitudes']
-    >>>
-    >>> plotImg(figName, title, units, data, latitudes, longitudes,
-    ...         refColorMap)
-
-    .. image:: _static/mosaic2km_reflectivity.svg
-        :align: center
-
 
 Get the nearest radar data to a given date and time
 -----------------------------------------------------------------
@@ -273,7 +237,7 @@ Get the nearest radar data to a given date and time
     
     >>> #set time at 16h35 where no mosaic file exists
     >>> thisDate = datetime.datetime(2019, 10, 31, 16, 35, 0)
-    >>> dataPath='/home/ords/mrd/rpndat/dja001/shared_code/python_test_data/odimh5_radar_composites/'
+    >>> dataPath = parentdir + '/test_data/odimh5_radar_composites/'
     >>> dataRecipe = '%Y/%m/%d/qcomp_%Y%m%d%H%M.h5'
     >>> datDict = radar_tools.getInstantaneous(validDate=thisDate, 
     ...                                        dataPath=dataPath,
@@ -307,7 +271,7 @@ Get precipitation rates (in mm/h) from reflectivity (in dBZ)
     The default is to use WDSSR's relation with  a=300 and b=1.4.
 
     >>> thisDate = datetime.datetime(2019, 10, 31, 16, 30, 0)
-    >>> dataPath='/home/ords/mrd/rpndat/dja001/shared_code/python_test_data/odimh5_radar_composites/'
+    >>> dataPath = parentdir + '/test_data/odimh5_radar_composites/'
     >>> dataRecipe = '%Y/%m/%d/qcomp_%Y%m%d%H%M.h5'
     >>>  
     >>> #require precipitation rate in the output
@@ -366,7 +330,7 @@ Apply  a median filter to reduce speckle (noise)
     The filtering is applied both to the reflectivity or rain rate data and to its accompanying quality index. 
 
     >>> thisDate = datetime.datetime(2019, 10, 31, 16, 30, 0)
-    >>> dataPath='/home/ords/mrd/rpndat/dja001/shared_code/python_test_data/odimh5_radar_composites/'
+    >>> dataPath = parentdir + '/test_data/odimh5_radar_composites/'
     >>> dataRecipe = '%Y/%m/%d/qcomp_%Y%m%d%H%M.h5'
     >>>  
     >>> #Apply median filter by setting *medianFilt=3* meaning that a 3x3 boxcar 
@@ -400,6 +364,7 @@ Interpolation to a different grid
     
     Three interpolation methods are 
     supported:
+
         * Nearest neighbor (default)
         * Average all input data points falling within the output grid tile.
           This option tends to be slow.
@@ -410,7 +375,7 @@ Interpolation to a different grid
     >>> #let our destination grid be at 10 km resolution in the middle of the US
     >>> #this is a grid where I often perform integration with the GEM atmospheric model
     >>> #recover previously prepared data
-    >>> with open('/home/dja001/shared_code/python_test_data/pal_demo_data.pickle', 'rb') as f:
+    >>> with open(parentdir + '/test_data/pal_demo_data.pickle', 'rb') as f:
     ...     dataDict = pickle.load(f)
     >>> gemLons = dataDict['longitudes']    #2D longitudes [deg]
     >>> gemLats = dataDict['latitudes']     #2D latitudes  [deg]
@@ -420,7 +385,7 @@ Nearest neighbor
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     >>> thisDate = datetime.datetime(2019, 10, 31, 16, 30, 0)
     >>> #get data on destination grid using nearest neighbor
-    >>> dataPath='/home/ords/mrd/rpndat/dja001/shared_code/python_test_data/odimh5_radar_composites/'
+    >>> dataPath = parentdir + '/test_data/odimh5_radar_composites/'
     >>> dataRecipe = '%Y/%m/%d/qcomp_%Y%m%d%H%M.h5'
     >>> datDict = radar_tools.getInstantaneous(validDate=thisDate, 
     ...                                        dataPath=dataPath,
@@ -444,11 +409,11 @@ Nearest neighbor
 
 
 Average all inputs falling within a destination grid tile
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
     >>> #get data on destination grid using averaging
     >>> thisDate = datetime.datetime(2019, 10, 31, 16, 30, 0)
-    >>> dataPath='/home/ords/mrd/rpndat/dja001/shared_code/python_test_data/odimh5_radar_composites/'
+    >>> dataPath = parentdir + '/test_data/odimh5_radar_composites/'
     >>> dataRecipe = '%Y/%m/%d/qcomp_%Y%m%d%H%M.h5'
     >>> datDict = radar_tools.getInstantaneous(validDate=thisDate, 
     ...                                        dataPath=dataPath,
@@ -483,7 +448,7 @@ Average all inputs within a radius
     >>> #within a circle of a given radius
     >>> #also apply the median filter on input data
     >>> thisDate = datetime.datetime(2019, 10, 31, 16, 30, 0)
-    >>> dataPath='/home/ords/mrd/rpndat/dja001/shared_code/python_test_data/odimh5_radar_composites/'
+    >>> dataPath = parentdir + '/test_data/odimh5_radar_composites/'
     >>> dataRecipe = '%Y/%m/%d/qcomp_%Y%m%d%H%M.h5'
     >>> datDict = radar_tools.getInstantaneous(validDate=thisDate, 
     ...                                        dataPath=dataPath,
@@ -513,6 +478,7 @@ On-the-fly computation of precipitation accumulations
 -----------------------------------------------------------------
     Use the *getAccumulation* method to get accumulations of precipitation.
     Three quantities can be outputted:
+
         - *accumulation*  The default option; returns the amount of water (in mm);
         - *avgPrecipRate* For average precipitation rate (in mm/h) during the accumulation period;     
         - *reflectivity*  For the reflectivity (in dBZ) associated with the average precipitation rate
@@ -525,7 +491,7 @@ On-the-fly computation of precipitation accumulations
     >>> #1h accumulations of precipitation
     >>> endDate = datetime.datetime(2019, 10, 31, 16, 30, 0)
     >>> duration = 60.  #duration of accumulation in minutes
-    >>> dataPath='/home/ords/mrd/rpndat/dja001/shared_code/python_test_data/odimh5_radar_composites/'
+    >>> dataPath = parentdir + '/test_data/odimh5_radar_composites/'
     >>> dataRecipe = '%Y/%m/%d/qcomp_%Y%m%d%H%M.h5'
     >>> datDict = radar_tools.getAccumulation(endDate=thisDate, 
     ...                                       duration=duration,
@@ -567,22 +533,22 @@ On-the-fly computation of precipitation accumulations
     ...                                       verbose=1)
     getAccumulation starting
     getInstantaneous, getting data for:  2019-10-31 16:30:00
-    readH5Composite: reading: b'DBZH' from: /home/ords/mrd/rpndat/dja001/shared_code/python_test_data/odimh5_radar_composites/2019/10/31/qcomp_201910311630.h5
+    readH5Composite: reading: b'DBZH' from: /fs/homeu1/eccc/mrd/ords/rpndat/dja001/python/packages/domutils_package/test_data/odimh5_radar_composites/2019/10/31/qcomp_201910311630.h5
     getInstantaneous, applying median filter
     getInstantaneous, getting data for:  2019-10-31 16:20:00
-    readH5Composite: reading: b'DBZH' from: /home/ords/mrd/rpndat/dja001/shared_code/python_test_data/odimh5_radar_composites/2019/10/31/qcomp_201910311620.h5
+    readH5Composite: reading: b'DBZH' from: /fs/homeu1/eccc/mrd/ords/rpndat/dja001/python/packages/domutils_package/test_data/odimh5_radar_composites/2019/10/31/qcomp_201910311620.h5
     getInstantaneous, applying median filter
     getInstantaneous, getting data for:  2019-10-31 16:10:00
-    readH5Composite: reading: b'DBZH' from: /home/ords/mrd/rpndat/dja001/shared_code/python_test_data/odimh5_radar_composites/2019/10/31/qcomp_201910311610.h5
+    readH5Composite: reading: b'DBZH' from: /fs/homeu1/eccc/mrd/ords/rpndat/dja001/python/packages/domutils_package/test_data/odimh5_radar_composites/2019/10/31/qcomp_201910311610.h5
     getInstantaneous, applying median filter
     getInstantaneous, getting data for:  2019-10-31 16:00:00
-    readH5Composite: reading: b'DBZH' from: /home/ords/mrd/rpndat/dja001/shared_code/python_test_data/odimh5_radar_composites/2019/10/31/qcomp_201910311600.h5
+    readH5Composite: reading: b'DBZH' from: /fs/homeu1/eccc/mrd/ords/rpndat/dja001/python/packages/domutils_package/test_data/odimh5_radar_composites/2019/10/31/qcomp_201910311600.h5
     getInstantaneous, applying median filter
     getInstantaneous, getting data for:  2019-10-31 15:50:00
-    readH5Composite: reading: b'DBZH' from: /home/ords/mrd/rpndat/dja001/shared_code/python_test_data/odimh5_radar_composites/2019/10/31/qcomp_201910311550.h5
+    readH5Composite: reading: b'DBZH' from: /fs/homeu1/eccc/mrd/ords/rpndat/dja001/python/packages/domutils_package/test_data/odimh5_radar_composites/2019/10/31/qcomp_201910311550.h5
     getInstantaneous, applying median filter
     getInstantaneous, getting data for:  2019-10-31 15:40:00
-    readH5Composite: reading: b'DBZH' from: /home/ords/mrd/rpndat/dja001/shared_code/python_test_data/odimh5_radar_composites/2019/10/31/qcomp_201910311540.h5
+    readH5Composite: reading: b'DBZH' from: /fs/homeu1/eccc/mrd/ords/rpndat/dja001/python/packages/domutils_package/test_data/odimh5_radar_composites/2019/10/31/qcomp_201910311540.h5
     getInstantaneous, applying median filter
     getAccumulation, computing average precip rate in accumulation period
     getAccumulation, interpolating to destination grid

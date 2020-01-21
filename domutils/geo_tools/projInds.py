@@ -59,9 +59,6 @@ class projInds():
             minHits       For use in conjunction with average or smoothRadius. This keyword
                           specifies the minimum number of data points for an average to be considered 
                           valid. 
-            inputWeights  Weights to be used when projecting input data with the smooth radius method.
-                          Input with weights=0 will be discarded from the kdtree offering good speedup
-                          if many points of the input grid are missing values.
             missing:      Value which will be assigned to points outside of the data domain.
 
         Example:
@@ -74,8 +71,8 @@ class projInds():
             >>> import matplotlib.pyplot as plt
             >>> import cartopy.crs as ccrs
             >>> import cartopy.feature as cfeature
-            >>> import legs
-            >>> import geo_tools
+            >>> import domutils.legs as legs
+            >>> import domutils.geo_tools as geo_tools
             >>>
             >>> # make mock data and coordinates
             >>> # note that there is some regularity to the grid 
@@ -388,7 +385,6 @@ class projInds():
                         average:      Optional[Any]=False, 
                         smoothRadius: Optional[Any]=None, 
                         minHits:      Optional[Any]=1, 
-                        inputWeights: Optional[Any]=None,
                         missing:      Optional[float]=-9999. ):
 
         from os import linesep as newline
@@ -398,6 +394,10 @@ class projInds():
         import cartopy.img_transform as cimgt
         import scipy.spatial
         import matplotlib.pyplot as plt
+        #local functions
+        from ._findNearest     import _findNearest
+        from .lat_lon_extend   import lat_lon_extend
+        from .rotation_matrix  import rotation_matrix
 
 
         #check specification of destinating grid 
@@ -423,8 +423,8 @@ class projInds():
             pt1, pt2 = transform_axes_to_data.transform(pts)
         
             #get regular grid of pts in projected figure    units of destLon and destLat are in dataspace
-            #                                                        nx            ny
-            destLon, destLat, extent = cimgt.mesh_projection( destCrs, image_res[1], image_res[0],
+            #                                                          nx            ny
+            destLon, destLat, extent = cimgt.mesh_projection( destCrs, image_res[0], image_res[1],
                                                           x_extents=[pt1[0],pt2[0]], y_extents=[pt1[1],pt2[1]])
 
         else: 
@@ -481,14 +481,6 @@ class projInds():
         
         #find proj_ind using findNearest
         if smoothRadius is not None:
-
-            #keep only good input points for speedup
-            if inputWeights is not None:
-                keep = np.asarray(inputWeights > 0.).nonzero()
-                if keep[0].size > 0:
-                    srcLat = srcLat[keep]
-                    srcLon = srcLon[keep]
-
             #when using a smoothing radius, the tree will be used in project_data
             kdtree, dest_xyz = _findNearest(srcLon, srcLat, destLon, destLat,
                                             smoothRadius=smoothRadius, 
@@ -517,7 +509,6 @@ class projInds():
             self.average = True     #uses the averaging mechanism during smoothing
             self.destLon = destLon  #need those in project_data when smoothing
             self.destLat = destLat
-            self.inputWeights = inputWeights    #save weights are reuse those in avg computation
         else:
             self.smoothRadius_m = None
             self.proj_ind  = proj_ind
@@ -536,7 +527,6 @@ class projInds():
 
     def project_data(self, data:Any, 
                            weights:Optional[Any]  = None,
-                           speedupMat=None, 
                            missingV:Optional[float]= -9999. ):
         """ Project data into geoAxes space
 
@@ -546,8 +536,6 @@ class projInds():
                             instantiate the class.
                 weights:    (array like), weights to be applied during averaging 
                             (see average and smoothRadius keyword in projInds)
-                speedupMat: An array which has the shape of the output grid. 
-                            Smoothing/interpolation will only be performed where True
                 missingV:   Value in input data that will be neglected during the averaging process
                             Has no impact unless *average* or *smoothRadius* are used in class 
                             instantiation.
@@ -557,7 +545,6 @@ class projInds():
 
         """
         import numpy as np
-        import time
 
         #ensure numpy
         np_data = np.asarray(data)
@@ -582,44 +569,29 @@ class projInds():
             nHits       = np.zeros(self.destShape, dtype='int32').ravel() 
             #init/check weights matrice 
             if weights is None:
-                if self.inputWeights is not None:
-                    #weights have been provided in call to projInds
-                    #modify data to keep only data pts w/ non-zero weights
-                    keep = np.asarray(self.inputWeights > 0.).nonzero()
-                    if keep[0].size > 0:
-                        data_flat = np_data[keep]
-                        weights_flat = self.inputWeights[keep]
-
-                else:
                 #by default all data pts have equal weights = 1.
-                    weights_flat = np.ones(np_data.shape).ravel()
+                weights_np = np.ones(np_data.shape).ravel()
             else:
                 #weights were provided
-                #raise seror if inputWeights provided in projInds
-                if self.inputWeights is not None:
-                    raise ValueError('weights already provided in call tp projInds')
-
-                #make sure weights have right shape
                 weights_np = np.asarray(weights)
                 if (weights_np.shape != np_data.shape) :
                     raise ValueError("Weights should have the same shape as data")
-                weights_flat = weights_np.ravel()
+            weights_flat = weights_np.ravel()
 
             if self.smoothRadius_m is not None:
-
                 #smooth all data found within distance specified by smoothRadius
-                good_pts = self.kdtree.query_ball_point(self.dest_xyz, self.smoothRadius_m)
-                for ind, pts in enumerate(good_pts):
-                    if len(pts) > 0:
-                        thisData    = data_flat[pts]
-                        #values are not all missing data
-                        (validPts,) = np.asarray((thisData - missingV) > 1e-3).nonzero()
-                        if validPts.size > 0 :
-                            thisData    = thisData[validPts]
-                            thisWeights = weights_flat[np.asarray(pts)[validPts]]
-                            accumulator[ind] = np.sum(thisWeights*thisData)
-                            denom[ind]       = np.sum(thisWeights)
-                            nHits[ind]       = validPts.size
+                for ind, xyz in enumerate(self.dest_xyz):
+
+                    good_pts = self.kdtree.query_ball_point(xyz, self.smoothRadius_m)
+                    thisData    = data_flat[good_pts]
+                    (validPts,) = np.asarray((thisData - missingV) > 1e-3).nonzero()
+                    if validPts.size > 0 :
+                        thisData    = thisData[validPts]
+                        thisWeights = weights_flat[np.asarray(good_pts)[validPts]]
+                        accumulator[ind] = np.sum(thisWeights*thisData)
+                        denom[ind]       = np.sum(thisWeights)
+                        nHits[ind]       = validPts.size
+
                 
             else:
                 #average out all input falling within output grid tile
@@ -734,6 +706,7 @@ class projInds():
 
     if __name__ == "__main__":
         main()
+
 
 
 

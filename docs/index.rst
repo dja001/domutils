@@ -24,6 +24,7 @@ The package **domutils** provides 3 modules:
    legsTutorial
    legsDoc
    legsResources
+
 For easy construction of custom color mappings & palettes:
 
 
@@ -32,14 +33,17 @@ For easy construction of custom color mappings & palettes:
    :maxdepth: 2
 
    geoDoc
+
 For handling geographical projections of data with arbitrary lat/lon coordinates.
 
 .. toctree::
-   :caption: geo_tools
+   :caption: radar_tools
    :maxdepth: 2
 
-   geoDoc
-For handling geographical projections of data with arbitrary lat/lon coordinates.
+   radarTutorialIndex
+   radarDoc
+
+To get radar moisaics in various formats and construct accumulations on the fly. 
 
 
 
@@ -61,7 +65,7 @@ For handling geographical projections of data with arbitrary lat/lon coordinates
    contribute
 
 .. toctree::
-   :caption: acknowledgement
+   :caption: Acknowledgement
 
    acknowledgement
 
