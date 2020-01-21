@@ -13,7 +13,7 @@ with open(path.join(this_directory, 'VERSION'), encoding='utf-8') as f:
 
 setup(
     name='domutils',
-    version='1.0.0',
+    version=version,
     url='https://github.com/dja001/domutils.git',
     license='GPL-3.0-or-later',
     author='Dominik Jacques',

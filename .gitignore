@@ -1,5 +1,6 @@
 .*.swp
 auto_examples
+conda_build
 build
 dist
 *egg-info

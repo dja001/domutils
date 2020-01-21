@@ -2,29 +2,29 @@
 New feature, bug fix, etc. 
 ------------------------------------
 
-If you want **domutils** to be modified in any way, start by openning an issue
+If you want **domutils** to be modified in any way, start by opening an issue
 on github. 
 
    #. Create an issue on *domutils* `github <https://github.com/dja001/domutils>`_ page. 
       We will discuss the changes to be made and define a strategy for doing so. 
 
-   #. Once the issue is created, fork the project. This will create your own repo where 
+   #. Once the issue is created, fork the project. This will create your own github repo where 
       you can make changes. 
 
-   #. On your computer, clone the source and go in the package directory
-      code
+   #. On your computer, clone the source code and go in the package 
+      directory
         .. code-block:: bash
 
            git clone git@github.com:<your-username>/domutils.git 
            cd domutils
 
-   #. Create a new branch whose name is related to the issue you oppened at step 1 above.   
+   #. Create a new branch whose name is related to the issue you opened at step 1 above.   
       For example:
         .. code-block:: bash
 
-           git checkout -b issue-#666-include-cool-new-feature
+           git checkout -b #666-include-cool-new-feature
 
-   #. Create a clean `Anaconda <https://wiki.cmc.ec.gc.ca/wiki/Anaconda>`_ developmemt environment 
+   #. Create a clean `Anaconda <https://wiki.cmc.ec.gc.ca/wiki/Anaconda>`_ development environment 
       and activate it. 
       You will need internet access for this. 
         .. code-block:: bash
@@ -32,7 +32,7 @@ on github.
            conda env create --name domutils_dev_env -f docs/environment.yml
            conda activate domutils_dev_env
    
-   #. Modify the code to adress the issue. Make sure to include examples and/or tests in the docstrings.  
+   #. Modify the code to address the issue. Make sure to include examples and/or tests in the docstrings.  
       New functionality should be described in the documentation.
 
    #. Run the 
@@ -56,21 +56,21 @@ on github.
       pointing to:
         .. code-block:: bash
   
-           domcmc/docs/_build/html/
+           domutils/docs/_build/html/
 
    #. While you are working, it is normal to commit changes several times on you local branch. 
-      Before you push to your fork on github, it is probably a good idea to 
+      However, before you push to your fork on github, it is probably a good idea to 
       `squash <https://blog.carbonfive.com/2017/08/28/always-squash-and-rebase-your-git-commits/>`_
-      all you intermediate commits 
-      into one or a few commits that clearly link to the issue being worked on. 
-      Try to make it such that the resulting squashed commits pass the tests. 
+      all you intermediate commits into one, or a few commits, that clearly link to the issue 
+      being worked on. 
+      The resulting squashed commits pass the tests. 
 
    #. Once you are happy with the modifications, push the new version
-      on your fork on gitlab 
+      on your fork on github
         .. code-block:: bash
 
-           git push -u origin feature_branch_name
+           git push -u origin #666-include-cool-new-feature
 
-   #. From the gitlab web interface, create a pull request to me. We will then 
+   #. From the github web interface, create a pull request to me. We will then 
       discuss the changes until they are accepted and merged into the master branch. 
 
