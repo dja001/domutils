@@ -14,7 +14,7 @@ Notes for me to remember steps involved in publishing this package
 python setup.py sdist bdist_wheel
 
 - upload to TEST pypi
-twine upload --repository-url https://test.pypi.org/legacy/ dist/*
+tine upload --repository-url https://test.pypi.org/legacy/ dist/*
 
 - upload to official pypi repo
 twine upload dist/*
@@ -25,7 +25,7 @@ For CONDA package
         Command for adding conda build tools
         conda install anaconda-client conda-build
   run
-conda skeleton pypi domplotutils
+conda skeleton pypi domutils
 conda build domutils
     this will automatically upload to anaconda.org
 
