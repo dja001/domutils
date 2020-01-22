@@ -1,12 +1,12 @@
 """
 image handling routines that depend on external programs to be installed on machine. 
 
-Those are mainly for personnal use on my workstation at ECCC. 
-More work would be needed to make them generally useable
+Those are mainly for personal use on my workstation at ECCC.
+More work would be needed to make them generally usable
 """
 
 
-def lmroman(picName):
+def lmroman(pic_name):
     """
     horrible hack to use LMRoman typeface in svg figure    
     
@@ -14,45 +14,45 @@ def lmroman(picName):
     """
 
     import subprocess
-    cmd = ['sed', '-i', 's/DejaVu\ Sans/LMRoman10/', picName]
+    cmd = ['sed', '-i', 's/DejaVu\ Sans/LMRoman10/', pic_name]
     process = subprocess.Popen(cmd, stdout=subprocess.PIPE)
     output, error = process.communicate()
 
-def convert(picName, imgType, delOrig=False, density=300, geometry='100%', delEPS=True):
+def convert(pic_name, img_type, del_orig=False, density=300, geometry='100%', del_eps=True):
 
-    #convert figure to gif, png, ... while preservig hack for lmRoman typeface
+    #convert figure to gif, png, ... while preserving hack for lmRoman typeface
     # this is very much work in progress
 
     import subprocess
     import os
-    filename, fileExtension = os.path.splitext(picName)
+    file_name, file_extension = os.path.splitext(pic_name)
 
-    sourceFile = picName
+    source_file = pic_name
 
 
     """
     STEP 1
       use inkscape to get a post-script from matplotlib's svg 
       inkscape will handle axes clipping correctly
-      with delEPS=False you will even have post-scripts files for LateX
+      with del_eps=False you will even have post-scripts files for LateX
     """
-    madeEPS = False
-    if fileExtension == '.svg' :
-        madeEPS = True
-        epsName = filename+'.eps'
-        cmd = ['inkscape', '-z', sourceFile, '-E', epsName]
+    made_eps = False
+    if file_extension == '.svg' :
+        made_eps = True
+        eps_name = file_name+'.eps'
+        cmd = ['inkscape', '-z', source_file, '-E', eps_name]
         process = subprocess.Popen(cmd, stdout=subprocess.PIPE)
         output, error = process.communicate()
-        sourceFile = epsName
+        source_file = eps_name
 
     """
     STEP 2
       use convert to get whatever format you like. 
       png, gif, jpg, etc... 
     """
-    if imgType != 'eps' :
+    if img_type != 'eps' :
         #convert to gif using convert
-        cmd = ['convert', '-density', str(density), '-geometry',geometry, sourceFile, filename+'.'+imgType]
+        cmd = ['convert', '-density', str(density), '-geometry', geometry, source_file, file_name +'.' + img_type]
         process = subprocess.Popen(cmd, stdout=subprocess.PIPE)
         output, error = process.communicate()
 
@@ -65,13 +65,13 @@ def convert(picName, imgType, delOrig=False, density=300, geometry='100%', delEP
       cleanup
     """
     #delete temp file
-    if delOrig :
-        os.remove(picName)
+    if del_orig :
+        os.remove(pic_name)
 
-    if madeEPS :
-        if delEPS and not imgType == 'eps' :
-            #ignore delEPS when desired fig type is eps
-            os.remove(epsName)
+    if made_eps :
+        if del_eps and not img_type == 'eps' :
+            #ignore del_eps when desired fig type is eps
+            os.remove(eps_name)
 
 
 

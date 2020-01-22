@@ -107,16 +107,16 @@ def lat_lon_range_az( lon1_in:      Any,
 
 
     #ensure numpy type
-    lon1     = np.array(lon1_in, copy=True)
-    origShape = lon1.shape
-    lat1     = np.array(lat1_in, copy=True)
-    range_km = np.array(range_in, copy=True)
-    azimuth  = np.array(azimuth_in, copy=True)
+    lon1       = np.array(lon1_in, copy=True)
+    orig_shape = lon1.shape
+    lat1       = np.array(lat1_in, copy=True)
+    range_km   = np.array(range_in, copy=True)
+    azimuth    = np.array(azimuth_in, copy=True)
 
     #all input should have the same shape
-    if not ((origShape == lat1.shape)     and 
-           (origShape == range_km.shape) and 
-           (origShape == azimuth.shape)):
+    if not ((orig_shape == lat1.shape)     and
+            (orig_shape == range_km.shape) and
+            (orig_shape == azimuth.shape)):
         raise ValueError('All inputs should have same shape')
     
     #as flat arrays
@@ -170,8 +170,8 @@ def lat_lon_range_az( lon1_in:      Any,
 
     #output in lat/lon
     lonlat = crs.transform_points(geo_cent, xyz_arr[:,0], xyz_arr[:,1], xyz_arr[:,2])
-    lon2 = np.reshape(lonlat[:,0], origShape)
-    lat2 = np.reshape(lonlat[:,1], origShape)
+    lon2 = np.reshape(lonlat[:,0], orig_shape)
+    lat2 = np.reshape(lonlat[:,1], orig_shape)
 
     return lon2, lat2
 

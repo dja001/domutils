@@ -13,6 +13,8 @@
     .. autofunction:: __init__
     .. autofunction:: plot_data
 
+domutils
+================
 
 The package **domutils** provides 3 modules:
 

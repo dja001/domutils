@@ -50,7 +50,7 @@ information.
     >>> x = np.linspace(-1., 1, 513)
     >>> y = np.linspace(-1., 1, 513)
     >>> xx, yy = np.meshgrid(x, y)
-    >>> gaussBulge = np.exp(-((xx)**2 + (yy)**2) / .6**2)
+    >>> gauss_bulge = np.exp(-(xx**2 + yy**2) / .6**2)
     >>>
     >>> #radar looking mock data
     >>> npts = 1024
@@ -61,11 +61,11 @@ information.
     >>> xx, yy = np.meshgrid(np.linspace(-1.,1.,num=npts/2),np.linspace(1.,-1.,num=npts/2))
     >>> kernel1 = np.exp(-1.*np.sqrt(xx**2.+yy**2.)/.02)
     >>> kernel2 = np.exp(-1.*np.sqrt(xx**2.+yy**2.)/.15)
-    >>> reflectivityLike = (   scipy.signal.fftconvolve(rand,kernel1,mode='valid') 
-    ...                      + scipy.signal.fftconvolve(rand,kernel2,mode='valid') )
-    >>> reflectivityLike = ( reflectivityLike 
-    ...                      / np.max(np.absolute(reflectivityLike.max()))  
-    ...                      * 62. )
+    >>> reflectivity_like = (   scipy.signal.fftconvolve(rand,kernel1,mode='valid')
+    ...                       + scipy.signal.fftconvolve(rand,kernel2,mode='valid') )
+    >>> reflectivity_like = ( reflectivity_like
+    ...                       / np.max(np.absolute(reflectivity_like.max()))
+    ...                       * 62. )
     >>>
     >>> # figure properties
     >>> mpl.rcParams.update({'font.size': 15})
@@ -94,10 +94,10 @@ The default color mapping applies a black and wite gradient in the interval [0,1
     >>> format_axes(ax)
     >>>
     >>> #instantiate default color mapping
-    >>> mapping = legs.pal_obj()
+    >>> mapping = legs.PalObj()
     >>>
     >>> #plot data & palette
-    >>> mapping.plot_data(ax=ax,data=gaussBulge, 
+    >>> mapping.plot_data(ax=ax,data=gauss_bulge,
     ...                   palette='right', 
     ...                   pal_format='{:2.0f}') 
     >>>
@@ -116,10 +116,10 @@ The following code will fail and give you suggestions as to what to do.
     >>> 
     >>> 
     >>> #extend range of data to plot beyond 1.0
-    >>> extendedGaussBulge = 1.4 * gaussBulge - 0.2 # data range is now [-.2, 1.2]
+    >>> extended_gauss_bulge = 1.4 * gauss_bulge - 0.2 # data range is now [-.2, 1.2]
     >>> 
     >>> 
-    >>> mapping.plot_data(ax=ax,data=extendedGaussBulge, 
+    >>> mapping.plot_data(ax=ax,data=extended_gauss_bulge,
     ...                   palette='right', pal_format='{:2.0f}') 
     Traceback (most recent call last):
       File "/fs/home/fs1/ords/mrd/rpndat/dja001/python_anaconda_envs/envs/myenv/lib/python3.7/doctest.py", line 1329, in __run
@@ -169,10 +169,10 @@ to avoid errors.
     ...                    xy=(.17/rec_w, 3.65/rec_h), xycoords='axes fraction',
     ...                    bbox=dict(boxstyle="round", fc='white', ec='white'))
     >>> format_axes(ax1)
-    >>> mappingExt = legs.pal_obj(over_under='extend')
-    >>> mappingExt.plot_data(ax=ax1,data=extendedGaussBulge, 
-    ...                      palette='right', pal_units='[unitless]', 
-    ...                      pal_format='{:2.0f}') 
+    >>> mapping_ext = legs.PalObj(over_under='extend')
+    >>> mapping_ext.plot_data(ax=ax1,data=extended_gauss_bulge,
+    ...                       palette='right', pal_units='[unitless]',
+    ...                       pal_format='{:2.0f}')
     >>> 
     >>> 
     >>> #mapping where end points are dealt with separately
@@ -182,10 +182,10 @@ to avoid errors.
     ...                    xy=(.17/rec_w, 3.65/rec_h), xycoords='axes fraction',
     ...                    bbox=dict(boxstyle="round", fc='white', ec='white'))
     >>> format_axes(ax2)
-    >>> mappingExt2 = legs.pal_obj(over_high='dark_red', under_low='dark_blue')
-    >>> mappingExt2.plot_data(ax=ax2,data=extendedGaussBulge, 
-    ...                       palette='right', pal_units='[unitless]', 
-    ...                       pal_format='{:2.0f}') 
+    >>> mapping_ext_2 = legs.PalObj(over_high='dark_red', under_low='dark_blue')
+    >>> mapping_ext_2.plot_data(ax=ax2,data=extended_gauss_bulge,
+    ...                         palette='right', pal_units='[unitless]',
+    ...                         pal_format='{:2.0f}')
     >>> 
     >>> 
     >>> #as for all color specification, RBG values also work
@@ -196,10 +196,10 @@ to avoid errors.
     ...                    bbox=dict(boxstyle="round", fc='white', ec='white'))
     >>> format_axes(ax3)
     >>>
-    >>> mappingExt3 = legs.pal_obj(over_high=[255,198, 51], under_low=[ 13,171, 43])
-    >>> mappingExt3.plot_data(ax=ax3,data=extendedGaussBulge, 
-    ...                       palette='right', pal_units='[unitless]', 
-    ...                       pal_format='{:2.0f}') 
+    >>> mapping_ext_3 = legs.PalObj(over_high=[255,198, 51], under_low=[ 13,171, 43])
+    >>> mapping_ext_3.plot_data(ax=ax3,data=extended_gauss_bulge,
+    ...                         palette='right', pal_units='[unitless]',
+    ...                         pal_format='{:2.0f}')
     >>> 
     >>> 
     >>> plt.savefig('_static/default_extend.svg')
@@ -244,20 +244,20 @@ by an exception will not trigger an error.
     ...                    bbox=dict(boxstyle="round", fc='white', ec='white'))
     >>> format_axes(ax1)
     >>> #data values in the range 0.25+-0.05 are assigned the color blue
-    >>> mapping1Excep = legs.pal_obj(excep_val=[.25],
-    ...                              excep_tol=[.05],
-    ...                              excep_col=[ 71,152,237])
-    >>> mapping1Excep.plot_data(ax=ax1,data=gaussBulge, 
-    ...                         palette='right', pal_units='[unitless]', 
-    ...                         pal_format='{:2.0f}') 
+    >>> mapping_1_except = legs.PalObj(excep_val=[.25],
+    ...                                excep_tol=[.05],
+    ...                                excep_col=[ 71,152,237])
+    >>> mapping_1_except.plot_data(ax=ax1,data=gauss_bulge,
+    ...                            palette='right', pal_units='[unitless]',
+    ...                            pal_format='{:2.0f}')
     >>>
     >>>
     >>> #exceptions are usefull for NoData, missing values, etc
     >>> #lets assing exception values to the Gaussian Bulge data
-    >>> gaussBulgeWithExceptions = np.copy(gaussBulge)
-    >>> gaussBulgeWithExceptions[388:488, 25:125] = -9999.
-    >>> gaussBulgeWithExceptions[388:488,150:250] = -6666.
-    >>> gaussBulgeWithExceptions[388:488,275:375] = -3333.
+    >>> gauss_bulge_with_exceptions = np.copy(gauss_bulge)
+    >>> gauss_bulge_with_exceptions[388:488, 25:125] = -9999.
+    >>> gauss_bulge_with_exceptions[388:488,150:250] = -6666.
+    >>> gauss_bulge_with_exceptions[388:488,275:375] = -3333.
     >>> 
     >>> x0, y0 = (.5+rec_w+sp_w)/fig_w , .5/fig_h
     >>> ax2 = fig.add_axes([x0,y0,rec_w/fig_w,rec_h/fig_h])
@@ -267,11 +267,11 @@ by an exception will not trigger an error.
     >>> format_axes(ax2)
     >>> #a mapping where 3 exceptions are specified  
     >>> #the defalut tolerance around specified value is 1e-3
-    >>> mapping3Excep = legs.pal_obj(excep_val=[-9999.,      -6666.,    -3333.],
-    ...                              excep_col=['dark_green','grey_80', 'light_pink'])
-    >>> mapping3Excep.plot_data(ax=ax2,data=gaussBulgeWithExceptions, 
-    ...                         palette='right', pal_units='[unitless]', 
-    ...                         pal_format='{:2.0f}') 
+    >>> mapping_3_except = legs.PalObj(excep_val=[-9999.,      -6666.,    -3333.],
+    ...                                excep_col=['dark_green','grey_80', 'light_pink'])
+    >>> mapping_3_except.plot_data(ax=ax2,data=gauss_bulge_with_exceptions,
+    ...                            palette='right', pal_units='[unitless]',
+    ...                            pal_format='{:2.0f}')
     >>> 
     >>> 
     >>> plt.savefig('_static/default_exceptions.svg')
@@ -295,11 +295,11 @@ They can be called by name.
     >>> for n, thisCol in enumerate(supported_colors):
     ...     x0, y0 = (.5+n*(pal_w+pal_sp))/fig_w , .5/fig_h
     ...     #color mapping with one color leg
-    ...     thisMap = legs.pal_obj(color_arr=thisCol)
+    ...     this_map = legs.PalObj(color_arr=thisCol)
     ...     #plot palette only
-    ...     thisMap.plot_palette(pal_pos=[x0,y0,pal_w/fig_w,rec_h/fig_h],
-    ...                          pal_units=thisCol,
-    ...                          pal_format='{:1.0f}') 
+    ...     this_map.plot_palette(pal_pos=[x0,y0,pal_w/fig_w,rec_h/fig_h],
+    ...                           pal_units=thisCol,
+    ...                           pal_format='{:1.0f}')
     >>> plt.savefig('_static/default_linear_legs.svg')
 
 .. image:: _static/default_linear_legs.svg
@@ -318,12 +318,12 @@ the order in which they appear above.
     >>> ax = fig.add_axes([x0,y0,rec_w/fig_w,rec_h/fig_h])
     >>> format_axes(ax)
     >>> #mapping with 6 color legs
-    >>> mappingDefault6cols = legs.pal_obj(range_arr=[0.,60], n_col=6, 
-    ...                                    over_high='extend',
-    ...                                    under_low='white')
-    >>> mappingDefault6cols.plot_data(ax=ax,data=reflectivityLike, 
-    ...                               palette='right', pal_units='[dBZ]', 
-    ...                               pal_format='{:2.0f}') 
+    >>> mapping_default_6_colors = legs.PalObj(range_arr=[0.,60], n_col=6,
+    ...                                        over_high='extend',
+    ...                                        under_low='white')
+    >>> mapping_default_6_colors.plot_data(ax=ax,data=reflectivity_like,
+    ...                                    palette='right', pal_units='[dBZ]',
+    ...                                    pal_format='{:2.0f}')
     >>> plt.savefig('_static/default_6cols.svg')
 
 .. image:: _static/default_6cols.svg
@@ -346,13 +346,13 @@ By default linear interpolation is used between the provided RGB.
     ...                    xy=(.17/rec_w, 3.35/rec_h), xycoords='axes fraction',
     ...                    bbox=dict(boxstyle="round", fc='white', ec='white'))
     >>> format_axes(ax1)
-    >>> mapping3cols = legs.pal_obj(range_arr=[0.,60], 
-    ...                             color_arr=['brown','orange','red'],
-    ...                             over_high='extend',
-    ...                             under_low='white')
-    >>> mapping3cols.plot_data(ax=ax1,data=reflectivityLike, 
-    ...                        palette='right', pal_units='[dBZ]', 
-    ...                        pal_format='{:2.0f}') 
+    >>> mapping_3_colors = legs.PalObj(range_arr=[0.,60],
+    ...                                color_arr=['brown','orange','red'],
+    ...                                over_high='extend',
+    ...                                under_low='white')
+    >>> mapping_3_colors.plot_data(ax=ax1,data=reflectivity_like,
+    ...                            palette='right', pal_units='[dBZ]',
+    ...                            pal_format='{:2.0f}')
     >>> 
     >>> 
     >>> #mapping with custom pastel color legs
@@ -367,14 +367,14 @@ By default linear interpolation is used between the provided RGB.
     ...            [[255,185,255],[147, 78,172]],  #pale/dark purple
     ...            [[210,235,255],[ 58,134,237]],  #pale/dark blue
     ...            [[223,255,232],[ 61,189, 63]] ] #pale/dark green
-    >>> mappingPastel = legs.pal_obj(range_arr=[0.,60], 
+    >>> mapping_pastel = legs.PalObj(range_arr=[0.,60],
     ...                              color_arr=pastel,
     ...                              over_high='extend',
     ...                              under_low='white')
     >>> #plot data & palette
-    >>> mappingPastel.plot_data(ax=ax2,data=reflectivityLike, 
-    ...                         palette='right', pal_units='[dBZ]', 
-    ...                         pal_format='{:2.0f}') 
+    >>> mapping_pastel.plot_data(ax=ax2,data=reflectivity_like,
+    ...                          palette='right', pal_units='[dBZ]',
+    ...                          pal_format='{:2.0f}')
     >>> 
     >>> 
     >>> plt.savefig('_static/col_arr_demo.svg')
@@ -399,14 +399,14 @@ The keyword **solid** is used for generating categorical palettes.
     ...                    xy=(.17/rec_w, 3.65/rec_h), xycoords='axes fraction',
     ...                    bbox=dict(boxstyle="round", fc='white', ec='white'))
     >>> format_axes(ax1)
-    >>> mappingSolidDark = legs.pal_obj(range_arr=[0.,60],
-    ...                                 color_arr=['brown','orange','red'],
-    ...                                 solid='col_dark',
-    ...                                 over_high='extend',
-    ...                                 under_low='white')
-    >>> mappingSolidDark.plot_data(ax=ax1,data=reflectivityLike, 
-    ...                            palette='right', pal_units='[dBZ]', 
-    ...                            pal_format='{:2.0f}') 
+    >>> mapping_solid_dark = legs.PalObj(range_arr=[0.,60],
+    ...                                  color_arr=['brown','orange','red'],
+    ...                                  solid='col_dark',
+    ...                                  over_high='extend',
+    ...                                  under_low='white')
+    >>> mapping_solid_dark.plot_data(ax=ax1,data=reflectivity_like,
+    ...                              palette='right', pal_units='[dBZ]',
+    ...                              pal_format='{:2.0f}')
     >>> 
     >>> 
     >>> #mapping with solid light colors
@@ -416,14 +416,14 @@ The keyword **solid** is used for generating categorical palettes.
     ...                    xy=(.17/rec_w, 3.65/rec_h), xycoords='axes fraction',
     ...                    bbox=dict(boxstyle="round", fc='white', ec='white'))
     >>> format_axes(ax2)
-    >>> mappingSolidLight = legs.pal_obj(range_arr=[0.,60],
-    ...                                  color_arr=['green','orange','purple'],
-    ...                                  solid=    'col_light',
-    ...                                  over_high='extend',
-    ...                                  under_low='white')
-    >>> mappingSolidLight.plot_data(ax=ax2,data=reflectivityLike, 
-    ...                             palette='right', pal_units='[dBZ]', 
-    ...                             pal_format='{:2.0f}') 
+    >>> mapping_solid_light = legs.PalObj(range_arr=[0.,60],
+    ...                                   color_arr=['green','orange','purple'],
+    ...                                   solid=    'col_light',
+    ...                                   over_high='extend',
+    ...                                   under_low='white')
+    >>> mapping_solid_light.plot_data(ax=ax2,data=reflectivity_like,
+    ...                               palette='right', pal_units='[dBZ]',
+    ...                               pal_format='{:2.0f}')
     >>> 
     >>> 
     >>> #mapping with custom solid colors
@@ -439,14 +439,14 @@ The keyword **solid** is used for generating categorical palettes.
     ...            [222, 119, 174],  
     ...            [197,  27, 125],
     ...            [142,   1,  82] ] #dark magenta
-    >>> mappingSolidCustom = legs.pal_obj(range_arr=[0.,60],
-    ...                                  color_arr= magenta,
-    ...                                  solid=    'supplied',
-    ...                                  over_high='extend',
-    ...                                  under_low='white')
-    >>> mappingSolidCustom.plot_data(ax=ax3,data=reflectivityLike, 
-    ...                              palette='right', pal_units='[dBZ]', 
-    ...                              pal_format='{:2.0f}') 
+    >>> mapping_solid_custom = legs.PalObj(range_arr=[0.,60],
+    ...                                    color_arr= magenta,
+    ...                                    solid=    'supplied',
+    ...                                    over_high='extend',
+    ...                                    under_low='white')
+    >>> mapping_solid_custom.plot_data(ax=ax3,data=reflectivity_like,
+    ...                                palette='right', pal_units='[dBZ]',
+    ...                                pal_format='{:2.0f}')
     >>> 
     >>> 
     >>> plt.savefig('_static/solid_demo.svg')
@@ -471,13 +471,13 @@ The keyword **dark_pos** is useful for making divergent palettes.
     ...                    xy=(.17/rec_w, 3.35/rec_h), xycoords='axes fraction',
     ...                    bbox=dict(boxstyle="round", fc='white', ec='white'))
     >>> format_axes(ax1)
-    >>> mappingDiv2cols = legs.pal_obj(range_arr=[-50.,50], 
-    ...                                color_arr=['orange','blue'],
-    ...                                dark_pos =['low',   'high'],
-    ...                                over_under='extend')
-    >>> mappingDiv2cols.plot_data(ax=ax1,data=reflectivityLike, 
-    ...                           palette='right', pal_units='[dBZ]', 
-    ...                           pal_format='{:2.0f}') 
+    >>> mapping_div_2_colors = legs.PalObj(range_arr=[-50.,50],
+    ...                                    color_arr=['orange','blue'],
+    ...                                    dark_pos =['low',   'high'],
+    ...                                    over_under='extend')
+    >>> mapping_div_2_colors.plot_data(ax=ax1,data=reflectivity_like,
+    ...                                palette='right', pal_units='[dBZ]',
+    ...                                pal_format='{:2.0f}')
     >>>
     >>>
     >>> #Custom pastel colors 
@@ -489,13 +489,13 @@ The keyword **dark_pos** is useful for making divergent palettes.
     >>> format_axes(ax2)
     >>> pastel = [ [[255,255,255],[147, 78,172]],  # white, purple
     ...            [[255,255,255],[ 61,189, 63]] ] # white, green
-    >>> mappingPastel = legs.pal_obj(range_arr=[-50.,50], 
+    >>> mapping_pastel = legs.PalObj(range_arr=[-50.,50],
     ...                              color_arr=pastel,
     ...                              dark_pos =['low','high'],
     ...                              over_under='extend')
-    >>> mappingPastel.plot_data(ax=ax2,data=reflectivityLike, 
-    ...                         palette='right', pal_units='[dBZ]', 
-    ...                         pal_format='{:2.0f}') 
+    >>> mapping_pastel.plot_data(ax=ax2,data=reflectivity_like,
+    ...                          palette='right', pal_units='[dBZ]',
+    ...                          pal_format='{:2.0f}')
     >>> 
     >>> 
     >>> plt.savefig('_static/dark_pos_demo.svg')
@@ -516,23 +516,23 @@ Quantitative divergent color mappings can naturally be made using the **solid** 
     >>> 
     >>> # these colors were defined using inkscape. 
     >>> # www.colorbrewer2.org is also a great place for getting such color mappings
-    >>> greenPurple =[ [114,  30, 179],  #dark purple
-    ...                [172,  61, 255],  
-    ...                [210, 159, 255],  
-    ...                [255, 215, 255],  #pale purple
-    ...                [255, 255, 255],  #white
-    ...                [218, 255, 207],  #pale green
-    ...                [162, 222, 134],  
-    ...                [111, 184,   0],  
-    ...                [  0, 129,   0] ] #dark green
+    >>> green_purple =[ [114,  30, 179],  #dark purple
+    ...                 [172,  61, 255],
+    ...                 [210, 159, 255],
+    ...                 [255, 215, 255],  #pale purple
+    ...                 [255, 255, 255],  #white
+    ...                 [218, 255, 207],  #pale green
+    ...                 [162, 222, 134],
+    ...                 [111, 184,   0],
+    ...                 [  0, 129,   0] ] #dark green
     >>> 
-    >>> mappingDivergentSolid = legs.pal_obj(range_arr=[-60.,60],
-    ...                                      color_arr= greenPurple,
-    ...                                      solid=    'supplied',
-    ...                                      over_under='extend')
-    >>> mappingDivergentSolid.plot_data(ax=ax,data=reflectivityLike, 
-    ...                                 palette='right', pal_units='[dBZ]', 
-    ...                                 pal_format='{:2.0f}') 
+    >>> mapping_divergent_solid = legs.PalObj(range_arr=[-60.,60],
+    ...                                       color_arr= green_purple,
+    ...                                       solid=    'supplied',
+    ...                                       over_under='extend')
+    >>> mapping_divergent_solid.plot_data(ax=ax,data=reflectivity_like,
+    ...                                   palette='right', pal_units='[dBZ]',
+    ...                                   pal_format='{:2.0f}')
     >>> 
     >>> 
     >>> plt.savefig('_static/divergent_solid.svg')
@@ -550,9 +550,9 @@ It can also be used to define color legs with different extents.
 
     >>>
     >>> #ensure strictky +ve reflectivity values
-    >>> reflectivityLikePve = np.where(reflectivityLike <= 0., 0., reflectivityLike)
+    >>> reflectivity_like_pve = np.where(reflectivity_like <= 0., 0., reflectivity_like)
     >>> #convert reflectivity in dBZ to precipitation rates in mm/h (Marshall-Palmer, 1949)
-    >>> precipRate =  10.**(reflectivityLikePve/16.) / 27.424818
+    >>> precip_rate =  10.**(reflectivity_like_pve/16.) / 27.424818
     >>>
     >>> fig_w, fig_h = 5.8, 5.#size of figure
     >>> fig = plt.figure(figsize=(fig_w, fig_h))
@@ -562,16 +562,16 @@ It can also be used to define color legs with different extents.
     >>> x0, y0 = .5/fig_w , .5/fig_h
     >>> ax = fig.add_axes([x0,y0,rec_w/fig_w,rec_h/fig_h])
     >>> format_axes(ax)
-    >>> mappingDiffRanges = legs.pal_obj(range_arr=[.1,3.,6.,12.,25.,50.,100.],
-    ...                                  n_col=6,
-    ...                                  over_high='extend',
-    ...                                  under_low='white')
+    >>> mapping_diff_ranges = legs.PalObj(range_arr=[.1,3.,6.,12.,25.,50.,100.],
+    ...                                   n_col=6,
+    ...                                   over_high='extend',
+    ...                                   under_low='white')
     >>> # the keyword "equal_legs" makes the legs have equal space in the palette even 
     >>> # when they cover different value ranges
-    >>> mappingDiffRanges.plot_data(ax=ax,data=precipRate, 
-    ...                             palette='right', pal_units='[mm/h]', 
-    ...                             pal_format='{:2.0f}', 
-    ...                             equal_legs=True) 
+    >>> mapping_diff_ranges.plot_data(ax=ax,data=precip_rate,
+    ...                               palette='right', pal_units='[mm/h]',
+    ...                               pal_format='{:2.0f}',
+    ...                               equal_legs=True)
     >>> plt.savefig('_static/different_ranges.svg')
 
 .. image:: _static/different_ranges.svg
@@ -597,11 +597,11 @@ In this example, two color mappings are used first separately and then together.
     ...                    xy=(.17/rec_w, 3.65/rec_h), xycoords='axes fraction',
     ...                    bbox=dict(boxstyle="round", fc='white', ec='white'))
     >>> format_axes(ax1)
-    >>> mappingBW = legs.pal_obj(range_arr=[0.,1.], color_arr='b_w')
-    >>> mappingBW.plot_data(ax=ax1,data=gaussBulge)
+    >>> mapping_bw = legs.PalObj(range_arr=[0.,1.], color_arr='b_w')
+    >>> mapping_bw.plot_data(ax=ax1,data=gauss_bulge)
     >>>
     >>> #get RGB image using the to_rgb method
-    >>> gaussRGB = mappingBW.to_rgb(gaussBulge)
+    >>> gauss_rgb = mapping_bw.to_rgb(gauss_bulge)
     >>> 
     >>> 
     >>> #color mapping using 6 default linear color segments
@@ -612,11 +612,11 @@ In this example, two color mappings are used first separately and then together.
     ...                    xy=(.17/rec_w, 3.65/rec_h), xycoords='axes fraction',
     ...                    bbox=dict(boxstyle="round", fc='white', ec='white'))
     >>> format_axes(ax2)
-    >>> mappingRef = legs.pal_obj(range_arr=[0.,60],n_col=6, over_under='extend')
-    >>> reflectivityRGB = mappingRef.to_rgb(reflectivityLike)
+    >>> mapping_ref = legs.PalObj(range_arr=[0.,60],n_col=6, over_under='extend')
+    >>> reflectivity_rgb = mapping_ref.to_rgb(reflectivity_like)
     >>> x1, x2 = ax2.get_xlim()
     >>> y1, y2 = ax2.get_ylim()
-    >>> dum = ax2.imshow(reflectivityRGB, interpolation='nearest',
+    >>> dum = ax2.imshow(reflectivity_rgb, interpolation='nearest',
     ...                  extent=[x1,x2,y1,y2] )
     >>> ax2.set_aspect('auto')  #force matplotlib to respect the axes that was defined
     >>> 
@@ -631,26 +631,26 @@ In this example, two color mappings are used first separately and then together.
     >>> 
     >>> #blend the two images by hand
     >>> #image will be opaque where reflectivity > 0
-    >>> alpha = np.where(reflectivityLike >= 0., 1., 0.) 
-    >>> alpha = np.where(np.logical_and(reflectivityLike >= 0., reflectivityLike < 10.), 0.1*reflectivityLike, alpha) 
-    >>> combinedRGB = np.zeros(gaussRGB.shape,dtype='uint8')
+    >>> alpha = np.where(reflectivity_like >= 0., 1., 0.)
+    >>> alpha = np.where(np.logical_and(reflectivity_like >= 0., reflectivity_like < 10.), 0.1*reflectivity_like, alpha)
+    >>> combined_rgb = np.zeros(gauss_rgb.shape,dtype='uint8')
     >>> for zz in np.arange(3):
-    ...     combinedRGB[:,:,zz] = (1. - alpha)*gaussRGB[:,:,zz] + alpha*reflectivityRGB[:,:,zz]
+    ...     combined_rgb[:,:,zz] = (1. - alpha)*gauss_rgb[:,:,zz] + alpha*reflectivity_rgb[:,:,zz]
     >>>
     >>> #plot image w/ imshow
     >>> x1, x2 = ax3.get_xlim()
     >>> y1, y2 = ax3.get_ylim()
-    >>> dum = ax3.imshow(combinedRGB, interpolation='nearest', extent=[x1,x2,y1,y2])
+    >>> dum = ax3.imshow(combined_rgb, interpolation='nearest', extent=[x1,x2,y1,y2])
     >>> ax3.set_aspect('auto') 
     >>> 
     >>> #plot palettes with the plot_palette method
     >>> pal_w  = .25/fig_w   #width of palette
     >>> x0, y0 = x0+rec_w/fig_w+.25/fig_w  , .5/fig_h
-    >>> mappingBW.plot_palette(pal_pos=[x0,y0,pal_w,rec_h/fig_h],
+    >>> mapping_bw.plot_palette(pal_pos=[x0,y0,pal_w,rec_h/fig_h],
     ...                        pal_units='unitless',
     ...                        pal_format='{:2.0f}') 
     >>> x0, y0 = x0+1.2/fig_w  , .5/fig_h
-    >>> mappingRef.plot_palette(pal_pos=[x0,y0,pal_w,rec_h/fig_h],
+    >>> mapping_ref.plot_palette(pal_pos=[x0,y0,pal_w,rec_h/fig_h],
     ...                         pal_units='dBZ',
     ...                         pal_format='{:3.0f}') 
     >>> 

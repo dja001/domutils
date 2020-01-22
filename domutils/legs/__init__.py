@@ -1,1 +1,1 @@
-from .legs import pal_obj
+from .legs import PalObj

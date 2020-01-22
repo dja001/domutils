@@ -4,14 +4,6 @@
 # solid_name keyword for categorical palettes
 
 
-
-#Find a way to gracefully handle inputs that do not convert to "propper" ndarray
-# eg
-#blue_orange = [ [ 13,  13, 134],
-#                [164,  53,    ],
-#                [104,  10,    ] ]      
-
-
 #make a bank of various solid palette for people to use
 #eg:
 #blue_orange = [ [ 13,  13, 134],      #dark blue
@@ -28,7 +20,7 @@
 #                [104,  10,   0] ]      #dark orange
 
 
-class pal_obj():
+class PalObj():
     """ A class for intuitive construction of color palettes
 
        - Easy construction of qualitative, semi-quantitative, categorical and divergent color mappings
@@ -38,9 +30,6 @@ class pal_obj():
        - Encourages the user to specify units of data being depicted
        - Consistency of the color palettes and colored representation of data is assured through 
          the use of the same color mapping functions. 
-
-       are drawn by creating data values in the specified range and assigning
-         color to.
 
        Args:
           range_arr:    End points of the different color legs.  
@@ -634,41 +623,8 @@ class pal_obj():
         self.lows     = map_low
         self.excepts  = excepts
 
-
-
-
-
-
-
-
-
-
-
-
-##display related keyword
-#DATA=in_in,
-#MAPPING=mapping,
-#TV_OUT=tv_out_in,
-#IMG_OUT=img_out,
-
-##palette related keywords
-#PALETTE=palette_in,
-#UNITS=units_in,
-#PAL_PROP=pal_prop_in,
-#CAT_NAMES=cat_names_in,
-#YTICKS=yticks,
-#YTICKV=ytickv,
-#YTICKFORMAT=ytickformat,
-#YTICKNAME=ytickname,
-#CHARSIZE=charsize
-
-
 def main():
     pass
-
-
-
-
 
 if __name__ == "__main__":
     main()
