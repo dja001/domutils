@@ -13,6 +13,7 @@ on github.
 
    #. On your computer, clone the source code and go in the package 
       directory
+
         .. code-block:: bash
 
            git clone git@github.com:<your-username>/domutils.git 
@@ -20,13 +21,15 @@ on github.
 
    #. Create a new branch whose name is related to the issue you opened at step 1 above.   
       For example:
+
         .. code-block:: bash
 
            git checkout -b #666-include-cool-new-feature
 
    #. Create a clean `Anaconda <https://wiki.cmc.ec.gc.ca/wiki/Anaconda>`_ development environment 
       and activate it. 
-      You will need internet access for this. 
+      You will need internet access for this.
+
         .. code-block:: bash
 
            conda env create --name domutils_dev_env -f docs/environment.yml
@@ -37,6 +40,7 @@ on github.
 
    #. Run the 
       tests
+
         .. code-block:: bash
 
            cd docs
@@ -54,6 +58,7 @@ on github.
 
       You can see the output in any web browser 
       pointing to:
+
         .. code-block:: bash
   
            domutils/docs/_build/html/
@@ -67,6 +72,7 @@ on github.
 
    #. Once you are happy with the modifications, push the new version
       on your fork on github
+
         .. code-block:: bash
 
            git push -u origin #666-include-cool-new-feature

@@ -1,0 +1,17 @@
+# Changelog
+All notable changes to this project will be documented in this file.
+
+Please use the following tags when editing this file:
+*Added* for new features.
+*Changed* for changes in existing functionality.
+*Deprecated* for soon-to-be removed features.
+*Removed* for now removed features.
+*Fixed* for any bug fixes. 
+
+
+## [2.0.0] - 2020-01-24
+### Changed
+- First release of domutils on github
+- Now adheres to PEP8 for the naming of functions and keywords. 
+  This change does break backward compatibility. Sorry for the bother but better now than 
+  later I guess. 

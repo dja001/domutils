@@ -8,11 +8,11 @@ interpolation and filtering options are provided.
 
 The radar mosaics are accessed via two
 functions:
-    * *getInstantaneous* for instantaneous reflectivity or precipitation rates
-    * *getAccumulations* for precipitation accumulations 
+    * *get_instantaneous* for instantaneous reflectivity or precipitation rates
+    * *get_accumulations* for precipitation accumulations 
 
-These two functions are very similar, *getAccumulations* itself calling
-*getInstantaeous* repeatedly in order to construct accumulations on the fly.
+These two functions are very similar, *get_accumulations* itself calling
+*get_instantaeous* repeatedly in order to construct accumulations on the fly.
 
 This tutorial demonstrates the different operations that can be performed.
 

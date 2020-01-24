@@ -1,11 +1,11 @@
 from typing import Callable, Iterator, Union, Optional, List, Iterable, MutableMapping, Any
 
-def lat_lon_extend( lon1_in:  Any, 
-                    lat1_in:  Any,
-                    lon2_in:  Any,
-                    lat2_in:  Any,
-                    crs:      Any=None, 
-                    halfDist: bool=False) :
+def lat_lon_extend(lon1_in:   Any,
+                   lat1_in:   Any,
+                   lon2_in:   Any,
+                   lat2_in:   Any,
+                   crs:       Any=None,
+                   half_dist: bool=False) :
     """ Extends latitude and longitudes on a sphere
 
        Given two points (pt1 and pt2) on a sphere, this function returns a third point (pt3) at the 
@@ -17,7 +17,7 @@ def lat_lon_extend( lon1_in:  Any,
            #   pt3              output                           #
            #     ^                                               #
            #      \                                              #
-           #       \              -> output with halfDist=True   #
+           #       \              -> output with half_dist=True  #
            #        \                                            #
            #        pt2          input 2                         #
            #         ^                                           #
@@ -33,7 +33,7 @@ def lat_lon_extend( lon1_in:  Any,
             lat2_in:    (array like) latitude  of point 2
             crs:        Instance of Cartopy geoAxes in which pt coordinates are defined 
                         (default is PlateCarree)
-            halfDist:   If true, pt 3 will be located at half the distance between pt1 and pt2
+            half_dist:  If true, pt 3 will be located at half the distance between pt1 and pt2
 
        Returns:
             (longitude, latitude)    (array like) of extended point 3
@@ -69,8 +69,7 @@ def lat_lon_extend( lon1_in:  Any,
            [180. 180.  90.   0.]
            [ 0.   0.   0.  59.8]
            >>> #           ^
-           >>> #           Presumably not 60. because cartopy uses a spheroid 
-           >>> #           Instead of a sphere, I need to check that...
+           >>> #           Presumably not =60. because cartopy uses a spheroid
 
 
     """
@@ -79,9 +78,6 @@ def lat_lon_extend( lon1_in:  Any,
     import cartopy.crs as ccrs
 
     from .rotation_matrix  import rotation_matrix
-
-
-
 
 
     #ensure numpy type
@@ -105,7 +101,7 @@ def lat_lon_extend( lon1_in:  Any,
 
         #solve for angle
         theta = np.arccos( np.sum(v1*v2) / (np.linalg.norm(v1)*np.linalg.norm(v2)) )
-        if halfDist :
+        if half_dist :
             theta /= 2.
 
         #get normal vector
