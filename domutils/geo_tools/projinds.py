@@ -576,6 +576,7 @@ class ProjInds():
     def project_data(self,
                      data:Any,
                      weights:Optional[Any]  = None,
+                     output_avg_weights:Optional[bool] = False,
                      missing_v:Optional[float]= -9999.):
         """ Project data into geoAxes space
 
@@ -585,12 +586,24 @@ class ProjInds():
                             instantiate the class.
                 weights:    (array like), weights to be applied during averaging 
                             (see average and smooth_radius keyword in ProjInds)
+                output_avg_weights: 
+                            If True, projected_weights will be outputed along with projected_data
+                            "Averaged" and "smooth_radius" interpolation can take a long time on large 
+                            grids. 
+                            This option is useful to get radar data + quality index interpolated 
+                            using one call to project_data instead of two halving computation time.
+                            Not available for nearest-neighbor interpolation which is already quite fast anyway.
                 missing_v:  Value in input data that will be neglected during the averaging process
                             Has no impact unless *average* or *smooth_radius* are used in class
                             instantiation.
 
             Returns:
-                A numpy array of the same shape as destination grid used to instantiate the class
+                projected_data  A numpy array of the same shape as destination grid used to instantiate the class
+
+                if output_avg_weights=True, returns:
+
+                    projected_data, projected_weights
+
 
         """
         import numpy as np
@@ -612,10 +625,12 @@ class ProjInds():
         #fill it where needed
         if self.average :
             #init matrices
-            accumulator = np.zeros(self.dest_shape).ravel()
-            denom       = np.zeros(self.dest_shape).ravel()
-            averaged    =  np.full(self.dest_shape, self.missing).ravel()
-            n_hits       = np.zeros(self.dest_shape, dtype='int32').ravel()
+            data_accumulator    = np.zeros(self.dest_shape).ravel()
+            weights_accumulator = np.zeros(self.dest_shape).ravel()
+            denom               = np.zeros(self.dest_shape).ravel()
+            averaged_data       = np.full(self.dest_shape, self.missing).ravel()
+            averaged_weights    = np.full(self.dest_shape, self.missing).ravel()
+            n_hits              = np.zeros(self.dest_shape, dtype='int32').ravel()
             #init/check weights matrix
             if weights is None:
                 #by default all data pts have equal weights = 1.
@@ -629,15 +644,22 @@ class ProjInds():
 
             if self.smooth_radius_m is not None:
                 #smooth all data found within distance specified by smooth_radius
-                for ind, xyz in enumerate(self.dest_xyz):
+                #
+                #  Note for future optimisation work
+                #  for HRDPS grid with smooth_radius=3,
+                #  kdtree call takes ~15s while loop runs in ~60s
 
-                    good_pts = self.kdtree.query_ball_point(xyz, self.smooth_radius_m)
+                #KDtree call
+                good_pts_list = self.kdtree.query_ball_point(self.dest_xyz, self.smooth_radius_m)
+                for ind, good_pts in enumerate(good_pts_list):
+
                     this_data    = data_flat[good_pts]
                     (valid_pts,) = np.asarray((this_data - missing_v) > 1e-3).nonzero()
                     if valid_pts.size > 0 :
                         this_data   = this_data[valid_pts]
                         this_weights     = weights_flat[np.asarray(good_pts)[valid_pts]]
-                        accumulator[ind] = np.sum(this_weights*this_data)
+                        data_accumulator[ind]    = np.sum(this_weights*this_data)
+                        weights_accumulator[ind] = np.sum(this_weights*this_weights)
                         denom[ind]       = np.sum(this_weights)
                         n_hits[ind]      = valid_pts.size
 
@@ -650,19 +672,24 @@ class ProjInds():
                     ii = np.arange(self.proj_ind.size)
                     out_inds = ii[good_pts]
                     for in_pt, out_pt in zip(in_inds, out_inds):
-                        accumulator[in_pt] += weights_flat[out_pt]*data_flat[out_pt]
+                        data_accumulator[in_pt]    += weights_flat[out_pt]*data_flat[out_pt]
+                        weights_accumulator[in_pt] += weights_flat[out_pt]*weights_flat[out_pt]
                         denom[in_pt]       += weights_flat[out_pt]
                         n_hits[in_pt]      += 1
 
             #the averaging part
             (hits,) = np.logical_and(denom > 0., n_hits >= self.min_hits).nonzero()
             if hits.size > 0 :
-                averaged[hits] = accumulator[hits]/denom[hits]
+                averaged_data[hits]    =    data_accumulator[hits]/denom[hits]
+                averaged_weights[hits] = weights_accumulator[hits]/denom[hits]
 
-            #output is a 2D array
-            proj_data = np.reshape(averaged, self.dest_shape)
+            #output are 2D arrays
+            proj_data    = np.reshape(averaged_data,    self.dest_shape)
+            proj_weights = np.reshape(averaged_weights, self.dest_shape)
 
         else:
+            if output_avg_weights:
+                raise ValueError('Keyword output_avg_weights=True is not compatible with nearest neighbor interpolation') 
 
             #init output array
             proj_data = np.full(self.dest_shape, self.missing)
@@ -670,7 +697,10 @@ class ProjInds():
             if good_pts.size != 0:
                 proj_data.ravel()[good_pts] = data_flat[self.proj_ind[good_pts]]
 
-        return proj_data
+        if output_avg_weights:
+            return proj_data, proj_weights
+        else:
+            return proj_data
 
 
 

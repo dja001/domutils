@@ -6,7 +6,7 @@ def read_fst_composite(fst_file:   str=None,
                        undetect:   Optional[float]= -3333.,
                        verbose:    Optional[int]  = 0) :
 
-    """ Read reflectivity from CMC *standard* files
+    """ Read reflectivity or precip_rate from CMC *standard* files
         
 
     Validity date is obtained via the *datev* attribute of the entry in the standard file being 
@@ -80,7 +80,8 @@ def read_fst_composite(fst_file:   str=None,
                 print('read_fst_composite: non existent file, returning None')
             return None
 
-    var_list = ['RDBR', 'L1']
+    qty_list = ['pr',   'ref',  'ref',  'ref']
+    var_list = ['RDPR', 'RDBZ', 'RDBR', 'L1' ]
     #attempt to read to following variables stop when one is found
     for this_var in var_list:
         fst_dict = fst_tools.get_data(file_name=fst_file,
@@ -91,42 +92,69 @@ def read_fst_composite(fst_file:   str=None,
     #nothing was found
     if fst_dict is None:
         if verbose >= 1 :
-            print('read_fst_composite: did not find reflectivity in file; returning None')
+            print('read_fst_composite: did not find reflectivity or precipitaiton rates in file:')
+            print(fst_file)
+            print('searched for: ', var_list)
+            print('returning None')
         return None
-    reflectivity = fst_dict['values']
-
-    #missing and undetect depend on how data was encoded in fst file, this is very annoying...
-    if this_var == 'RDBR':
-        missing_fst  = -999.
-        undetect_fst = -99.
-    if this_var == 'L1':
-        missing_fst  = -10.
-        undetect_fst = 0.
+    values = fst_dict['values']
 
     #make datestamp for output
     datev = fst_dict['meta']['datev']
     date_obj = RPNDate(datev)
     valid_date = date_obj.toDateTime()
 
-    #mark missing data to user defined no_data value
-    missing_pts = np.isclose(reflectivity, missing_fst ).nonzero()
-    if missing_pts[0].size > 0:
-        reflectivity[missing_pts] = no_data
+    #missing and undetect depend on how data was encoded in fst file, this is very annoying...
+    if this_var == 'RDPR':
+        #precipitation rate with quality index available
 
-    #construct a fake quality index = 1 wherever we have data or undetect
-    total_quality_index = np.ones_like(reflectivity)
-    if missing_pts[0].size > 0:
-        total_quality_index[missing_pts] = 0.
+        #get quality index
+        qi_dict = fst_tools.get_data(file_name=fst_file,
+                                     var_name='RDQI')
+        if qi_dict is not None:
+            total_quality_index = qi_dict['values']
+        else:
+            if verbose >= 1 :
+                print('RDQI not found, filling everything with ones')
+                total_quality_index = np.ones_like(values)
 
-    #mark undetect to user defined undetect
-    undetect_pts = np.isclose(reflectivity, undetect_fst ).nonzero()
-    if undetect_pts[0].size > 0:
-        reflectivity[undetect_pts] = undetect
+        #constructuct output dictionary
+        out_dict = {'precip_rate':          values,
+                    'total_quality_index':  total_quality_index,
+                    'valid_date':           valid_date}
 
-    #constructuct output dictionary
-    out_dict = {'reflectivity':        reflectivity,
-               'total_quality_index':  total_quality_index,
-               'valid_date':           valid_date}
+    else:
+        #reflectivity; quality ndex not available
+        if this_var == 'RDBZ':
+            missing_fst  = -999.
+            undetect_fst = -99.
+        if this_var == 'RDBR':
+            missing_fst  = -999.
+            undetect_fst = -99.
+        if this_var == 'L1':
+            missing_fst  = -10.
+            undetect_fst = 0.
+
+        #mark missing data to user defined no_data value
+        missing_pts = np.isclose(values, missing_fst ).nonzero()
+        if missing_pts[0].size > 0:
+            values[missing_pts] = no_data
+
+        #construct a fake quality index = 1 wherever we have data or undetect
+        total_quality_index = np.ones_like(values)
+        if missing_pts[0].size > 0:
+            total_quality_index[missing_pts] = 0.
+
+        #mark undetect to user defined undetect
+        undetect_pts = np.isclose(values, undetect_fst ).nonzero()
+        if undetect_pts[0].size > 0:
+            values[undetect_pts] = undetect
+
+        #constructuct output dictionary
+        out_dict = {'reflectivity':         values,
+                    'total_quality_index':  total_quality_index,
+                    'valid_date':           valid_date}
+
     if latlon : 
         out_dict['latitudes']  = fst_dict['lat']
         out_dict['longitudes'] = fst_dict['lon']
