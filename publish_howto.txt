@@ -13,9 +13,17 @@ Notes for me to remember steps involved in publishing this package
 
 - adjust version number in VERSION
 
+- describe changes in CHANGELOG
+
 - commit everything, push branch to github, open merge/pull request
 
 - check that documentation builds on RTD
+  "latest" will be built
+
+- add version tag and push to github
+  git tag -a v2.0.0 -m 'version 2.0.0 with CamelCase removed'
+  git push github --tags
+  "stable" will be build on RTD
 
 - make bundle by running:
     - You probably want to cleanup

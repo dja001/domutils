@@ -1,2 +1,2 @@
 include VERSION
-
+prune test_data/*

@@ -19,3 +19,9 @@ Please use the following tags when editing this file:
 ## [2.0.1] - 2020-01-31
 ### Fixed
 - documentation for ProjInds class now displays correctly in documentation
+
+## [2.0.1] - 2020-01-31
+### Changed
+- for some unknown reason wheels now included test_data in the pypi distribution...
+  am now manually excluding those with MANIFEST.in
+
