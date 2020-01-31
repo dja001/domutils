@@ -19,20 +19,12 @@ domutils
 The package **domutils** provides 3 modules:
 
 
-.. toctree::
-   :caption: Legs 
-   :maxdepth: 1
-
-   legsTutorial
-   legsDoc
-   legsResources
-
 For easy construction of custom color mappings & palettes:
 
 
 .. toctree::
    :caption: geo_tools
-   :maxdepth: 2
+   :maxdepth: 1
 
    geoDoc
 

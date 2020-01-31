@@ -1,9 +1,19 @@
 
 Notes for me to remember steps involved in publishing this package
 
+- create branch on local machine
+
+- make modifications
+
+- run tests and documentation
+  in docs/
+  make clean
+  make doctest
+  make html
+
 - adjust version number in VERSION
 
-- commit everything and push to github
+- commit everything, push branch to github, open merge/pull request
 
 - check that documentation builds on RTD
 
