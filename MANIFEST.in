@@ -1,2 +1,4 @@
 include VERSION
-prune test_data/*
+include download_test_data.sh
+global-exclude docs/_static/*
+global-exclude test_data/*

@@ -88,7 +88,18 @@ def read_h5_composite(odim_file:   str=None,
         #Should composites one day be generated on a different grid, other files should be added here
         # and use the latlon_file keyword
         currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-        latlon_file = currentdir + '/radar_continental_2.5km_2882x2032.pickle'
+        #move two dirs up
+        parentdir  = os.path.dirname(currentdir) 
+        parentdir2 = os.path.dirname(parentdir) 
+        latlon_file = parentdir2 + '/test_data/radar_continental_2.5km_2882x2032.pickle'
+        if not os.path.isfile(latlon_file) :
+            #no file present print warning and return None
+            raise ValueError(  'The file containing latlon information for the Odim H5 grid:  '                         + os.linesep 
+                             + latlon_file                                                                              + os.linesep
+                             + 'is not available.'                                                                      + os.linesep
+                             + 'Please indicate an alternative file with the *latlon_file* keyword or download the'     + os.linesep
+                             + 'test data (instructions in the *contribute* section of https://domutils.readthedocs.io)'+ os.linesep
+                             + 'to get the 2882x2032 file used for North-American domain used at ECCC.')
 
     #read latitudes and longitudes if desired
     if latlon :
@@ -218,3 +229,9 @@ def read_h5_composite(odim_file:   str=None,
     #that's it
     return out_dict
            
+
+if __name__ == "__main__":
+    #to run tests, go in domutils and run 
+    # python radar_tools/read_h5_composite.py
+    import doctest
+    doctest.testmod()

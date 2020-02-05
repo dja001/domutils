@@ -48,6 +48,9 @@ on github.
       
       Make sure that there are no failures in the tests.
 
+      Note that the first time you run this command internet access is required as the test data 
+      will be downloaded from the internet.
+
    #. If you modified the documentation in functions docstrings, you probably want to check the 
       changes by creating your local version of the documentation.
 
@@ -79,4 +82,19 @@ on github.
 
    #. From the github web interface, create a pull request to me. We will then 
       discuss the changes until they are accepted and merged into the master branch. 
+
+
+Test data
+------------------------------------
+
+Data used in the examples and for running tests can be obtained by running 
+
+    .. code-block:: bash
+    
+       ./download_test_data.sh       
+
+in the main directory of this package. This creates a *test_data/* directory 
+containing all the test data. 
+
+    
 
