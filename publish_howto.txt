@@ -11,6 +11,13 @@ Notes for me to remember steps involved in publishing this package
   make doctest
   make html
 
+- If the test changes the images or that new test data is required
+  the a new test dataset will have to be published in a new version of the repository on zenodo
+  https://doi.org/10.5281/zenodo.3635906    
+  At the moment, only me (dominik) can do that 
+
+  Update to download_test_data.sh will be necessary
+
 - adjust version number in VERSION
 
 - describe changes in CHANGELOG
@@ -18,12 +25,9 @@ Notes for me to remember steps involved in publishing this package
 - commit everything, push branch to github, open merge/pull request
 
 - check that documentation builds on RTD
-  "latest" will be built
-
-- add version tag and push to github
-  git tag -a v2.0.0 -m 'version 2.0.0 with CamelCase removed'
-  git push github --tags
-  "stable" will be build on RTD
+  In admin settings, change default to latest and select new branch
+  "latest" will be built from that branch
+  check if docs renders well
 
 - make bundle by running:
     - You probably want to cleanup
@@ -32,10 +36,17 @@ Notes for me to remember steps involved in publishing this package
 python setup.py sdist bdist_wheel
 
 - upload to TEST pypi
-tine upload --repository-url https://test.pypi.org/legacy/ dist/*
+twine upload --repository-url https://test.pypi.org/legacy/ dist/*
 
 - upload to official pypi repo
 twine upload dist/*
+
+- when all the above worked, 
+  add version tag and push to github
+   git tag -a v2.0.0 -m 'version 2.0.0 with CamelCase removed'
+   git push github --tags
+  "stable" will be build on RTD
+
 
 For CONDA package
 

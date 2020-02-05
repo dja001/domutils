@@ -25,3 +25,8 @@ Please use the following tags when editing this file:
 - for some unknown reason wheels now included test_data in the pypi distribution...
   am now manually excluding those with MANIFEST.in
 
+## [2.0.2] - 2020-02-05
+### Changed
+- All test data and images now on zenodo
+  https://doi.org/10.5281/zenodo.3635906    
+  A new download script downloads it automatically at the first time of running tests
