@@ -105,7 +105,6 @@ The default color mapping applies a black and wite gradient in the interval [0,1
 
 .. image:: _static/default.svg
     :align: center
-
 Data values above and below the color palette
 ----------------------------------------------
 
