@@ -35,11 +35,36 @@ on github.
            conda env create --name domutils_dev_env -f docs/environment.yml
            conda activate domutils_dev_env
    
-   #. Modify the code to address the issue. Make sure to include examples and/or tests in the docstrings.  
-      New functionality should be described in the documentation.
+   #. It is a good practice to start by writing a unit test that will pass once your feature/bugfix
+      is correctly implemented. Look in the 
 
-   #. Run the 
-      tests
+        .. code-block:: bash
+
+           test/
+
+      directories of the different _domutils_ modules for examples of such tests.
+
+
+   #. Modify the code to address the issue. Make sure to include examples and/or tests in the docstrings.  
+
+   #. If applicable, describe the new functionality in the documentation.
+
+   #. Modify the 
+      files:
+        .. code-block:: bash
+
+           VERSION
+           CHANGELOG.md
+
+      To reflect your changes.
+
+   #. Run unittest
+        
+        .. code-block:: bash
+        
+            python -m unittest discover
+
+   #. Run doctest
 
         .. code-block:: bash
 
@@ -49,7 +74,7 @@ on github.
       Make sure that there are no failures in the tests.
 
       Note that the first time you run this command internet access is required as the test data 
-      will be downloaded from the internet.
+      will be downloaded from `zenodo <https://doi.org/10.5281/zenodo.3642234>`_ . 
 
    #. If you modified the documentation in functions docstrings, you probably want to check the 
       changes by creating your local version of the documentation.
@@ -71,7 +96,7 @@ on github.
       `squash <https://blog.carbonfive.com/2017/08/28/always-squash-and-rebase-your-git-commits/>`_
       all you intermediate commits into one, or a few commits, that clearly link to the issue 
       being worked on. 
-      The resulting squashed commits pass the tests. 
+      The resulting squashed commit  should pass the tests. 
 
    #. Once you are happy with the modifications, push the new version
       on your fork on github

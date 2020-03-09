@@ -1,11 +1,10 @@
 import unittest
-import col_utils
-import validation_tools as validate
+import domutils.legs.col_utils as col_utils
+import domutils.legs.validation_tools as validate
 
 
 class TestStringMethods(unittest.TestCase):
 
-    #testing for col_arr parameter
     def test_col_arr_mixed_list(self):
         with self.assertRaises(TypeError):
             validate.color_arr_and_solid([3,'a'])
@@ -48,6 +47,27 @@ class TestStringMethods(unittest.TestCase):
     def test_col_arr_txt_val_col_light(self):
             in_col= ['red','green']
             ans = [ [[255, 190, 187], [134, 222, 134]],'black',2]
+            color_arr_rgb, default_excep_col, n_col = validate.color_arr_and_solid(color_arr=in_col,solid='col_light')
+            returned = [color_arr_rgb.tolist(), default_excep_col, n_col]
+            self.assertEqual(ans,returned)
+
+    def test_col_arr_txt_with_grey(self):
+            in_col= ['grey_120','red','gray_250']
+            ans = [ [[120,120,120], [255, 190, 187], [250,250,250]],'black',3]
+            color_arr_rgb, default_excep_col, n_col = validate.color_arr_and_solid(color_arr=in_col,solid='col_light')
+            returned = [color_arr_rgb.tolist(), default_excep_col, n_col]
+            self.assertEqual(ans,returned)
+
+    def test_col_arr_txt_with_only_one_txt_color(self):
+            in_col= 'red'
+            ans = [ [[255, 190, 187]],'black',1]
+            color_arr_rgb, default_excep_col, n_col = validate.color_arr_and_solid(color_arr=in_col,solid='col_light')
+            returned = [color_arr_rgb.tolist(), default_excep_col, n_col]
+            self.assertEqual(ans,returned)
+
+    def test_col_arr_txt_with_only_grey(self):
+            in_col= 'grey_120'
+            ans = [ [[120,120,120]],'black',1]
             color_arr_rgb, default_excep_col, n_col = validate.color_arr_and_solid(color_arr=in_col,solid='col_light')
             returned = [color_arr_rgb.tolist(), default_excep_col, n_col]
             self.assertEqual(ans,returned)

@@ -5,18 +5,21 @@ Notes for me to remember steps involved in publishing this package
 
 - make modifications
 
+- run unitttests
+  python -m unittest discover
+
 - run tests and documentation
-  in docs/
+  cd docs/
   make clean
   make doctest
   make html
 
-- If the test changes the images or that new test data is required
+- If the test makes a figure or that new test data is required
   the a new test dataset will have to be published in a new version of the repository on zenodo
   https://doi.org/10.5281/zenodo.3635906    
-  At the moment, only me (dominik) can do that 
+  At the moment, only me (dominik) can do that. Contact me and I will do it for you. 
 
-  Update to download_test_data.sh will be necessary
+  Updating the dataset version in download_test_data.sh will be necessary
 
 - adjust version number in VERSION
 

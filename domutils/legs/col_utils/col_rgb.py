@@ -31,7 +31,7 @@ def col_rgb(col_txt_in, var_name=None, instructions=None):
             if this_col[0:5] == 'grey_' or this_col[0:5] == 'gray_':
                 #deal with grey_* colors
                 col_n = int(this_col[5:])
-                out_rgb.append([col_n,col_n,col_n])
+                out_rgb = [col_n,col_n,col_n]
             else:
                 err_mess      =  newline+' '                               + newline
                 if var_name is not None:

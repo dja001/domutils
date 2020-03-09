@@ -1,5 +1,5 @@
 import unittest
-import validation_tools as validate
+import domutils.legs.validation_tools as validate
 import numpy as np
 
 
