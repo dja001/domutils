@@ -42,10 +42,9 @@ class ProjInds():
             image_res:     Pixel density of the figure being generated. eg (300,200)
                            means that the image displayed on the geoAxes will be 300 pixels
                            wide by 200 pixels high.
-            extend_x:      Needed when the destination grid is larger than the source grid, to
-                           mark no data points with Missing rather than extrapolating.
-                           Set to False if extending the source grid in the x direction
-                           is inappropriate for the application (e.g. global grid).
+            extend_x:      Set to True (default) when the destination grid is larger than the source grid. 
+                           This option allows to mark no data points with Missing rather than extrapolating.
+                           Set to False for global grids.
             extend_y:      Same as extend_x but in the Y direction.
             average:       (bool) When true, all pts of a source grid falling within a destination
                            grid pt will be averaged. Usefull to display/interpolate hi resolution
@@ -404,26 +403,33 @@ class ProjInds():
             dest_lon = np.asarray(dest_lon)
             dest_lat = np.asarray(dest_lat)
 
-        elif (dest_crs is not None) and (extent is not None):
+        elif (dest_crs is not None) :
             #we are projecting data onto an image, get destination grid from Cartopy
+            delete_dummy_fig = False
             if fig is None:
                 dummy_fig = plt.figure()
+                delete_dummy_fig = True
             else:
                 dummy_fig = fig
             dummy_ax = dummy_fig.add_axes([0.,0.,1.,1.], projection=dest_crs)
-            dummy_ax.set_extent(extent)
-            dummy_ax.outline_patch.set_linewidth(0) #thinner axes contour line
+            if extent is not None:
+                dummy_ax.set_extent(extent)
+            dummy_ax.outline_patch.set_linewidth(0) #No axes contour line
             
-            #get corners of image in data space
-            transform_data_to_axes = dummy_ax.transData + dummy_ax.transAxes.inverted()
-            transform_axes_to_data = transform_data_to_axes.inverted()
-            pts = ((0.,0.),(1.,1.))
-            pt1, pt2 = transform_axes_to_data.transform(pts)
+            if extent is not None:
+                #get corners of image in data space
+                transform_data_to_axes = dummy_ax.transData + dummy_ax.transAxes.inverted()
+                transform_axes_to_data = transform_data_to_axes.inverted()
+                pts = ((0.,0.),(1.,1.))
+                pt1, pt2 = transform_axes_to_data.transform(pts)
         
-            #get regular grid of pts in projected figure    units of dest_lon and dest_lat are in dataspace
-            #                                                          nx            ny
-            dest_lon, dest_lat, extent = cimgt.mesh_projection(dest_crs, image_res[0], image_res[1],
-                                                               x_extents=[pt1[0],pt2[0]], y_extents=[pt1[1],pt2[1]])
+                #get regular grid of pts in projected figure    units of dest_lon and dest_lat are in dataspace
+                #                                                                nx            ny
+                dest_lon, dest_lat, extent = cimgt.mesh_projection(dest_crs, image_res[0], image_res[1],
+                                                                   x_extents=[pt1[0],pt2[0]], y_extents=[pt1[1],pt2[1]])
+            else:
+                #use default extent for this projection
+                dest_lon, dest_lat, extent = cimgt.mesh_projection(dest_crs, image_res[0], image_res[1])
 
         else: 
             raise ValueError(' The lat/lon of the destination grid must be specified using:'              + newline +
@@ -451,31 +457,37 @@ class ProjInds():
         np_yy = np.asarray(src_lat)
         
         #only necessary for plotting border
-        #get lat/lon at the border of the domain        Note the half dist in the call to lat_lon_extend
-        border_lat2d = np.zeros(np.asarray(np_yy.shape)+2)
-        border_lon2d = np.zeros(np.asarray(np_xx.shape)+2)
-        #center contains data lat/lon
-        border_lat2d[1:-1,1:-1] = np_yy
-        border_lon2d[1:-1,1:-1] = np_xx
-        #extend left side
-        border_lon2d[1:-1,0], border_lat2d[1:-1,0] = lat_lon_extend(np_xx[:,1],np_yy[:,1],np_xx[:,0],np_yy[:,0], half_dist=True)
-        #extend right side
-        border_lon2d[1:-1,-1], border_lat2d[1:-1,-1] = lat_lon_extend(np_xx[:,-2],np_yy[:,-2],np_xx[:,-1],np_yy[:,-1], half_dist=True)
-        #extend top
-        border_lon2d[0,:], border_lat2d[0,:] = lat_lon_extend(border_lon2d[2,:],border_lat2d[2,:],border_lon2d[1,:],border_lat2d[1,:], half_dist=True)
-        #extend bottom
-        border_lon2d[-1,:], border_lat2d[-1,:] = lat_lon_extend(border_lon2d[-3,:],border_lat2d[-3,:],border_lon2d[-2,:],border_lat2d[-2,:], half_dist=True)
-        #we are only interested in the extended values
-        left   = np.flip(border_lon2d[1:-1,0].flatten())
-        top    =         border_lon2d[0,:].flatten()
-        right  =         border_lon2d[1:-1,-1].flatten()
-        bottom = np.flip(border_lon2d[-1,:]).flatten()
-        border_lons = np.concatenate([left,top,right,bottom,np.array(left[0],ndmin=1)])  #last entry is first for a complete polygon
-        left   = np.flip(border_lat2d[1:-1,0].flatten())
-        top    =         border_lat2d[0,:].flatten()
-        right  =         border_lat2d[1:-1,-1].flatten()
-        bottom = np.flip(border_lat2d[-1,:]).flatten()
-        border_lats = np.concatenate([left,top,right,bottom,np.array(left[0],ndmin=1)])
+        # borders make no sense for continuous grids such as global grids
+        # set either extend_x or extend_y = False to skip computation of borders
+        if extend_x and extend_y:
+            #get lat/lon at the border of the domain        Note the half dist in the call to lat_lon_extend
+            border_lat2d = np.zeros(np.asarray(np_yy.shape)+2)
+            border_lon2d = np.zeros(np.asarray(np_xx.shape)+2)
+            #center contains data lat/lon
+            border_lat2d[1:-1,1:-1] = np_yy
+            border_lon2d[1:-1,1:-1] = np_xx
+            #extend left side
+            border_lon2d[1:-1,0], border_lat2d[1:-1,0] = lat_lon_extend(np_xx[:,1],np_yy[:,1],np_xx[:,0],np_yy[:,0], half_dist=True)
+            #extend right side
+            border_lon2d[1:-1,-1], border_lat2d[1:-1,-1] = lat_lon_extend(np_xx[:,-2],np_yy[:,-2],np_xx[:,-1],np_yy[:,-1], half_dist=True)
+            #extend top
+            border_lon2d[0,:], border_lat2d[0,:] = lat_lon_extend(border_lon2d[2,:],border_lat2d[2,:],border_lon2d[1,:],border_lat2d[1,:], half_dist=True)
+            #extend bottom
+            border_lon2d[-1,:], border_lat2d[-1,:] = lat_lon_extend(border_lon2d[-3,:],border_lat2d[-3,:],border_lon2d[-2,:],border_lat2d[-2,:], half_dist=True)
+            #we are only interested in the extended values
+            left   = np.flip(border_lon2d[1:-1,0].flatten())
+            top    =         border_lon2d[0,:].flatten()
+            right  =         border_lon2d[1:-1,-1].flatten()
+            bottom = np.flip(border_lon2d[-1,:]).flatten()
+            border_lons = np.concatenate([left,top,right,bottom,np.array(left[0],ndmin=1)])  #last entry is first for a complete polygon
+            left   = np.flip(border_lat2d[1:-1,0].flatten())
+            top    =         border_lat2d[0,:].flatten()
+            right  =         border_lat2d[1:-1,-1].flatten()
+            bottom = np.flip(border_lat2d[-1,:]).flatten()
+            border_lats = np.concatenate([left,top,right,bottom,np.array(left[0],ndmin=1)])
+        else:
+            border_lats = None
+            border_lons = None
         
         #find proj_ind using _find_nearest
         if smooth_radius is not None:
@@ -522,7 +534,8 @@ class ProjInds():
         #cleanup
         if dest_crs:
             dummy_ax.remove()
-            plt.close(dummy_fig)
+            if delete_dummy_fig :
+                plt.close(dummy_fig)
 
 
 

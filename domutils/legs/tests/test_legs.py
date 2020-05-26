@@ -1,15 +1,15 @@
 import unittest
 import numpy as np
-import legs
+import domutils.legs as legs
 
 
 class TestStringMethods(unittest.TestCase):
 
-    #default map is a black and white palette for data values in the interval [0,1]
     def test_legs_no_args(self):
-        black_white_mapping = legs.new()
+        #default map is a black and white palette for data values in the interval [0,1]
+        black_white_mapping = legs.PalObj()
         data = [0.00, 0.33, 0.66, 1.00]
-        rgb_img = black_white_mapping.apply(data)
+        rgb_img = black_white_mapping.to_rgb(data)
         #                           data value  color
         ans = [[255, 255, 255],   #    0.00     white    
                [170, 170, 170],   #    0.33     grey     
@@ -17,18 +17,18 @@ class TestStringMethods(unittest.TestCase):
                [  0,   0,   0]]   #    1.00     black    
         self.assertEqual(rgb_img.tolist(),ans)
 
-    #because this is an exact palette, an error is raised if values are found outside of the interval [0,1]
     def test_legs_no_args_above_palette(self):
+        #because this is an exact palette, an error is raised if values are found outside of the interval [0,1]
+        black_white_mapping = legs.PalObj()
+        data = [0.000, 0.366, 0.733, 1.100]#     1.1 is above [0,1] range of the palette
         with self.assertRaises(RuntimeError):
-            black_white_mapping = legs.new()
-            data = [0.000, 0.366, 0.733, 1.100]#     1.1 is above [0,1] range of the palette
-            rgb_img = black_white_mapping.apply(data)                       #an error is raised
+            rgb_img = black_white_mapping.to_rgb(data)                       #an error is raised
 
-    #one solution is to adjust range of palette so that is encompasses the data
     def test_legs_range(self):
-        black_white_mapping = legs.new(range_arr=[0.,1.1])
+        #one solution is to adjust range of palette so that is encompasses the data
+        black_white_mapping = legs.PalObj(range_arr=[0.,1.1])
         data = [0.000, 0.366, 0.733, 1.100]
-        rgb_img = black_white_mapping.apply(data)           
+        rgb_img = black_white_mapping.to_rgb(data)           
         #                           data value  color
         ans = [[255, 255, 255],    #   0.000    white
                [170, 170, 170],    #   0.366    grey 
@@ -36,12 +36,12 @@ class TestStringMethods(unittest.TestCase):
                [  0,   0,   0]]    #   1.100    black
         self.assertEqual(rgb_img.tolist(),ans)
 
-    #another possibility is to extend the first and last color of the palette beyond the range of the palette
-    #this is done with the "over_under" keyword
     def test_legs_range_over_under(self):
-        black_white_mapping = legs.new(range_arr=[0.,1],over_under='extend')
+        #another possibility is to extend the first and last color of the palette beyond the range of the palette
+        #this is done with the "over_under" keyword
+        black_white_mapping = legs.PalObj(range_arr=[0.,1],over_under='extend')
         data = [0.000, 0.366, 0.733, 1.100]#     1.1 is above [0,1] range of the palette
-        rgb_img = black_white_mapping.apply(data)
+        rgb_img = black_white_mapping.to_rgb(data)
         #                           data value  color
         ans = [[255, 255, 255],   #    0.000    white
                [161, 161, 161],   #    0.366    grey 
@@ -49,12 +49,12 @@ class TestStringMethods(unittest.TestCase):
                [  0,   0,   0]]   #    1.100    black
         self.assertEqual(rgb_img.tolist(),ans)
 
-    #end points can be handled separately 
-    #this is done with the "over_high" and "under_low" keywords
     def test_legs_range_over_high_under_low(self):
-        black_white_mapping = legs.new(range_arr=[0.,1],over_high='extend',under_low='exact')
+        #end points can be handled separately 
+        #this is done with the "over_high" and "under_low" keywords
+        black_white_mapping = legs.PalObj(range_arr=[0.,1],over_high='extend',under_low='exact')
         data = [0.000, 0.366, 0.733, 1.100] #    1.1 is above [0,1] range of the palette
-        rgb_img = black_white_mapping.apply(data) #No error is raised
+        rgb_img = black_white_mapping.to_rgb(data) #No error is raised
         #                           data value  color
         ans = [[255, 255, 255],   #    0.000    white 
                [161, 161, 161],   #    0.366    grey 
@@ -62,12 +62,12 @@ class TestStringMethods(unittest.TestCase):
                [  0,   0,   0]]   #    1.100    black
         self.assertEqual(rgb_img.tolist(),ans)
 
-    #keyword n_col makes for easy semi-continuous palettes
     def test_legs_n_col(self):
+        #keyword n_col makes for easy semi-continuous palettes
         #default color order: ['brown','blue','green','orange','red','pink','purple','yellow']
-        two_color_mapping = legs.new(n_col=2)
+        two_color_mapping = legs.PalObj(n_col=2)
         data = [0.00, 0.33, 0.66, 1.00]
-        rgb_img = two_color_mapping.apply(data)      
+        rgb_img = two_color_mapping.to_rgb(data)      
         #                           data value  color
         ans = [[223, 215, 208],   #    0.00     light brown
               [ 139, 110,  83],   #    0.33     dark brown
@@ -75,23 +75,24 @@ class TestStringMethods(unittest.TestCase):
               [   0,  81, 237]]   #    1.00     dark blue
         self.assertEqual(rgb_img.tolist(),ans)
 
-    #if you don't like the default order, colors can be speficied directly
     def test_legs_col_arr_one_col_txt(self):
+        #if you don't like the default order, colors can be speficied directly
         #see color dictionary in col_utils for the list of available colors
-        orange_mapping = legs.new(color_arr = 'orange')
+        orange_mapping = legs.PalObj(color_arr = 'orange')
         data = [0.00, 0.33, 0.66, 1.00]
-        rgb_img = orange_mapping.apply(data)      
+        rgb_img = orange_mapping.to_rgb(data)      
         #                           data value  color
-        ans = [[255,  86,   0],   #    0.00     dark orange
-               [255, 122,  41],   #    0.33     
-               [255, 158,  82],   #    0.66     
-               [255, 194, 124]]   #    1.00     light orange
+        ans = [[255, 194, 124],   #    0.00     light orange
+               [255, 158,  83],   #    0.33     
+               [255, 122,  42],   #    0.66     
+               [255,  86,   0]]   #    1.00     dark orange
+        self.assertEqual(rgb_img.tolist(),ans)
 
-    #any number of colors can be specified
     def test_legs_col_arr_two_col_txt(self):
-        orange_blue_mapping = legs.new(color_arr = ['orange','blue'])
+        #any number of colors can be specified
+        orange_blue_mapping = legs.PalObj(color_arr = ['orange','blue'])
         data = [0.00, 0.33, 0.66, 1.00]
-        rgb_img = orange_blue_mapping.apply(data)      
+        rgb_img = orange_blue_mapping.to_rgb(data)      
         #                           data value  color
         ans = [[255, 194, 124],   #    0.00     light orange
                [255, 122,  42],   #    0.33     dark orange 
@@ -99,12 +100,12 @@ class TestStringMethods(unittest.TestCase):
                [  0,  81, 237]]   #    1.00     dark_blue
         self.assertEqual(rgb_img.tolist(),ans)
 
-    #for exact color control, RGB values can be specified directly
     def test_legs_col_arr_two_col_rgb(self):
-        orange_blue_mapping = legs.new(color_arr = [[[255, 194, 124],[255,  86,   0]],      #[light orange],[dark orange]
-                                                    [[169, 222, 255],[000,  81, 237]]])     #[light blue]  ,[dark blue  ]
+        #for exact color control, RGB values can be specified directly
+        orange_blue_mapping = legs.PalObj(color_arr = [[[255, 194, 124],[255,  86,   0]],      #[light orange],[dark orange]
+                                                       [[169, 222, 255],[000,  81, 237]]])     #[light blue]  ,[dark blue  ]
         data = [0.00, 0.33, 0.66, 1.00]
-        rgb_img = orange_blue_mapping.apply(data)      
+        rgb_img = orange_blue_mapping.to_rgb(data)      
         #                           data value  color
         ans = [[255, 194, 124],   #    0.00     light orange
                [255, 122,  42],   #    0.33     dark orange 
@@ -112,12 +113,32 @@ class TestStringMethods(unittest.TestCase):
                [  0,  81, 237]]   #    1.00     dark_blue
         self.assertEqual(rgb_img.tolist(),ans)
 
-    #by default, dark colors are associated to high data values
-    #this can be changed for all color legs with the "dark_pos" keyword
+    def test_legs_col_arr_one_col_txt(self):
+        #one color as a text string
+        blue_mapping = legs.PalObj(color_arr = 'blue')
+        data = [0.00, 1.00]
+        rgb_img = blue_mapping.to_rgb(data)      
+        #                           data value  color
+        ans =  [[169, 222, 255],  #    1.00     light blue
+                [  0,  81, 237]]  #    0.66     dark_blue
+        self.assertEqual(rgb_img.tolist(),ans)
+
+    def test_legs_col_arr_one_col_grey_txt(self):
+        #one color as a text string
+        blue_mapping = legs.PalObj(color_arr = 'grey_175')
+        data = [0.00, 1.00]
+        rgb_img = blue_mapping.to_rgb(data)      
+        #                           data value  color
+        ans =  [[175, 175, 175],  #    1.00     grey 175
+                [175, 175, 175]]  #    0.66     grey 175
+        self.assertEqual(rgb_img.tolist(),ans)
+
     def test_legs_col_arr_two_col_txt_dark_pos(self):
-        orange_blue_mapping = legs.new(color_arr = ['orange','blue'], dark_pos='low')
+        #by default, dark colors are associated to high data values
+        #this can be changed for all color legs with the "dark_pos" keyword
+        orange_blue_mapping = legs.PalObj(color_arr = ['orange','blue'], dark_pos='low')
         data = [0.00, 0.33, 0.66, 1.00]
-        rgb_img = orange_blue_mapping.apply(data)      
+        rgb_img = orange_blue_mapping.to_rgb(data)      
         #                           data value  color
         ans =  [[255,  86,   0],  #    0.00     dark orange
                 [255, 157,  81],  #    0.33     light orange
@@ -125,13 +146,13 @@ class TestStringMethods(unittest.TestCase):
                 [169, 222, 255]]  #    1.00     light blue
         self.assertEqual(rgb_img.tolist(),ans)
 
-    #for diverging palette
-    #we need dark color to be associated with high and low values 
-    #for different color legs
     def test_legs_col_arr_two_col_txt_dark_pos_diff(self):
-        orange_blue_mapping = legs.new(color_arr = ['orange','blue'], dark_pos=['low','high'])
+        #for diverging palette
+        #we need dark color to be associated with high and low values 
+        #for different color legs
+        orange_blue_mapping = legs.PalObj(color_arr = ['orange','blue'], dark_pos=['low','high'])
         data = [0.00, 0.33, 0.66, 1.00]
-        rgb_img = orange_blue_mapping.apply(data)      
+        rgb_img = orange_blue_mapping.to_rgb(data)      
         #                           data value  color
         ans =  [[255,  86,   0],  #    0.00     dark orange
                 [255, 157,  81],  #    0.33     light orange
@@ -139,12 +160,12 @@ class TestStringMethods(unittest.TestCase):
                 [  0,  81, 237]]  #    1.00     dark_blue
         self.assertEqual(rgb_img.tolist(),ans)
 
-    #for categorical color palettes we need conly one color per legs
-    #this is done with the "solid" keyword
     def test_legs_col_arr_two_col_txt_solid_dark(self):
-        orange_blue_mapping = legs.new(color_arr = ['orange','blue'], solid='col_dark')
+        #for categorical color palettes we need conly one color per legs
+        #this is done with the "solid" keyword
+        orange_blue_mapping = legs.PalObj(color_arr = ['orange','blue'], solid='col_dark')
         data = [0.00, 0.33, 0.66, 1.00]
-        rgb_img = orange_blue_mapping.apply(data)      
+        rgb_img = orange_blue_mapping.to_rgb(data)      
         #                           data value  color
         ans =  [[255,  86,   0],  #    0.00     dark orange
                 [255,  86,   0],  #    0.33     dark orange
@@ -152,11 +173,11 @@ class TestStringMethods(unittest.TestCase):
                 [  0,  81, 237]]  #    1.00     dark blue
         self.assertEqual(rgb_img.tolist(),ans)
 
-    #solid can also be set to col_light
     def test_legs_col_arr_two_col_txt_solid_light(self):
-        orange_blue_mapping = legs.new(color_arr = ['orange','blue'], solid='col_light')
+        #solid can also be set to col_light
+        orange_blue_mapping = legs.PalObj(color_arr = ['orange','blue'], solid='col_light')
         data = [0.00, 0.33, 0.66, 1.00]
-        rgb_img = orange_blue_mapping.apply(data)      
+        rgb_img = orange_blue_mapping.to_rgb(data)      
         #                           data value  color
         ans =  [[255, 194, 124],  #    0.00     light orange
                 [255, 194, 124],  #    0.33     light orange
@@ -164,12 +185,23 @@ class TestStringMethods(unittest.TestCase):
                 [169, 222, 255]]  #    1.00     light blue
         self.assertEqual(rgb_img.tolist(),ans)
 
-    #or any color you like by passing RGB values to color_arr
+    def test_legs_col_arr_one_col_txt_solid_supplied(self):
+        #or any color you like by passing RGB values to color_arr
+        orange_mapping = legs.PalObj(color_arr = [255, 194, 124], solid='supplied')  #light orange
+                                                       
+        data = [0.00, 1.00]
+        rgb_img = orange_mapping.to_rgb(data)      
+        #                           data value  color
+        ans =  [[255, 194, 124],  #    0.00     light orange
+                [255, 194, 124]]  #    1.00     light orange
+        self.assertEqual(rgb_img.tolist(),ans)
+
     def test_legs_col_arr_two_col_txt_solid_supplied(self):
-        orange_blue_mapping = legs.new(color_arr = [[255, 194, 124],                    #light orange
-                                                   [169, 222, 255]], solid='supplied')  #light blue
+        #or any color you like by passing RGB values to color_arr
+        orange_blue_mapping = legs.PalObj(color_arr = [[255, 194, 124],                    #light orange
+                                                       [169, 222, 255]], solid='supplied')  #light blue
         data = [0.00, 0.33, 0.66, 1.00]
-        rgb_img = orange_blue_mapping.apply(data)      
+        rgb_img = orange_blue_mapping.to_rgb(data)      
         #                           data value  color
         ans =  [[255, 194, 124],  #    0.00     light orange
                 [255, 194, 124],  #    0.33     light orange
@@ -177,12 +209,12 @@ class TestStringMethods(unittest.TestCase):
                 [169, 222, 255]]  #    1.00     light blue
         self.assertEqual(rgb_img.tolist(),ans)
 
-    #data value with special meaning (nodata, zero, etc) can be assigned special colors 
-    #using exceptions
     def test_legs_col_excep_1(self):
-        black_white_mapping = legs.new(range_arr=[1,6],excep_val=-999.) 
+        #data value with special meaning (nodata, zero, etc) can be assigned special colors 
+        #using exceptions
+        black_white_mapping = legs.PalObj(range_arr=[1,6],excep_val=-999.) 
         data = [1.,2,3,-999,5,6]
-        rgb_img = black_white_mapping.apply(data)      
+        rgb_img = black_white_mapping.to_rgb(data)      
         #                           data value  color
         ans =  [[255, 255, 255],  #     1       white
                 [204, 204, 204],  #     2       grey
@@ -194,11 +226,11 @@ class TestStringMethods(unittest.TestCase):
 
     #One may choose the value, tolerance and color of exception value
     def test_legs_excep_2(self):
-        black_white_mapping = legs.new(range_arr=[1,6],excep_val=[0, -999.],
-                                                       excep_tol=[.7, 1e-3],
-                                                       excep_col=['dark_blue','dark_red'])
+        black_white_mapping = legs.PalObj(range_arr=[1,6],excep_val=[0, -999.],
+                                                          excep_tol=[.7, 1e-3],
+                                                          excep_col=['dark_blue','dark_red'])
         data = [1,-.5, 0, .5, 2, 3, 4, -999, 5, 6]
-        rgb_img = black_white_mapping.apply(data)      
+        rgb_img = black_white_mapping.to_rgb(data)      
         #                           data value  color
         ans = [[255, 255, 255],   #     1       white
                [  0,  81, 237],   #     .-5  -> special value in dark_blue

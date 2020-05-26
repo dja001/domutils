@@ -405,8 +405,13 @@ class PalObj():
         out_rgb = self.to_rgb(rdata)
 
         #get ax extent in data space units
-        x1, x2 = ax.get_xlim()
-        y1, y2 = ax.get_ylim()
+        try:
+            #this will work for a Cartopy geo_axes 
+            x1, x2, y1, y2 = ax.get_extent()
+        except:
+            #default to regular axis bound
+            x1, x2 = ax.get_xlim()
+            y1, y2 = ax.get_ylim()
 
         #call imshow to plot the data
         ax.imshow(out_rgb, axes=ax, interpolation='nearest',

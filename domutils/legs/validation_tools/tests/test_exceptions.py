@@ -1,7 +1,7 @@
 import unittest
 import numpy as np
-import col_utils
-import validation_tools as validate
+import domutils.legs.col_utils
+import domutils.legs.validation_tools as validate
 
 
 class TestStringMethods(unittest.TestCase):

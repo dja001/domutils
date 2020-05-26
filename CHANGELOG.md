@@ -30,3 +30,11 @@ Please use the following tags when editing this file:
 - All test data and images now on zenodo
   https://doi.org/10.5281/zenodo.3635906    
   A new download script downloads it automatically at the first time of running tests
+
+## [2.0.4] - 2020-06-26
+### Fixed
+- geo\_tools now works well with Cartopy projection with no extent (ie Robinson).
+- grey\_??? / gray\_??? does not crash legs whe called as the first color
+- No more dimension problem when specifying only one color
+### Added
+- Unitest can now be run with `python -m unittest discover`

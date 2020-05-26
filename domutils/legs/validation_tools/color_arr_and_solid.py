@@ -50,7 +50,7 @@ def color_arr_and_solid(color_arr=None, solid=None, n_col=None):
         else: 
             raise TypeError(err_mess)
 
-    #Now testing color_array
+    #testing validity of color_array
     if color_arr is None :
         #use defaults
         if n_col is None:
@@ -64,6 +64,7 @@ def color_arr_and_solid(color_arr=None, solid=None, n_col=None):
             #change default exception value for contrast with the palette colors
     else:
         try:
+            #this passes if we are provided rgb arrays (eg.  [[123,234,255],[...],...])
             color_arr_rgb = validate.rgb(color_arr, var_name='color_arr', instructions=color_arr_ins)
         except:
             if solid is None or solid == 'col_dark' or solid == 'col_light':
@@ -95,11 +96,17 @@ def color_arr_and_solid(color_arr=None, solid=None, n_col=None):
                             +color_arr_ins)
                 raise ValueError(err_mess)
                 
-            #pick right color is necessary
+            #pick right color if demander by the solid keyword
             if solid == 'col_dark':
-                color_arr_rgb = color_arr_rgb[:,1,:]
+                if len(color_arr_rgb.shape) == 2:
+                    color_arr_rgb = color_arr_rgb[1]
+                else:
+                    color_arr_rgb = color_arr_rgb[:,1,:]
             if solid == 'col_light':
-                color_arr_rgb = color_arr_rgb[:,0,:]
+                if len(color_arr_rgb.shape) == 2:
+                    color_arr_rgb = color_arr_rgb[0]
+                else:
+                    color_arr_rgb = color_arr_rgb[:,0,:]
 
             #check size
             if np.remainder(color_arr_rgb.size, 3) != 0:
@@ -111,6 +118,9 @@ def color_arr_and_solid(color_arr=None, solid=None, n_col=None):
                 raise ValueError(err_mess)
             else:
                  n_col = np.int_(color_arr_rgb.size / 3)
+
+            #make sure rgb array is at least 2d for compatibility with rest of code
+            color_arr_rgb = np.atleast_2d(color_arr_rgb)
             
     return color_arr_rgb, default_excep_col, n_col 
 
