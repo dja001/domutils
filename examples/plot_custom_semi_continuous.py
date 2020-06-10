@@ -90,7 +90,7 @@ def main():
     proj_inds.plot_border(ax, mask_outside=True, linewidth=.5)
     
     #plt.show()
-    #plt.savefig('example_topo.svg')
+    #plt.savefig('example_custom_semi_continuous.svg')
 
 if __name__ == '__main__':
     main()

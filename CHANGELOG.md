@@ -9,27 +9,11 @@ Please use the following tags when editing this file:
 *Fixed* for any bug fixes. 
 
 
-## [2.0.0] - 2020-01-24
-### Changed
-- First release of domutils on github
-- Now adheres to PEP8 for the naming of functions and keywords. 
-  This change does break backward compatibility. Sorry for the bother but better now than 
-  later I guess. 
 
-## [2.0.1] - 2020-01-31
-### Fixed
-- documentation for ProjInds class now displays correctly in documentation
 
-## [2.0.2] - 2020-01-31
-### Changed
-- for some unknown reason wheels now included test_data in the pypi distribution...
-  am now manually excluding those with MANIFEST.in
-
-## [2.0.3] - 2020-02-05
-### Changed
-- All test data and images now on zenodo
-  https://doi.org/10.5281/zenodo.3635906    
-  A new download script downloads it automatically at the first time of running tests
+## [2.0.5] - 2020-07-10
+### Added 
+- new option to specify the latlon file for Odim H5 radar data in HDF5 format
 
 ## [2.0.4] - 2020-06-26
 ### Fixed
@@ -38,3 +22,25 @@ Please use the following tags when editing this file:
 - No more dimension problem when specifying only one color
 ### Added
 - Unitest can now be run with `python -m unittest discover`
+
+## [2.0.3] - 2020-02-05
+### Changed
+- All test data and images now on zenodo
+  https://doi.org/10.5281/zenodo.3635906    
+  A new download script downloads it automatically at the first time of running tests
+
+## [2.0.2] - 2020-01-31
+### Changed
+- for some unknown reason wheels now included test_data in the pypi distribution...
+  am now manually excluding those with MANIFEST.in
+
+## [2.0.1] - 2020-01-31
+### Fixed
+- documentation for ProjInds class now displays correctly in documentation
+
+## [2.0.0] - 2020-01-24
+### Changed
+- First release of domutils on github
+- Now adheres to PEP8 for the naming of functions and keywords. 
+  This change does break backward compatibility. Sorry for the bother but better now than 
+  later I guess. 
