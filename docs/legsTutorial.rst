@@ -47,18 +47,19 @@ information.
     >>> import domutils.legs as legs
     >>>
     >>> #Gaussian bell mock data
-    >>> x = np.linspace(-1., 1, 513)
-    >>> y = np.linspace(-1., 1, 513)
+    >>> npts = 1024
+    >>> half_npts = int(npts/2)
+    >>> x = np.linspace(-1., 1, half_npts+1)
+    >>> y = np.linspace(-1., 1, half_npts+1)
     >>> xx, yy = np.meshgrid(x, y)
     >>> gauss_bulge = np.exp(-(xx**2 + yy**2) / .6**2)
     >>>
     >>> #radar looking mock data
-    >>> npts = 1024
     >>> sigma1 = .03
     >>> sigma2 = .25
     >>> np.random.seed(int(3.14159*100000))
     >>> rand = np.random.normal(size=[npts,npts])
-    >>> xx, yy = np.meshgrid(np.linspace(-1.,1.,num=npts/2),np.linspace(1.,-1.,num=npts/2))
+    >>> xx, yy = np.meshgrid(np.linspace(-1.,1.,num=half_npts),np.linspace(1.,-1.,num=half_npts))
     >>> kernel1 = np.exp(-1.*np.sqrt(xx**2.+yy**2.)/.02)
     >>> kernel2 = np.exp(-1.*np.sqrt(xx**2.+yy**2.)/.15)
     >>> reflectivity_like = (   scipy.signal.fftconvolve(rand,kernel1,mode='valid')
@@ -122,20 +123,24 @@ The following code will fail and give you suggestions as to what to do.
     >>> mapping.plot_data(ax=ax,data=extended_gauss_bulge,
     ...                   palette='right', pal_format='{:2.0f}') 
     Traceback (most recent call last):
-      File "/fs/home/fs1/ords/mrd/rpndat/dja001/python_anaconda_envs/envs/myenv/lib/python3.7/doctest.py", line 1329, in __run
+      File "/fs/site3/eccc/mrd/rpndat/dja001/python_miniconda3/envs/domutils_dev/lib/python3.7/doctest.py", line 1330, in __run
         compileflags, 1), test.globs)
-      File "<doctest default[8]>", line 2, in <module>
-        palette='right', pal_units='[unitless]', pal_format='{:4.0f}')
-      File "/fs/home/fs1/ords/mrd/rpndat/dja001/python/packages/domutils/legs/legs.py", line 393, in plot_data
-        out_rgb = self.to_rgb(data)
-      File "/fs/home/fs1/ords/mrd/rpndat/dja001/python/packages/domutils/legs/legs.py", line 456, in to_rgb
+      File "<doctest legsTutorial.rst[35]>", line 2, in <module>
+        palette='right', pal_format='{:2.0f}')
+      File "/fs/homeu1/eccc/mrd/ords/rpndat/dja001/python/packages/domutils_package/domutils/legs/legs.py", line 405, in plot_data
+        out_rgb = self.to_rgb(rdata)
+      File "/fs/homeu1/eccc/mrd/ords/rpndat/dja001/python/packages/domutils_package/domutils/legs/legs.py", line 473, in to_rgb
         validate.no_unmapped(data_flat, action_record, self.lows, self.highs)
-      File "/fs/home/fs1/ords/mrd/rpndat/dja001/python/packages/domutils/legs/validation_tools/no_unmapped.py", line 103, in no_unmapped
+      File "/fs/homeu1/eccc/mrd/ords/rpndat/dja001/python/packages/domutils_package/domutils/legs/validation_tools/no_unmapped.py", line 103, in no_unmapped
         raise RuntimeError(err_mess)
     RuntimeError: 
     <BLANKLINE>
+    Found data point(s) smaller than the minimum of an exact palette:
+      [-0.19458771 -0.19446921 -0.19434859 -0.19434811 -0.19422583]...
+    <BLANKLINE>
+    <BLANKLINE>
     Found data point(s) larger than the maximum of an exact palette:
-      [1.00040625 1.00040625 1.00040625 1.00054591 1.00054591]...
+      [1.00004429 1.00055305 1.00060393 1.0008584  1.00101111]...
     <BLANKLINE>
     <BLANKLINE>
     One possibility is that the data value(s) exceed the palette
@@ -617,7 +622,7 @@ In this example, two color mappings are used first separately and then together.
     >>> x1, x2 = ax2.get_xlim()
     >>> y1, y2 = ax2.get_ylim()
     >>> dum = ax2.imshow(reflectivity_rgb, interpolation='nearest',
-    ...                  extent=[x1,x2,y1,y2] )
+    ...                  origin='upper', extent=[x1,x2,y1,y2] )
     >>> ax2.set_aspect('auto')  #force matplotlib to respect the axes that was defined
     >>> 
     >>> 
@@ -640,7 +645,8 @@ In this example, two color mappings are used first separately and then together.
     >>> #plot image w/ imshow
     >>> x1, x2 = ax3.get_xlim()
     >>> y1, y2 = ax3.get_ylim()
-    >>> dum = ax3.imshow(combined_rgb, interpolation='nearest', extent=[x1,x2,y1,y2])
+    >>> dum = ax3.imshow(combined_rgb, interpolation='nearest', 
+    ...                  origin='upper', extent=[x1,x2,y1,y2])
     >>> ax3.set_aspect('auto') 
     >>> 
     >>> #plot palettes with the plot_palette method

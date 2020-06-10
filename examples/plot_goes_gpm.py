@@ -74,7 +74,8 @@ def make_panel(fig, pos, img_res, map_extent, missing,
     #plot image w/ imshow
     x11, x22 = ax.get_xlim()    #get image limits in Cartopy data coordinates
     y11, y22 = ax.get_ylim()
-    dum = ax.imshow(combined_rgb, interpolation='nearest', extent=[x11,x22,y11,y22])
+    dum = ax.imshow(combined_rgb, interpolation='nearest', 
+                    origin='upper', extent=[x11,x22,y11,y22])
     ax.set_aspect('auto')
     
     #add political boundaries

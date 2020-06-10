@@ -16,14 +16,14 @@ def lat_lon_extend(lon1_in:   Any,
 
            #   pt3              output                           #
            #     ^                                               #
-           #      \                                              #
-           #       \              -> output with half_dist=True  #
-           #        \                                            #
+           #     \\                                              #
+           #      \\              -> output with half_dist=True  #
+           #       \\                                            #
            #        pt2          input 2                         #
            #         ^                                           #
-           #          \                                          #
-           #           \                                         #
-           #            \                                        #
+           #          \\                                         #
+           #           \\                                        #
+           #            \\                                       #
            #            pt1      input 1                         #
 
        Args:
@@ -76,7 +76,6 @@ def lat_lon_extend(lon1_in:   Any,
 
     import numpy as np
     import cartopy.crs as ccrs
-
     from .rotation_matrix  import rotation_matrix
 
 

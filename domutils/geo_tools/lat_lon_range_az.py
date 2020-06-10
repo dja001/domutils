@@ -25,10 +25,10 @@ def lat_lon_range_az( lon1_in:      Any,
            #       |         -                            #
            #       |          -                           #
            #      pt1         -  E                        #
-           #        \         -                           #
-           #  range  \       -                            #
-           #          \     -                             #
-           #           \  -                               #
+           #        \\         -                          #
+           #  range  \\       -                           #
+           #          \\     -                            #
+           #           \\  -                              #
            #           pt2    output is lat lon of pt2    #
 
 
@@ -96,8 +96,6 @@ def lat_lon_range_az( lon1_in:      Any,
            >>> lons    = np.full_like(azimuths, lon0)
            >>> #longitudes and latitudes along the circle
            clons, clats = geo_tools.lat_lon_range_az(lons, lats, rgs, azs)
-
-
 
     """
 

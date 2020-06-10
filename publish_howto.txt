@@ -23,7 +23,29 @@ Notes for me to remember steps involved in publishing this package
 
 - adjust version number in VERSION
 
+- adjust version numbe in conda_build/domutils/meta.yaml  I need to find a way to automate this
+
 - describe changes in CHANGELOG
+
+- make bundle by running:
+    - You probably want to cleanup
+    python setup.py clean --all
+    rm -rf dist
+
+ python setup.py sdist bdist_wheel
+        - upload to TEST pypi
+        twine upload --repository-url https://test.pypi.org/legacy/ dist/*
+
+- upload to official pypi repo
+twine upload dist/*
+
+- from the root of the repo
+    To load in environment if not already done:
+        conda install anaconda-client conda-build
+conda build conda_build/domutils
+
+- can test local build with :
+        conda install -c file:///home/ords/mrd/rpndat/dja001/python_miniconda3/envs/test1/conda-bld/ domutils
 
 - commit everything, push branch to github, open merge/pull request
 
@@ -32,17 +54,6 @@ Notes for me to remember steps involved in publishing this package
   "latest" will be built from that branch
   check if docs renders well
 
-- make bundle by running:
-    - You probably want to cleanup
-    python setup.py clean --all
-    rm -rf dist
-python setup.py sdist bdist_wheel
-
-- upload to TEST pypi
-twine upload --repository-url https://test.pypi.org/legacy/ dist/*
-
-- upload to official pypi repo
-twine upload dist/*
 
 - when all the above worked, 
   add version tag and push to github
@@ -53,18 +64,9 @@ twine upload dist/*
   "stable" will be build on RTD
 
 
-For CONDA package
 
-- from the root of the repo
-    To load in environment if not already done:
-        conda install anaconda-client conda-build
-conda build conda_build/domutils
 
-conda build domutils
-    this will automatically upload to anaconda.org
 
-        - Can test local build with:
-        conda install -c file:///home/ords/mrd/rpndat/dja001/python_miniconda3/envs/test1/conda-bld/ domutils
         
         - test the conda package in a fresh conda environment with:
         conda install -c dja001 domutils
