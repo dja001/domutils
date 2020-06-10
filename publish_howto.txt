@@ -46,6 +46,8 @@ twine upload dist/*
 
 - when all the above worked, 
   add version tag and push to github
+   git checkout master
+   git pull github master
    git tag -a v2.0.0 -m 'version 2.0.0 with CamelCase removed'
    git push github --tags
   "stable" will be build on RTD
@@ -53,18 +55,21 @@ twine upload dist/*
 
 For CONDA package
 
-- go in conda_build directory 
-        Command for adding conda build tools
+- from the root of the repo
+    To load in environment if not already done:
         conda install anaconda-client conda-build
-  run
-conda skeleton pypi domutils
+conda build conda_build/domutils
+
 conda build domutils
     this will automatically upload to anaconda.org
 
         - Can test local build with:
         conda install -c file:///home/ords/mrd/rpndat/dja001/python_miniconda3/envs/test1/conda-bld/ domutils
         
-        - test the conda package in a frest conda environment with:
+        - test the conda package in a fresh conda environment with:
         conda install -c dja001 domutils
+
+        - upgrade domutils in an existing environment with:
+        conda upgrade -c dja001 domutils
 
 

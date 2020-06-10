@@ -1,0 +1,58 @@
+{% set name = "domutils" %}
+{% set version = "2.0.5" %}
+
+package:
+  name: "{{ name }}"
+  version: "{{ version }}"
+
+source:
+  path: "../../"
+
+build:
+  number: 0
+
+requirements:
+  host:
+    - cartopy >=0.17.0
+    - h5py >=2.9.0
+    - matplotlib >=3.1.1
+    - numpy >=1.17.0
+    - pip
+    - python
+    - python =3.7.0
+  run:
+    - cartopy >=0.17.0
+    - h5py >=2.9.0
+    - matplotlib >=3.1.1
+    - numpy >=1.17.0
+    - python
+    - python >=3.7.0
+
+test:
+  imports:
+    - domutils
+    - domutils.geo_tools
+    - domutils.geo_tools.tests
+    - domutils.legs
+    - domutils.legs.cb
+    - domutils.legs.col_map_fct
+    - domutils.legs.col_map_fct.tests
+    - domutils.legs.col_utils
+    - domutils.legs.col_utils.tests
+    - domutils.legs.tests
+    - domutils.legs.validation_tools
+    - domutils.legs.validation_tools.tests
+    - domutils.radar_tools
+
+about:
+  home: "https://github.com/dja001/domutils.git"
+  license: GPL-3.0-or-later
+  license_family: GPL3
+  license_file: 
+  summary: "dominik's tools for custom color mappings and geographical projections"
+  doc_url: 
+  dev_url: 
+
+extra:
+  recipe-maintainers:
+    - dja001

@@ -16,6 +16,7 @@ def get_accumulation(end_date:         Optional[Any]   = None,
                      average:          Optional[bool]  = False,
                      nearest:          Optional[float] = None,
                      smooth_radius:    Optional[float] = None,
+                     odim_latlon_file: Optional[str]   = None,
                      verbose:          Optional[int]   = 0):
 
     """Get accumulated precipitation from instantaneous observations
@@ -65,6 +66,8 @@ def get_accumulation(end_date:         Optional[Any]   = None,
         nearest:          If set, rewind time until a match is found to an integer number of *nearest*
                           For example, with nearest=10, time will be rewinded to the nearest integer of 10 minutes
         smooth_radius:    Use the smoothing radius method to interpolate data, faster (see geo_tools documentation)
+        odim_latlon_file: file containing the latitude and longitudes of Baltrad mosaics in Odim H5 format
+        verbose:          Set >=1 to print info on execution steps
 
     Returns:
         None              If no file matching the desired time is found
@@ -173,6 +176,7 @@ def get_accumulation(end_date:         Optional[Any]   = None,
     dat_dict = get_instantaneous(desired_quantity='precip_rate',
                                  valid_date=this_date,
                                  data_path=data_path,
+                                 odim_latlon_file=odim_latlon_file,
                                  data_recipe=data_recipe,
                                  median_filt=median_filt,
                                  latlon=latlon,
@@ -198,6 +202,7 @@ def get_accumulation(end_date:         Optional[Any]   = None,
         dat_dict = get_instantaneous(desired_quantity='precip_rate',
                                      valid_date=this_date,
                                      data_path=data_path,
+                                     odim_latlon_file=odim_latlon_file,
                                      data_recipe=data_recipe,
                                      median_filt=median_filt,
                                      verbose=verbose)

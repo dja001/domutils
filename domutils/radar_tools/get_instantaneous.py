@@ -15,6 +15,7 @@ def get_instantaneous(valid_date:       Optional[Any]   = None,
                       average:          Optional[bool]  = False,
                       nearest_time:     Optional[float] = None,
                       smooth_radius:    Optional[float] = None,
+                      odim_latlon_file: Optional[str]   = None,
                       verbose:          Optional[int]   = 0):
     """ Get instantaneous precipitation from various sources
 
@@ -56,6 +57,7 @@ def get_instantaneous(valid_date:       Optional[Any]   = None,
         nearest_time:      If set, rewind time until a match is found to an integer number of *nearestTime*
                            For example, with nearestTime=10, time will be rewinded to the nearest integer of 10 minutes
         smooth_radius:     Use the smoothing radius method to interpolate data, faster (see geo_tools documentation)
+        odim_latlon_file:  file containing the latitude and longitudes of Baltrad mosaics in Odim H5 format
         verbose:           Set >=1 to print info on execution steps
 
     Returns:
@@ -182,7 +184,8 @@ def get_instantaneous(valid_date:       Optional[Any]   = None,
         out_dict = read_h5_composite(data_file,
                                      qced=qced,
                                      latlon=latlon,
-                                     verbose=verbose)
+                                     verbose=verbose,
+                                     latlon_file=odim_latlon_file)
     elif (ext == '.std'  or 
           ext == '.stnd'  or
           ext == '.fst'   or
