@@ -8,7 +8,7 @@ set -v
 #get doi for the test data associated with this version of domutils
 #DOI will be 10.5281/zenodo.${record_number}
 #
-record_number=3642234
+record_number=3890614
 
 
 function download 

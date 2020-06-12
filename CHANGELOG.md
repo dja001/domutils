@@ -10,12 +10,20 @@ Please use the following tags when editing this file:
 
 
 
+## [2.0.6] - 2020-06-11
+### Added 
+- the rendering of a few images is now checked to ensure proper display of 
+   figures uwing cartopy+imshow
+- now geo_tools properly handle NaN and infty on cartopy outputs for pixels with no projections
+### Fixed
+- numpy was complaining about floats used as integers in a couple of places
+- fix origin='upper' for all imshow in the code to prevent upside down images on doctest
 
-## [2.0.5] - 2020-07-10
+## [2.0.5] - 2020-06-10
 ### Added 
 - new option to specify the latlon file for Odim H5 radar data in HDF5 format
 
-## [2.0.4] - 2020-06-26
+## [2.0.4] - 2020-05-26
 ### Fixed
 - geo\_tools now works well with Cartopy projection with no extent (ie Robinson).
 - grey\_??? / gray\_??? does not crash legs whe called as the first color

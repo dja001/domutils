@@ -424,12 +424,46 @@ class ProjInds():
                 pt1, pt2 = transform_axes_to_data.transform(pts)
         
                 #get regular grid of pts in projected figure    units of dest_lon and dest_lat are in dataspace
-                #                                                                nx            ny
-                dest_lon, dest_lat, extent = cimgt.mesh_projection(dest_crs, image_res[0], image_res[1],
+                #                                                                S-N              W-E     see explanation below
+                dest_lon, dest_lat, extent = cimgt.mesh_projection(dest_crs, int(image_res[1]), int(image_res[0]),
                                                                    x_extents=[pt1[0],pt2[0]], y_extents=[pt1[1],pt2[1]])
+
             else:
                 #use default extent for this projection
-                dest_lon, dest_lat, extent = cimgt.mesh_projection(dest_crs, image_res[0], image_res[1])
+                dest_lon, dest_lat, extent = cimgt.mesh_projection(dest_crs, int(image_res[1]), int(image_res[0]))
+
+            #Image returned by Cartopy is of shape (ny,nx) so that nx corresponds to S-N
+            # with orientation
+            #   S
+            #E     W
+            #   N                   ...go figure...
+            #
+            #For the result to work with imshow origin=upper + extent obtained from get_extent, We want
+            #   N
+            #E     W
+            #   S   
+            #
+            #the following transformation does that. 
+
+            dest_lon = np.rot90(np.transpose(dest_lon))
+            dest_lat = np.rot90(np.transpose(dest_lat))
+
+            ##took me a long while to figure the  nx,ny -> ny,nx + transpose/rotation above 
+            ##lets keep debugging code around for a little while...  
+            #print('before')
+            #print(dest_lon.shape)
+            #print(dest_lat.shape)
+            #print('0,0', dest_lon[0,0] ,  dest_lat[0,0])
+            #print('0,n', dest_lon[0,-1],  dest_lat[0,-1])
+            #print('m,0', dest_lon[-1,0],  dest_lat[-1,0])
+            #print('m,n', dest_lon[-1,-1] ,dest_lat[-1,-1])
+            #print('after')
+            #print(dest_lon.shape)
+            #print(dest_lat.shape)
+            #print('0,0', dest_lon[0,0] ,  dest_lat[0,0])
+            #print('0,n', dest_lon[0,-1],  dest_lat[0,-1])
+            #print('m,0', dest_lon[-1,0],  dest_lat[-1,0])
+            #print('m,n', dest_lon[-1,-1] ,dest_lat[-1,-1])
 
         else: 
             raise ValueError(' The lat/lon of the destination grid must be specified using:'              + newline +
@@ -697,7 +731,8 @@ class ProjInds():
                 ax.outline_patch.set_linewidth(0.0)
 
                 #plot mask
-                ax.imshow(rgba, axes=ax, interpolation='nearest', extent=extent_data_space, zorder=2)
+                ax.imshow(rgba, axes=ax, interpolation='nearest', 
+                          origin='upper', extent=extent_data_space, zorder=2)
 
                 #white outline around border to mask border pixel shown by some renderers
                 xx = [0., 1, 1, 0, 0]

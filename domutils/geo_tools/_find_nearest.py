@@ -95,8 +95,8 @@ def _find_nearest(source_lon:  Any,
     #xyz of source grid 
     if source_crs is None:
         source_xyz = geo_cent.transform_points(proj_ll,
-                                           source_xx.flatten(),
-                                           source_yy.flatten())
+                                               source_xx.flatten(),
+                                               source_yy.flatten())
     else: 
         source_xyz = geo_cent.transform_points(source_crs,
                                                source_xx.flatten(),
@@ -105,13 +105,12 @@ def _find_nearest(source_lon:  Any,
     #xyz of destination grid
     if dest_crs is None:
         dest_xyz = geo_cent.transform_points(proj_ll,
-                                           dest_xx.flatten(),
-                                           dest_yy.flatten())
+                                             dest_xx.flatten(),
+                                             dest_yy.flatten())
     else: 
         dest_xyz = geo_cent.transform_points(dest_crs,
                                              dest_xx.flatten(),
                                              dest_yy.flatten())
-
 
     #indices for nearest neighbor of each pt in image grid to data grid
     kdtree = scipy.spatial.cKDTree(source_xyz, balanced_tree=False)
@@ -128,11 +127,17 @@ def _find_nearest(source_lon:  Any,
     #search neighbors using the tree
     _, indices = kdtree.query(dest_xyz, k=1)
 
+    #flag pts that are inside domain
+    #   -> dest_xyz=infty cause kdtree to return size of input data
+    in_bool = np.where(indices!=source_xx.size, True, False)
+
+    #set all missing values to 0, they will not be used but unravel_index will be much happier
+    indices = np.where(in_bool == False, 0, indices)
+
     #from flat indices to 2D indices
     row_aug, col_aug = np.unravel_index(indices, (nx,ny) )
 
-    #flag pts that are inside domain
-    in_bool=np.full_like(row_aug, True, dtype='bool')
+    #mark points outside of the domain
     if extend_x:
         top    = (row_aug != 0)
         bottom = (row_aug != nx-1)
