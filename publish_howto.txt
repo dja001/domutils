@@ -5,14 +5,20 @@ Notes for me to remember steps involved in publishing this package
 
 - make modifications
 
+- if test_data is not in the root directory, get it with 
+  ./download_test_data.sh
+
 - run unitttests
   python -m unittest discover
 
-- run tests and documentation
+    This should find and run 121 tests
+
+- run doctests and make documentation
   cd docs/
   make clean
   make doctest
   make html
+
 
 - If the test makes a figure or that new test data is required
   the a new test dataset will have to be published in a new version of the repository on zenodo

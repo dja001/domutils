@@ -274,8 +274,10 @@ def get_instantaneous(valid_date:       Optional[Any]   = None,
         interpolated_ref = None
         if average or smooth_radius is not None:
             #interpolation involving some averaging
-            interpolated_pr = proj_obj.project_data(out_dict['precip_rate'],         weights=out_dict['total_quality_index'])
-            interpolated_qi = proj_obj.project_data(out_dict['total_quality_index'], weights=out_dict['total_quality_index'])
+            interpolated_pr, interpolated_qi = proj_obj.project_data(out_dict['precip_rate'],         
+                                                                     weights=out_dict['total_quality_index'],
+                                                                     output_avg_weights=True)
+
             #if reflectivity is present get it from interpolated precip Rate
             if 'reflectivity' in out_dict:
                 interpolated_ref = exponential_zr(interpolated_pr,

@@ -9,6 +9,11 @@ Please use the following tags when editing this file:
 *Fixed* for any bug fixes. 
 
 
+## [2.0.7] - 2020-07-16
+### Added 
+- support for RDBZ in radar_tools
+### Change
+- proj_data and get_instantaneous methods optimized for speed. Factor 7 improvements in run time.
 
 ## [2.0.6] - 2020-06-11
 ### Added 
@@ -52,3 +57,8 @@ Please use the following tags when editing this file:
 - Now adheres to PEP8 for the naming of functions and keywords. 
   This change does break backward compatibility. Sorry for the bother but better now than 
   later I guess. 
+
+## [2.0.1] - 2020-01-27
+### Added
+- updated publish instructions
+- Added support for RDBZ in radar_tools
