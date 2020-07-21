@@ -125,9 +125,9 @@ def main():
     y1 = .2/pic_h
 
     #number of pixels of the image that will be shown
-    hpix = 400.       #number of horizontal pixels
-    vpix = ratio*hpix #number of vertical pixels
-    img_res   = (int(vpix),int(hpix))
+    hpix = 400.       #number of horizontal pixels E-W
+    vpix = ratio*hpix #number of vertical pixels   S-N
+    img_res   = (int(hpix),int(vpix))
 
     #point density for figure
     mpl.rcParams.update({'font.size': 17})
