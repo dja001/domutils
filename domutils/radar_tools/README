@@ -12,5 +12,8 @@ Get radar data
    - interpolation to user-defined grid
    - Generate accumulations on the fly
 
+   module make_radar_fst.py is also provided to write outputs to standard files
+   this functionality depends on the domcmc, and dask libraries
+
 """
 

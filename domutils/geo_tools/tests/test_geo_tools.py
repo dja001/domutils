@@ -123,7 +123,7 @@ class TestStringMethods(unittest.TestCase):
         ratio = 0.8
         hpix = 600.       #number of horizontal pixels
         vpix = ratio*hpix #number of vertical pixels
-        img_res = (int(vpix),int(hpix))
+        img_res = (int(hpix),int(vpix))
         
         ##define Albers projection and extend of map
         #Obtained through trial and error for good fit of the mdel grid being plotted

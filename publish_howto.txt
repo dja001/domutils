@@ -8,10 +8,13 @@ Notes for me to remember steps involved in publishing this package
 - if test_data is not in the root directory, get it with 
   ./download_test_data.sh
 
+   On the science network, can link to dataset with:
+   /home/dja001/shared_stuff/files/test_data_for_domutils_on_zenodo/v?.?.?
+
 - run unitttests
   python -m unittest discover
 
-    This should find and run 121 tests
+    This should find and run 122 tests
 
 - run doctests and make documentation
   cd docs/
@@ -29,7 +32,8 @@ Notes for me to remember steps involved in publishing this package
 
 - adjust version number in VERSION
 
-- adjust version numbe in conda_build/domutils/meta.yaml  I need to find a way to automate this
+- adjust version number in 
+     conda_build/domutils/meta.yaml  I need to find a way to automate this
 
 - describe changes in CHANGELOG
 
@@ -50,6 +54,8 @@ twine upload dist/*
         conda install anaconda-client conda-build
 conda build conda_build/domutils
 
+and upload it to anaconda cloud
+
 - can test local build with :
         conda install -c file:///home/ords/mrd/rpndat/dja001/python_miniconda3/envs/test1/conda-bld/ domutils
 
@@ -59,6 +65,7 @@ conda build conda_build/domutils
   In admin settings, change default to latest and select new branch
   "latest" will be built from that branch
   check if docs renders well
+    https://readthedocs.org/projects/domutils
 
 
 - when all the above worked, 

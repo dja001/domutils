@@ -21,7 +21,7 @@ data that we will be reading:
     ...     ratio = .8
     ...     hpix = 600.       #number of horizontal pixels
     ...     vpix = ratio*hpix #number of vertical pixels
-    ...     img_res = (int(vpix),int(hpix))
+    ...     img_res = (int(hpix),int(vpix))
     ... 
     ...     #size of image to plot
     ...     fig_w = 7.                     #size of figure

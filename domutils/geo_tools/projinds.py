@@ -41,7 +41,8 @@ class ProjInds():
                            but never displayed.
             image_res:     Pixel density of the figure being generated. eg (300,200)
                            means that the image displayed on the geoAxes will be 300 pixels
-                           wide by 200 pixels high.
+                           wide (i.e. longitude in the case of geo_axes) by 200 pixels high
+                           (i.e. latitude in the case of geo_axes).
             extend_x:      Set to True (default) when the destination grid is larger than the source grid. 
                            This option allows to mark no data points with Missing rather than extrapolating.
                            Set to False for global grids.
@@ -424,13 +425,13 @@ class ProjInds():
                 pt1, pt2 = transform_axes_to_data.transform(pts)
         
                 #get regular grid of pts in projected figure    units of dest_lon and dest_lat are in dataspace
-                #                                                                S-N              W-E     see explanation below
-                dest_lon, dest_lat, extent = cimgt.mesh_projection(dest_crs, int(image_res[1]), int(image_res[0]),
+                #                                                                W-E              S-NE     see explanation below
+                dest_lon, dest_lat, extent = cimgt.mesh_projection(dest_crs, int(image_res[0]), int(image_res[1]),
                                                                    x_extents=[pt1[0],pt2[0]], y_extents=[pt1[1],pt2[1]])
 
             else:
                 #use default extent for this projection
-                dest_lon, dest_lat, extent = cimgt.mesh_projection(dest_crs, int(image_res[1]), int(image_res[0]))
+                dest_lon, dest_lat, extent = cimgt.mesh_projection(dest_crs, int(image_res[0]), int(image_res[1]))
 
             #Image returned by Cartopy is of shape (ny,nx) so that nx corresponds to S-N
             # with orientation
@@ -629,7 +630,7 @@ class ProjInds():
             weights_accumulator = np.zeros(self.dest_shape).ravel()
             denom               = np.zeros(self.dest_shape).ravel()
             averaged_data       = np.full(self.dest_shape, self.missing).ravel()
-            averaged_weights    = np.full(self.dest_shape, self.missing).ravel()
+            averaged_weights    = np.zeros(self.dest_shape).ravel()
             n_hits              = np.zeros(self.dest_shape, dtype='int32').ravel()
             #init/check weights matrix
             if weights is None:

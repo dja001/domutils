@@ -9,6 +9,14 @@ Please use the following tags when editing this file:
 *Fixed* for any bug fixes. 
 
 
+## [2.0.8] - 2020-07-21
+### Added 
+- new python script make_radar_fst.py that converts odim reflectivity mosaics to CMC "standard" format
+- plot_rdpr_rdqi.py a module that plots the content of the standard file above.
+### Fixed
+- several examples had img_res=(nx,ny) size inverted. img_res should be ( x pixel E-W , y pixel N-S)
+
+
 ## [2.0.7] - 2020-07-16
 ### Added 
 - support for RDBZ in radar_tools
