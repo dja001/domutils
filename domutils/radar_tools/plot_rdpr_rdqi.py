@@ -35,7 +35,7 @@ def plot_rdpr_rdqi(fst_file:   str=None,
     import domutils.legs as legs
     import domcmc.fst_tools as fst_tools
     import domutils.geo_tools as geo_tools
-    import domutils._py_tools as dPy
+    import domutils._py_tools as dpy
 
     #logging
     logger = logging.getLogger(__name__)
@@ -49,8 +49,8 @@ def plot_rdpr_rdqi(fst_file:   str=None,
     missing = -9999.
 
     #make figure directory if it does not exist
-    if not os.path.isdir(fig_dir):
-        os.makedirs(fig_dir)
+    dpy.parallel_mkdir(fig_dir)
+
 
     #setup figure properties
     ratio = 0.5
@@ -141,7 +141,6 @@ def plot_rdpr_rdqi(fst_file:   str=None,
         proj_obj = geo_tools.ProjInds(src_lon=pr_dict['lon'], src_lat=pr_dict['lat'],
                                       extent=map_extent, dest_crs=proj_aea, 
                                       image_res=(800,400))
-        logger.info('Done')
 
         #plot precip rate
         #
@@ -217,13 +216,13 @@ def plot_rdpr_rdqi(fst_file:   str=None,
     plt.close(fig)
 
 
-    dPy.lmroman(svg_name)
+    dpy.lmroman(svg_name)
     if fig_format != 'svg':
-        dPy.convert(svg_name, fig_format, del_orig=True, density=500, geometry='50%')
+        dpy.convert(svg_name, fig_format, del_orig=True, density=500, geometry='50%')
 
     #not sure what is accumulating but adding this garbage collection step 
     #prevents jobs from aborting when a large number of files are made 
     #gc.collect()
     #not sure if needed anymore... keeping commented command here just in case. 
 
-    logger.info('Done')
+    logger.info('plot_rdpr_rdqi Done')

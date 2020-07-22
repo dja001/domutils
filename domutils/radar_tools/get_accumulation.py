@@ -283,7 +283,7 @@ def get_accumulation(end_date:         Optional[Any]   = None,
                                                   coef_a=coef_a, coef_b=coef_b,
                                                   r_to_dbz=True)
 
-    logger.info('Done')
+    logger.info('get_accumulation Done')
     return out_dict
 
 

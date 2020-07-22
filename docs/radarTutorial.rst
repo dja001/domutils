@@ -511,8 +511,7 @@ On-the-fly computation of precipitation accumulations
     For this last  example, we apply a median filter on the original data, we get the total amount of 
     water during a period of one hour and interpolate the result to a different grid using the 
     *smooth_radius* keyword.
-    We also set *verbose=1* to get a description of what is going on under the hood. 
-
+    
     >>> dat_dict = radar_tools.get_accumulation(end_date=this_date,
     ...                                         duration=duration,
     ...                                         data_path=data_path,
@@ -521,31 +520,33 @@ On-the-fly computation of precipitation accumulations
     ...                                         dest_lat=gem_lat,
     ...                                         median_filt=3,
     ...                                         smooth_radius=12.,
-    ...                                         latlon=True,
-    ...                                         verbose=1)
-    get_accumulation starting
-    get_instantaneous, getting data for:  2019-10-31 16:30:00
-    read_h5_composite: reading: b'DBZH' from: /fs/homeu1/eccc/mrd/ords/rpndat/dja001/python/packages/domutils_package/test_data/odimh5_radar_composites/2019/10/31/qcomp_201910311630.h5
-    get_instantaneous, applying median filter
-    get_instantaneous, getting data for:  2019-10-31 16:20:00
-    read_h5_composite: reading: b'DBZH' from: /fs/homeu1/eccc/mrd/ords/rpndat/dja001/python/packages/domutils_package/test_data/odimh5_radar_composites/2019/10/31/qcomp_201910311620.h5
-    get_instantaneous, applying median filter
-    get_instantaneous, getting data for:  2019-10-31 16:10:00
-    read_h5_composite: reading: b'DBZH' from: /fs/homeu1/eccc/mrd/ords/rpndat/dja001/python/packages/domutils_package/test_data/odimh5_radar_composites/2019/10/31/qcomp_201910311610.h5
-    get_instantaneous, applying median filter
-    get_instantaneous, getting data for:  2019-10-31 16:00:00
-    read_h5_composite: reading: b'DBZH' from: /fs/homeu1/eccc/mrd/ords/rpndat/dja001/python/packages/domutils_package/test_data/odimh5_radar_composites/2019/10/31/qcomp_201910311600.h5
-    get_instantaneous, applying median filter
-    get_instantaneous, getting data for:  2019-10-31 15:50:00
-    read_h5_composite: reading: b'DBZH' from: /fs/homeu1/eccc/mrd/ords/rpndat/dja001/python/packages/domutils_package/test_data/odimh5_radar_composites/2019/10/31/qcomp_201910311550.h5
-    get_instantaneous, applying median filter
-    get_instantaneous, getting data for:  2019-10-31 15:40:00
-    read_h5_composite: reading: b'DBZH' from: /fs/homeu1/eccc/mrd/ords/rpndat/dja001/python/packages/domutils_package/test_data/odimh5_radar_composites/2019/10/31/qcomp_201910311540.h5
-    get_instantaneous, applying median filter
-    get_accumulation, computing average precip rate in accumulation period
-    get_accumulation, interpolating to destination grid
-    get_accumulation computing accumulation from avg precip rate
-    get_accumulation done
+    ...                                         latlon=True)
+    >>>
+    >>> #if you were to look a "INFO" level logs, you would see what is going on under the hood:
+    >>>
+    >>> #get_accumulation starting
+    >>> #get_instantaneous, getting data for:  2019-10-31 16:30:00
+    >>> #read_h5_composite: reading: b'DBZH' from: /fs/homeu1/eccc/mrd/ords/rpndat/dja001/python/packages/domutils_package/test_data/odimh5_radar_composites/2019/10/31/qcomp_201910311630.h5
+    >>> #get_instantaneous, applying median filter
+    >>> #get_instantaneous, getting data for:  2019-10-31 16:20:00
+    >>> #read_h5_composite: reading: b'DBZH' from: /fs/homeu1/eccc/mrd/ords/rpndat/dja001/python/packages/domutils_package/test_data/odimh5_radar_composites/2019/10/31/qcomp_201910311620.h5
+    >>> #get_instantaneous, applying median filter
+    >>> #get_instantaneous, getting data for:  2019-10-31 16:10:00
+    >>> #read_h5_composite: reading: b'DBZH' from: /fs/homeu1/eccc/mrd/ords/rpndat/dja001/python/packages/domutils_package/test_data/odimh5_radar_composites/2019/10/31/qcomp_201910311610.h5
+    >>> #get_instantaneous, applying median filter
+    >>> #get_instantaneous, getting data for:  2019-10-31 16:00:00
+    >>> #read_h5_composite: reading: b'DBZH' from: /fs/homeu1/eccc/mrd/ords/rpndat/dja001/python/packages/domutils_package/test_data/odimh5_radar_composites/2019/10/31/qcomp_201910311600.h5
+    >>> #get_instantaneous, applying median filter
+    >>> #get_instantaneous, getting data for:  2019-10-31 15:50:00
+    >>> #read_h5_composite: reading: b'DBZH' from: /fs/homeu1/eccc/mrd/ords/rpndat/dja001/python/packages/domutils_package/test_data/odimh5_radar_composites/2019/10/31/qcomp_201910311550.h5
+    >>> #get_instantaneous, applying median filter
+    >>> #get_instantaneous, getting data for:  2019-10-31 15:40:00
+    >>> #read_h5_composite: reading: b'DBZH' from: /fs/homeu1/eccc/mrd/ords/rpndat/dja001/python/packages/domutils_package/test_data/odimh5_radar_composites/2019/10/31/qcomp_201910311540.h5
+    >>> #get_instantaneous, applying median filter
+    >>> #get_accumulation, computing average precip rate in accumulation period
+    >>> #get_accumulation, interpolating to destination grid
+    >>> #get_accumulation computing accumulation from avg precip rate
+    >>> #get_accumulation done
     >>> 
     >>> #show data
     >>> fig_name ='_static/one_hour_accum_interpolated.svg'

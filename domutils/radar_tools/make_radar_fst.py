@@ -6,13 +6,33 @@ logging_basename = 'domutils.radar_tools'
 
 @dask.delayed
 def dask_to_fst(*args, **kwargs):
+    import sys
     import logging
     from dask.distributed import get_worker
 
-    #setup logs
-    parallel_mkdir('logs')
-    this_log = 'logs/'+str(get_worker().id)
-    logging.basicConfig(filename=this_log, level=logging.INFO)
+    #logger name is the same for all workers
+    logger = logging.getLogger(logging_basename)
+
+    #add handlers if none are present for this worker
+    if not len(logger.handlers):
+        command_line_args = args[2]
+        logger.setLevel(command_line_args.log_level)
+        logging.captureWarnings(True)
+        #handlers
+        worker_id = str(get_worker().id).lower()
+        stream_handler = logging.StreamHandler(sys.stdout)
+        file_handler = logging.FileHandler('logs/'+worker_id, 'w')
+        #levels
+        stream_handler.setLevel(command_line_args.log_level)
+        file_handler.setLevel(command_line_args.log_level)
+        #format
+        formatter_stream = logging.Formatter(worker_id+'    %(message)s')
+        stream_handler.setFormatter(formatter_stream)
+        formatter_file= logging.Formatter('%(asctime)s - %(name)s in %(funcName)s - %(levelname)s - %(message)s')
+        file_handler.setFormatter(formatter_file)
+        #add handlers
+        logger.addHandler(stream_handler)
+        logger.addHandler(file_handler)
 
     return to_fst(*args, **kwargs)
 
@@ -21,8 +41,6 @@ def to_fst(valid_date, fst_template, args):
     #output data to std file
 
     import os
-    import warnings
-    import logging
     import time
     import copy
     import logging
@@ -30,6 +48,7 @@ def to_fst(valid_date, fst_template, args):
     import rpnpy.librmn.all as rmn
     from rpnpy.rpndate import RPNDate
     from domutils import radar_tools
+    import domutils._py_tools as dpy
 
     logger = logging.getLogger(logging_basename)
     logger.info('to_fst starting to process date: '+str(valid_date))
@@ -46,7 +65,7 @@ def to_fst(valid_date, fst_template, args):
     else:
         #we will create or overwrite the file; before that make sure directory exists
         this_fst_dir = os.path.dirname(output_file)
-        parallel_mkdir(this_fst_dir)
+        dpy.parallel_mkdir(this_fst_dir)
     
     #get destination grid from PR template
     dest_lon = fst_template['lon']
@@ -68,7 +87,7 @@ def to_fst(valid_date, fst_template, args):
                                                 smooth_radius=args.smooth_radius)
 
         if desired_quantity == 'accumulation':
-            warnings.warn('!!!convert mm to m since PR quantity is outputted!!!')
+            logger.warning('!!!convert mm to m since PR quantity is outputted!!!')
             dat_dict['accumulation'] /= 1e3
         data_quantity_name  = desired_quantity
         data_date_name      = 'end_date'
@@ -98,7 +117,7 @@ def to_fst(valid_date, fst_template, args):
 
     #if we got nothing, fill output with nodata and zeros
     if dat_dict is None:
-        warnings.warn('no data found or file unreadeable, I observations are set to -9999. with quality index = 0.')
+        logger.warning('no data found or file unreadeable, I observations are set to -9999. with quality index = 0.')
         expected_shape  = dest_lat.shape
         precip_rate     = np.full(expected_shape, -9999.)
         quality_index   = np.zeros(expected_shape)
@@ -125,6 +144,7 @@ def to_fst(valid_date, fst_template, args):
     cmc_timestamp = date_obj.datev
 
     #open fst file
+    logger.info('writing ' + output_file)
     iunit = rmn.fstopenall(output_file,rmn.FST_RW)
 
     #write >> ^^ to output file
@@ -172,35 +192,6 @@ def to_fst(valid_date, fst_template, args):
                                    fig_format=args.figure_format)
 
     return np.array([1])
-
-def parallel_mkdir(this_dir):
-    """Making a directory by concurrent processes
-
-    When 40+ processes attempt to make the same directory at the same time, 
-    the directory sometimes gets created after the check for its existence and before the call to 
-    makedirs. This causes makedirs (and the whole code) to fail which is annoying because the dir 
-    got made as desired.
-
-    In case of a makedirs failure, this function waits one second and 
-    rechecks for existence of the same directory.
-    """
-
-    import os
-    import time
-
-    attempts = 0
-    while not os.path.isdir(this_dir):
-    
-        if attempts > 10:
-            raise RuntimeError('Tried to make directory:'+this_dir+' 10 times without success; aborting')
-    
-        try:
-            os.makedirs(this_dir)
-        except:
-            #wait a little before retrying to make directory
-            #another concurrent process may have already created the directory
-            time.sleep(1)
-            attempts += 1
 
 
 
@@ -283,11 +274,11 @@ def make_fst(t0, tf, dt, args):
             to_fst(this_date, fst_template, args)
     else :
         #parallel conversion with dask
+        logger.info('Launching PARALLEL execution of code with dask')
 
         #open dask client for parallel execution
         #   level 40 hides dask warnings which are numerous and annoying 
         client = dask.distributed.Client(processes=True, threads_per_worker=1,n_workers=args.ncores,silence_logs=40)
-        #client = Client(..., silence_logs='error')
 
         # My functions returns 1 if success
         sample = np.array([1])
@@ -361,11 +352,17 @@ def main():
 
 
 
+    import os
     from os import linesep as newline
     import sys
     import argparse
+    import time
     import datetime
     import logging
+    import domutils._py_tools as dpy
+
+    #keep track of runtime
+    time_start = time.time()
 
     #parse arguments
     desc="read radar H5 files, interpolate/smooth and write to FST"
@@ -386,7 +383,7 @@ def main():
     parser.add_argument("--complete_dataset" , type=str,   default='False',help="Skip existing files, default is to clobber them")
     parser.add_argument("--median_filt"      , type=str,   default='None', help="box size (pixels) for median filter")
     parser.add_argument("--smooth_radius"    , type=str,   default='None', help="radius (km) where radar data be smoothed")
-    parser.add_argument("--figure_dir"       , type=str,   default='None', help="If provided, a figure will be created for each std file created")
+    parser.add_argument("--figure_dir"       , type=str,   default='no_figures', help="If provided, a figure will be created for each std file created")
     parser.add_argument("--figure_format"    , type=str,   default='gif',  help="File format of figure ")
     parser.add_argument("--log_level"        , type=str,   default='INFO', help="minimum level of messages printed to stdout and in log files ")
     args = parser.parse_args()
@@ -395,7 +392,9 @@ def main():
     #add trailling / to all directories
     args.radar_data_dir += '/'
     args.output_dir += '/'
-    if args.figure_dir is not None:
+    if args.figure_dir == 'no_figures' or args.figure_dir == 'None':
+        args.figure_dir = None
+    else:
         args.figure_dir += '/'
 
     #parse accum_len
@@ -443,8 +442,13 @@ def main():
     # logging is configured to write everytiing to stdout in addition to a log file
     # in a 'logs' directory
 
-    if logging.getLevelName(args.log_level) > 0:
-        parallel_mkdir('logs')
+    #make sure 'logs' directory exists and is empty
+    if os.path.isdir('logs'):
+        os.system('rm -f ./logs/main.log')
+        os.system('rm -f ./logs/worker*')
+    else:
+        #no need for parallel stuff here but the function already exists and will get the job done.
+        dpy.parallel_mkdir('logs')
     logging.captureWarnings(True)
     logger = logging.getLogger(logging_basename)
     logger.setLevel(args.log_level)
@@ -480,6 +484,10 @@ def main():
 
     #make std files
     make_fst(t0, tf, dt, args)
+
+    #we are done
+    time_stop = time.time()
+    logger.info('Python code completed, Runtime was : '+str(time_stop-time_start)+' seconds')
 
 
 if __name__ == "__main__":     
