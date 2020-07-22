@@ -67,7 +67,7 @@ def get_accumulation(end_date:         Optional[Any]   = None,
                           For example, with nearest=10, time will be rewinded to the nearest integer of 10 minutes
         smooth_radius:    Use the smoothing radius method to interpolate data, faster (see geo_tools documentation)
         odim_latlon_file: file containing the latitude and longitudes of Baltrad mosaics in Odim H5 format
-        verbose:          Set >=1 to print info on execution steps
+        verbose:          -- Deprecated -- Set >=1 to print info on execution steps
 
     Returns:
         None              If no file matching the desired time is found
@@ -97,9 +97,9 @@ def get_accumulation(end_date:         Optional[Any]   = None,
 
     """
 
-    global orig_lat
     import os
     import datetime
+    import logging
     import numpy as np
     from .  import get_instantaneous
     from .  import exponential_zr
@@ -110,8 +110,11 @@ def get_accumulation(end_date:         Optional[Any]   = None,
     sys.path.insert(0,parentdir) 
     import domutils.geo_tools as geo_tools
 
-    if verbose >= 1 :
-        print('get_accumulation starting')
+    #logging
+    logger = logging.getLogger(__name__)
+
+    if verbose > 0:
+        logger.warning('verbose keyword is deprecated, please set logging level in calling handler')
 
     #define settings if interpolation to a destination grid is needed
     #for better performance, interpolation will be performed only once
@@ -170,6 +173,7 @@ def get_accumulation(end_date:         Optional[Any]   = None,
     #
     #
     #read data
+    logger.info('Reading in data')
     #for 1st time
     kk = 0
     this_date = date_list[kk]
@@ -179,8 +183,7 @@ def get_accumulation(end_date:         Optional[Any]   = None,
                                  odim_latlon_file=odim_latlon_file,
                                  data_recipe=data_recipe,
                                  median_filt=median_filt,
-                                 latlon=latlon,
-                                 verbose=verbose)
+                                 latlon=latlon)
     data_shape = dat_dict['precip_rate'].shape
     if latlon is not None:
         orig_lat = dat_dict['latitudes']
@@ -204,8 +207,7 @@ def get_accumulation(end_date:         Optional[Any]   = None,
                                      data_path=data_path,
                                      odim_latlon_file=odim_latlon_file,
                                      data_recipe=data_recipe,
-                                     median_filt=median_filt,
-                                     verbose=verbose)
+                                     median_filt=median_filt)
         if dat_dict is not None:
             accum_dat[:,:,kk] = dat_dict['precip_rate']
             accum_qi[:,:,kk]  = dat_dict['total_quality_index']
@@ -214,8 +216,7 @@ def get_accumulation(end_date:         Optional[Any]   = None,
     #
     #
     #average of precip_rate is weighted by quality index
-    if verbose >= 1 :
-        print('get_accumulation, computing average precip rate in accumulation period')
+    logger.info('Computing average precip rate in accumulation period')
     sum_w  = np.sum(accum_qi, axis=2)
     good_pts = np.asarray(sum_w > 0.).nonzero()
     #
@@ -236,8 +237,7 @@ def get_accumulation(end_date:         Optional[Any]   = None,
     #
     #perform interpolation if necessary
     if interpolate:
-        if verbose >= 1 :
-            print('get_accumulation, interpolating to destination grid')
+        logger.info('get_accumulation, interpolating to destination grid')
 
         #projection from one grid to another
         proj_obj = geo_tools.ProjInds(src_lon=orig_lon,  src_lat=orig_lat,
@@ -271,22 +271,19 @@ def get_accumulation(end_date:         Optional[Any]   = None,
     #
     #convert precip rates to other quantities if desired
     if desired_quantity == 'accumulation':
-        if verbose >= 1 :
-            print('get_accumulation computing accumulation from avg precip rate')
+        logger.info('Computing accumulation from avg precip rate')
         # rate (mm/h) * duration time (h) = accumulation (mm)
         #number of hours of accumulation period
         duration_hours = duration/60.
         out_dict['accumulation'] = out_dict['avg_precip_rate'] * duration_hours
     #
     if desired_quantity == 'reflectivity':
-        if verbose >= 1 :
-            print('get_accumulation computing reflectivity from avg precip rate')
+        logger.info('get_accumulation computing reflectivity from avg precip rate')
         out_dict['reflectivity'] = exponential_zr(out_dict['avg_precip_rate'],
                                                   coef_a=coef_a, coef_b=coef_b,
                                                   r_to_dbz=True)
 
-    if verbose >= 1 :
-        print('get_accumulation done')
+    logger.info('Done')
     return out_dict
 
 

@@ -26,7 +26,7 @@ def plot_rdpr_rdqi(fst_file:   str=None,
     import os
     from os import linesep as newline
     import datetime
-    import warnings
+    import logging
     import numpy as np
     import matplotlib as mpl
     import matplotlib.pyplot as plt
@@ -37,7 +37,11 @@ def plot_rdpr_rdqi(fst_file:   str=None,
     import domutils.geo_tools as geo_tools
     import domutils._py_tools as dPy
 
+    #logging
+    logger = logging.getLogger(__name__)
+
     #Read data
+    logger.info('Reading RDPR and RDQI from: '+fst_file)
     pr_dict = fst_tools.get_data(file_name=fst_file, var_name='RDPR', datev=this_date, latlon=True)
     qi_dict = fst_tools.get_data(file_name=fst_file, var_name='RDQI', datev=this_date)
 
@@ -93,10 +97,10 @@ def plot_rdpr_rdqi(fst_file:   str=None,
         #data not found or not available at desired date
         #print warning and make empty image
         message=('RDPR not available in file: '+newline+
-                                          fst_file+newline+
-                                         'at date'+newline+
-                                              str(this_date))
-        warnings.warn(message)
+                                       fst_file+newline+
+                                      'at date'+newline+
+                                       str(this_date))
+        logger.warning(message)
         ax = fig.add_axes([0,0,1,1])
         ax.axis('off')
         ax.annotate(message, size=18,
@@ -133,10 +137,12 @@ def plot_rdpr_rdqi(fst_file:   str=None,
         delta_lon = 40.
         map_extent=[lon_0-delta_lon, lon_0+delta_lon, lat_0-delta_lat, lat_0+delta_lat]  
         proj_aea = ccrs.RotatedPole(pole_latitude=pole_latitude, pole_longitude=pole_longitude)
+        logger.info('Making projection object')
         proj_obj = geo_tools.ProjInds(src_lon=pr_dict['lon'], src_lat=pr_dict['lat'],
                                       extent=map_extent, dest_crs=proj_aea, 
                                       image_res=(800,400))
-                                      #image_res=(rec_w*dpi,rec_h*dpi))
+        logger.info('Done')
+
         #plot precip rate
         #
         #position of this fig
@@ -182,7 +188,7 @@ def plot_rdpr_rdqi(fst_file:   str=None,
         if qi_dict is None:
             #QI not available indicate it on figure
             message='RDQI not available in file: '+newline+fst_file
-            warnings.warn(message)
+            logger.warning.warn(message)
             ax.annotate(message, size=10,
                          xy=(.0, .5), xycoords='axes fraction')
         else:
@@ -206,15 +212,18 @@ def plot_rdpr_rdqi(fst_file:   str=None,
 
     #save figure
     svg_name = fig_dir + this_date.strftime(fig_name_recipe)
+    logger.info('Saving figure:'+svg_name+', changing typeface and converting format if needed.')
     plt.savefig(svg_name)
     plt.close(fig)
 
 
     dPy.lmroman(svg_name)
     if fig_format != 'svg':
-        dPy.convert(svg_name, fig_format, del_orig=False, density=500, geometry='50%')
+        dPy.convert(svg_name, fig_format, del_orig=True, density=500, geometry='50%')
 
     #not sure what is accumulating but adding this garbage collection step 
-    #prevents jobs from aborting when a largen number of files are made 
+    #prevents jobs from aborting when a large number of files are made 
     #gc.collect()
-    print('done with: ', svg_name)
+    #not sure if needed anymore... keeping commented command here just in case. 
+
+    logger.info('Done')

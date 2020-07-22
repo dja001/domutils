@@ -66,11 +66,17 @@ def read_h5_composite(odim_file:   str=None,
     """
     import os, inspect
     import datetime
-    import warnings
+    import logging
     import pickle
     import time
     import numpy as np
     import h5py
+
+    #logging
+    logger = logging.getLogger(__name__)
+
+    if verbose > 0:
+        logger.warning('verbose keyword is deprecated, please set logging level in calling handler')
 
     #checks that filename was provided and is valid
     if odim_file is None :
@@ -78,9 +84,7 @@ def read_h5_composite(odim_file:   str=None,
     else :
         if not os.path.isfile(odim_file) :
             #no file present print warning and return None
-            warnings.warn('odim_file: ' + odim_file + ' does not exist')
-            if verbose >= 1 :
-                print('read_h5_composite: non existent file, returning None')
+            logger.warning('odim_file: ' + odim_file + ' does not exist. Returning None.')
             return None
 
     if latlon_file is None :
@@ -126,8 +130,7 @@ def read_h5_composite(odim_file:   str=None,
     else:
         wanted_quantity=b'TH'
 
-    if verbose >= 1 :
-        print('read_h5_composite: reading: ' + str(wanted_quantity) +' from: ' + odim_file)
+    logger.info('Reading: ' + str(wanted_quantity) +' from: ' + odim_file)
 
     h5_obj = h5py.File(odim_file, 'r')
 

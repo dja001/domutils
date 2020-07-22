@@ -58,7 +58,7 @@ def read_fst_composite(fst_file:   str=None,
     """
     import os
     import datetime
-    import warnings
+    import logging
     import time
     import numpy as np
     from rpnpy.rpndate import RPNDate
@@ -68,6 +68,11 @@ def read_fst_composite(fst_file:   str=None,
     sys.path.insert(0,parentdir) 
     import domcmc.fst_tools as fst_tools
 
+    #logging
+    logger = logging.getLogger(__name__)
+
+    if verbose > 0:
+        logger.warning('verbose keyword is deprecated, please set logging level in calling handler')
 
     #checks that filename was provided and is valid
     if fst_file is None :
@@ -75,9 +80,7 @@ def read_fst_composite(fst_file:   str=None,
     else :
         if not os.path.isfile(fst_file) :
             #no file present print warning and return None
-            warnings.warn('fst_file: ' + fst_file + ' does not exist')
-            if verbose >= 1 :
-                print('read_fst_composite: non existent file, returning None')
+            logger.warning('fst_file: ' + fst_file + ' does not exist. Returning None')
             return None
 
     qty_list = ['pr',   'ref',  'ref',  'ref']
@@ -91,11 +94,10 @@ def read_fst_composite(fst_file:   str=None,
             break
     #nothing was found
     if fst_dict is None:
-        if verbose >= 1 :
-            print('read_fst_composite: did not find reflectivity or precipitaiton rates in file:')
-            print(fst_file)
-            print('searched for: ', var_list)
-            print('returning None')
+        logger.warning('Did not find reflectivity or precipitation rates in file:')
+        logger.warning(fst_file)
+        logger.warning('searched for: '+ str(var_list))
+        logger.warning('returning None')
         return None
     values = fst_dict['values']
 
@@ -114,9 +116,8 @@ def read_fst_composite(fst_file:   str=None,
         if qi_dict is not None:
             total_quality_index = qi_dict['values']
         else:
-            if verbose >= 1 :
-                print('RDQI not found, filling everything with ones')
-                total_quality_index = np.ones_like(values)
+            logger.warning('RDQI not found, filling everything with ones')
+            total_quality_index = np.ones_like(values)
 
         #constructuct output dictionary
         out_dict = {'precip_rate':          values,

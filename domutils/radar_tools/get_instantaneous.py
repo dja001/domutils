@@ -58,7 +58,7 @@ def get_instantaneous(valid_date:       Optional[Any]   = None,
                            For example, with nearestTime=10, time will be rewinded to the nearest integer of 10 minutes
         smooth_radius:     Use the smoothing radius method to interpolate data, faster (see geo_tools documentation)
         odim_latlon_file:  file containing the latitude and longitudes of Baltrad mosaics in Odim H5 format
-        verbose:           Set >=1 to print info on execution steps
+        verbose:           -- Deprecated -- Set >=1 to print info on execution steps
 
     Returns:
 
@@ -89,6 +89,7 @@ def get_instantaneous(valid_date:       Optional[Any]   = None,
     import os
     import datetime
     import copy
+    import logging
     import numpy as np
     from . import read_h5_composite
     from . import read_fst_composite
@@ -101,13 +102,17 @@ def get_instantaneous(valid_date:       Optional[Any]   = None,
     sys.path.insert(0,parentdir) 
     import domutils.geo_tools as geo_tools
 
+    #logging
+    logger = logging.getLogger(__name__)
+
+    if verbose > 0:
+        logger.warning('verbose keyword is deprecated, please set logging level in calling handler')
 
     #defaut time is now
     if valid_date is None:
         valid_date = datetime.datetime()
 
-    if verbose >= 1 :
-        print('get_instantaneous, getting data for: ', valid_date)
+    logger.info('get_instantaneous, getting data for: '+str( valid_date))
 
     #default coefficients for Z-R
     if coef_a is None:
@@ -184,7 +189,6 @@ def get_instantaneous(valid_date:       Optional[Any]   = None,
         out_dict = read_h5_composite(data_file,
                                      qced=qced,
                                      latlon=latlon,
-                                     verbose=verbose,
                                      latlon_file=odim_latlon_file)
     elif (ext == '.std'  or 
           ext == '.stnd'  or
@@ -195,8 +199,7 @@ def get_instantaneous(valid_date:       Optional[Any]   = None,
         #
         #CMC *standard* format
         out_dict = read_fst_composite(data_file,
-                                      latlon=latlon,
-                                      verbose=verbose)
+                                      latlon=latlon)
 
     else:
         raise ValueError('Filetype: '+ext+' not yet supported')
@@ -237,8 +240,7 @@ def get_instantaneous(valid_date:       Optional[Any]   = None,
         #speckle filter will be applied from precip_rate or reflectivity
         #the same pixel selection is applied to quality indexes 
 
-        if verbose >= 1 :
-            print('get_instantaneous, applying median filter')
+        logger.info('get_instantaneous, applying median filter')
 
         if 'reflectivity' in out_dict:
             median_inds = median_filter.get_inds(out_dict['reflectivity'], window=median_filt)
@@ -262,8 +264,7 @@ def get_instantaneous(valid_date:       Optional[Any]   = None,
     #perform interpolation if necessary
     if interpolate:
 
-        if verbose >= 1 :
-            print('get_instantaneous, interpolating to destination grid')
+        logger.info('get_instantaneous, interpolating to destination grid')
 
         #projection from one grid to another
         proj_obj = geo_tools.ProjInds(src_lon=out_dict['longitudes'], src_lat=out_dict['latitudes'],
@@ -300,8 +301,7 @@ def get_instantaneous(valid_date:       Optional[Any]   = None,
         if interpolated_ref is not None:
             out_dict['reflectivity'] = interpolated_ref
 
-        if verbose >= 1 :
-            print('get_instantaneous, interpolation done')
+        logger.info('get_instantaneous, interpolation done')
 
     return out_dict
 
