@@ -9,6 +9,12 @@ Please use the following tags when editing this file:
 *Fixed* for any bug fixes. 
 
 
+## [2.0.9] - 2020-07-23
+### Changed
+- proper Python logging in radar_tools allows for clean logs when running in parallel
+### Deprecated
+- removed "verbose" keyword in radar_tools module
+
 ## [2.0.8] - 2020-07-21
 ### Added 
 - new python script make_radar_fst.py that converts odim reflectivity mosaics to CMC "standard" format

@@ -231,3 +231,32 @@ def render_similarly(new_image_file, reference_image_file,
         return False
 
 
+def parallel_mkdir(this_dir):
+    """Making a directory by concurrent processes
+
+    When 40+ processes attempt to create the same directory at the same time, 
+    the directory sometimes gets created after the check for its existence and before the call to 
+    makedirs. This causes makedirs (and the whole code) to fail which is annoying because the dir 
+    got made as desired.
+
+    In case of a makedirs failure, this function waits one second and 
+    rechecks for existence of the same directory.
+    """
+
+    import os
+    import time
+
+    attempts = 0
+    while not os.path.isdir(this_dir):
+    
+        if attempts > 10:
+            raise RuntimeError('Tried to make directory:'+this_dir+' 10 times without success; aborting')
+    
+        try:
+            os.makedirs(this_dir)
+        except:
+            #wait a little before retrying to make directory
+            #another concurrent process may have already created the directory
+            time.sleep(1)
+            attempts += 1
+
