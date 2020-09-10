@@ -3,7 +3,8 @@ from typing import Callable, Iterator, Union, Optional, List, Iterable, MutableM
 def plot_rdpr_rdqi(fst_file:   str=None, 
                    this_date:  Any=None,
                    fig_dir:    Optional[str]=None, 
-                   fig_format: Optional[str]='gif'):
+                   fig_format: Optional[str]='gif',
+                   args=None                        ):
     """ plot RDPR and RDQI from a rpn "standard" file 
 
     Data needs to be at correct valid time
@@ -30,6 +31,7 @@ def plot_rdpr_rdqi(fst_file:   str=None,
     import numpy as np
     import matplotlib as mpl
     import matplotlib.pyplot as plt
+    import cartopy
     import cartopy.crs as ccrs
     import cartopy.feature as cfeature
     import domutils.legs as legs
@@ -39,6 +41,13 @@ def plot_rdpr_rdqi(fst_file:   str=None,
 
     #logging
     logger = logging.getLogger(__name__)
+
+    #use provided data path for cartiopy shapefiles
+    #TODO there has got to be a better way to do this!
+    if args is not None:
+        if hasattr(args, 'cartopy_dir'):
+            if args.cartopy_dir is not None:
+                cartopy.config['pre_existing_data_dir'] = args.cartopy_dir
 
     #Read data
     logger.info('Reading RDPR and RDQI from: '+fst_file)
