@@ -49,7 +49,7 @@ Notes for me to remember steps involved in publishing this package
 - upload to official pypi repo
 twine upload dist/*
 
-- from the root of the repo
+- from the root of the repo from somewhere with internet connexion
     To load in environment if not already done:
         conda install anaconda-client conda-build
 conda build conda_build/domutils
