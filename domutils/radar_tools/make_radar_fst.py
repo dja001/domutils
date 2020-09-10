@@ -283,6 +283,10 @@ def make_fst(t0, tf, dt, args):
         # My functions returns 1 if success
         sample = np.array([1])
 
+        #delay data passed to function
+        fst_template = dask.delayed(fst_template) 
+        args         = dask.delayed(args) 
+
         #a generator for the result list
         res_list = [dask.array.from_delayed(dask_to_fst(this_date, fst_template, args), sample.shape, sample.dtype) for this_date in date_list]
 
