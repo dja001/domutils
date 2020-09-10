@@ -9,10 +9,13 @@ Please use the following tags when editing this file:
 *Fixed* for any bug fixes. 
 
 
-## [2.0.9] - 2020-09-10
+## [2.0.11] - 2020-09-10
+### Changed
+- Option to change cartopy_dir in make_radar_fst.py
+
+## [2.0.10] - 2020-09-10
 ### Changed
 - dask.dalayed on data before parallel execution in make_radar_fst.py
-
 
 ## [2.0.9] - 2020-07-23
 ### Changed

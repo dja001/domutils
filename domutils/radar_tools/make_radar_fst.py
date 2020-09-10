@@ -189,7 +189,8 @@ def to_fst(valid_date, fst_template, args):
         radar_tools.plot_rdpr_rdqi(fst_file=output_file, 
                                    this_date=valid_date,
                                    fig_dir=args.figure_dir,
-                                   fig_format=args.figure_format)
+                                   fig_format=args.figure_format,
+                                   args=args)
 
     return np.array([1])
 
@@ -388,6 +389,7 @@ def main():
     parser.add_argument("--median_filt"      , type=str,   default='None', help="box size (pixels) for median filter")
     parser.add_argument("--smooth_radius"    , type=str,   default='None', help="radius (km) where radar data be smoothed")
     parser.add_argument("--figure_dir"       , type=str,   default='no_figures', help="If provided, a figure will be created for each std file created")
+    parser.add_argument("--cartopy_dir"      , type=str,   default='None', help="Directory for cartopy shape files")
     parser.add_argument("--figure_format"    , type=str,   default='gif',  help="File format of figure ")
     parser.add_argument("--log_level"        , type=str,   default='INFO', help="minimum level of messages printed to stdout and in log files ")
     args = parser.parse_args()
@@ -421,6 +423,13 @@ def main():
             args.smooth_radius = None
         else:
             args.smooth_radius = parse_num(args.smooth_radius)
+
+    if args.cartopy_dir == 'None':
+        #if argument is not provided do nothing
+        args.cartopy_dir = None
+    else:
+        #setup directory where shapefiles will be found
+        args.cartopy_dir += '/'
 
     #parse complete_dataset
     #not directly using bool type since any string, including 'False', will be interpreted as True....

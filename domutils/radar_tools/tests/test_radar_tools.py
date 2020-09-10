@@ -30,7 +30,7 @@ class TestStringMethods(unittest.TestCase):
         test_data_dir = package_dir+'/test_data/'
         test_results_dir = package_dir+'/test_results/make_radar_fst/'
         if not os.path.isdir(test_results_dir):
-            os.mkdir(test_results_dir)
+            os.makedirs(test_results_dir)
 
         #a small class that mimics the output of argparse
         class FstArgs():
