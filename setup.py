@@ -22,5 +22,5 @@ setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     packages=find_packages(),    
-    install_requires=['python >= 3.7.0', 'matplotlib >= 3.1.1', 'numpy >= 1.17.0', 'cartopy >= 0.17.0', 'h5py >= 2.9.0'],
+#    install_requires=['python >= 3.7.0', 'matplotlib >= 3.1.1', 'numpy >= 1.17.0', 'cartopy >= 0.17.0', 'h5py >= 2.9.0'],
 )
