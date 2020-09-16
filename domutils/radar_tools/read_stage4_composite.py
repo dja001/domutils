@@ -1,33 +1,40 @@
 from typing import Callable, Iterator, Union, Optional, List, Iterable, MutableMapping
 
-def read_fst_composite(fst_file:   str=None,
+def read_stage4_composite(st4_file:   str=None,
                        latlon:     Optional[bool] = False,
                        no_data:    Optional[float]= -9999.,
-                       undetect:   Optional[float]= -3333.,
                        verbose:    Optional[int]  = 0) :
 
-    """ Read reflectivity or precip_rate from CMC *standard* files
+    """ Read Stage IV precipitation accumulations available at:
         
-
-    Validity date is obtained via the *datev* attribute of the entry in the standard file being 
-    read.
-    Quality index is set to 1 wherever data is not missing
+        https://data.eol.ucar.edu/dataset/21.093
+        
+        Quality index is set to 1 wherever data is not missing
 
 
 
     Args:
-        fst_file:        /path/to/fst/composite.std .stnd .fst or no 'extention'
+
+        st4_file:        /path/to/st4/ST4.YYYYMMDDHH.06.h or 
+                         /path/to/st4/ST4.YYYYMMDDHH.24.h or 
+                         /path/to/st4/ST4.YYYYMMDDHH.01.h
         latlon:          When true, will output latitudes and longitudes
         no_data:         Value that will be assigned to missing values
-        undetect:        Value that will be assigned to valid measurement of no precipitation
 
+   
+    **** 
+    WARNING: when downloading stIV files the files: st4_pr.YYYYMMDDHH.06.h 
+            is for the caribean domain while ST4.YYYYMMDDHH.06.h is for 
+            the North American domain 
+    ***
+    
     Returns:
         None:            If no or invalid file present
 
         or 
 
         { 
-            'reflectivity':       (ndarray) 2D reflectivity
+            'accumulation':       (ndarray) 2D accumulation 
 
             'total_quality_index':  (ndarray) 2D quality index
 
@@ -40,125 +47,93 @@ def read_fst_composite(fst_file:   str=None,
 
     Example:
 
-           >>> #read fst file
+           >>> #read st4 file
            >>> import os, inspect
            >>> import domutils.radar_tools as radar_tools
            >>> currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
            >>> parentdir = os.path.dirname(currentdir) #directory where this package lives
-           >>> out_dict = radar_tools.read_fst_composite(parentdir + '/test_data/std_radar_mosaics/2019103116_30ref_4.0km.stnd')
-           >>> reflectivity        = out_dict['reflectivity']
+           >>> dirdata = os.path.dirname(os.path.dirname(parentdir))
+           >>> out_dict = radar_tools.read_stage4_composite(parentdir + '/test_data/stage4_composites/ST4.2019082000.06h')
+           >>> accumulation        = out_dict['accumulation']
            >>> total_quality_index = out_dict['total_quality_index']
            >>> valid_date          = out_dict['valid_date']
-           >>> print(reflectivity.shape)
+           >>> print(accumulation.shape)
            (1650, 1500)
            >>> print(valid_date)
-           2019-10-31 16:30:00+00:00
+           2019-08-20 00:00:00+00:00
 
 
-    """
+    """    
+
     import os
     import datetime
     import logging
     import time
     import numpy as np
     from rpnpy.rpndate import RPNDate
-    import os,sys,inspect
+    import os, sys, inspect
+    import pygrib
+    
+    
     currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
     parentdir = os.path.dirname(currentdir)
     sys.path.insert(0,parentdir) 
-    import domcmc.fst_tools as fst_tools
 
     #logging
     logger = logging.getLogger(__name__)
 
     if verbose > 0:
-        logger.warning('verbose keyword is deprecated, please set logging level in calling handler')
+        logger.warning('verbose keyword is deprecated, \
+                       please set logging level in calling handler')
 
     #checks that filename was provided and is valid
-    if fst_file is None :
-        raise ValueError('fst_file must be provided')
+    if st4_file is None :
+        raise ValueError('st4_file must be provided')
     else :
-        if not os.path.isfile(fst_file) :
+        if not os.path.isfile(st4_file) :
             #no file present print warning and return None
-            logger.warning('fst_file: ' + fst_file + ' does not exist. Returning None')
+            logger.warning('st4_file: ' + st4_file + ' does not exist. \
+                           Returning None')
             return None
+    
+    # first get the accumulation time step: 1, 6 or 24h
+    timestep    = st4_file.split(".")[-1]
+    timestepval = int(timestep[0:2])
+    
+    # read the grib file
+    gr = pygrib.open(st4_file)
+    
+    # name of the precipition variable in grib file
+    var_list = ["Total Precipitation"]
+    
+    # grib object
+    grb = gr.select(name=var_list)[0]
 
-    qty_list = ['pr',   'ref',  'ref',  'ref']
-    var_list = ['RDPR', 'RDBZ', 'RDBR', 'L1' ]
-    #attempt to read to following variables stop when one is found
-    for this_var in var_list:
-        fst_dict = fst_tools.get_data(file_name=fst_file,
-                                      var_name=this_var,
-                                      latlon=latlon)
-        if fst_dict is not None:
-            break
-    #nothing was found
-    if fst_dict is None:
-        logger.warning('Did not find reflectivity or precipitation rates in file:')
-        logger.warning(fst_file)
-        logger.warning('searched for: '+ str(var_list))
-        logger.warning('returning None')
-        return None
-    values = fst_dict['values']
-
+    # get the precipitation values: format np.ma
+    missing_val  = -999.
+    data = grb.values
+    np.ma.set_fill_value(data, fill_value=missing_val)
+    values = data.filled()
+    
     #make datestamp for output
-    datev = fst_dict['meta']['datev']
+    datev = grb.analDate + datetime.timedelta(hours=timestepval)
     date_obj = RPNDate(datev)
     valid_date = date_obj.toDateTime()
-
-    #missing and undetect depend on how data was encoded in fst file, this is very annoying...
-    if this_var == 'RDPR':
-        #precipitation rate with quality index available
-
-        #get quality index
-        qi_dict = fst_tools.get_data(file_name=fst_file,
-                                     var_name='RDQI')
-        if qi_dict is not None:
-            total_quality_index = qi_dict['values']
-        else:
-            logger.warning('RDQI not found, filling everything with ones')
-            total_quality_index = np.ones_like(values)
-
-        #constructuct output dictionary
-        out_dict = {'precip_rate':          values,
-                    'total_quality_index':  total_quality_index,
-                    'valid_date':           valid_date}
-
-    else:
-        #reflectivity; quality ndex not available
-        if this_var == 'RDBZ':
-            missing_fst  = -999.
-            undetect_fst = -99.
-        if this_var == 'RDBR':
-            missing_fst  = -999.
-            undetect_fst = -99.
-        if this_var == 'L1':
-            missing_fst  = -10.
-            undetect_fst = 0.
-
-        #mark missing data to user defined no_data value
-        missing_pts = np.isclose(values, missing_fst ).nonzero()
-        if missing_pts[0].size > 0:
-            values[missing_pts] = no_data
-
-        #construct a fake quality index = 1 wherever we have data or undetect
-        total_quality_index = np.ones_like(values)
-        if missing_pts[0].size > 0:
-            total_quality_index[missing_pts] = 0.
-
-        #mark undetect to user defined undetect
-        undetect_pts = np.isclose(values, undetect_fst ).nonzero()
-        if undetect_pts[0].size > 0:
-            values[undetect_pts] = undetect
-
-        #constructuct output dictionary
-        out_dict = {'reflectivity':         values,
-                    'total_quality_index':  total_quality_index,
-                    'valid_date':           valid_date}
+    
+    #construct a fake quality index = 1 wherever we have data or undetect
+    total_quality_index = np.ones_like(values)
+            
+    #constructuct output dictionary
+    out_dict = {'accumulation':         values,
+                'total_quality_index':  total_quality_index,
+                'valid_date':           valid_date}
+    
 
     if latlon : 
-        out_dict['latitudes']  = fst_dict['lat']
-        out_dict['longitudes'] = fst_dict['lon']
+        lats, lons = grb.latlons() 
+        out_dict['latitudes']  = lats
+        out_dict['longitudes'] = lons
+        
 
-    return out_dict
+    return(out_dict)
            
