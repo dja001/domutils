@@ -21,7 +21,10 @@ def get_instantaneous(valid_date:       Optional[Any]   = None,
 
     Provides one interface 
     for:
-        - support of Odim h5 composites and URP composites in the standard format
+        - support of :
+            o Odim h5 composites 
+            o URP composites in the standard format
+            o Stage IV files
         - output to an arbitrary output grid
         - Consistent median filter on precip observations and the accompanying quality index
         - Various types of averaging 
@@ -70,7 +73,7 @@ def get_instantaneous(valid_date:       Optional[Any]   = None,
 
         'reflectivity'        2D reflectivity on destination grid (if requested)
 
-        'precip_rate'         2D reflectivity on destination grid (if requested)
+        'precip_rate'         2D precipitation rate on destination grid (if requested)
 
         'total_quality_index' Quality index of data with 1 = best and 0 = worse
 
@@ -93,6 +96,7 @@ def get_instantaneous(valid_date:       Optional[Any]   = None,
     import numpy as np
     from . import read_h5_composite
     from . import read_fst_composite
+    from . import read_stage4_composite
     from . import exponential_zr
     from . import median_filter
     #import geo_tools from parent module
@@ -200,7 +204,15 @@ def get_instantaneous(valid_date:       Optional[Any]   = None,
         #CMC *standard* format
         out_dict = read_fst_composite(data_file,
                                       latlon=latlon)
-
+    elif (ext == '.01h'  or 
+          ext == '.06h'  or
+          ext == '.24h'   or
+          ext == '') :
+        #
+        #
+        #Stage IV grib format
+        out_dict = read_stage4_composite(data_file,
+                                      latlon=latlon)        
     else:
         raise ValueError('Filetype: '+ext+' not yet supported')
 
@@ -223,7 +235,7 @@ def get_instantaneous(valid_date:       Optional[Any]   = None,
                 raise ValueError('Could not convert precip rate to reflectivity')
 
     if desired_quantity == 'precip_rate' or require_precip_rate :
-        if 'precip_rate' not in out_dict:
+        if ('precip_rate' not in out_dict) and ('accumulation' not in out_dict):
             #conversion from R to dBZ
             try: 
                 out_dict['precip_rate'] = exponential_zr(out_dict['reflectivity'],
@@ -231,7 +243,8 @@ def get_instantaneous(valid_date:       Optional[Any]   = None,
                                                        dbz_to_r=True)
             except:
                 raise ValueError('Could not convert precip rate to reflectivity')
-
+        elif 'accumulation' in out_dict: # it is necessary stage IV
+            out_dict['precip_rate'] =  out_dict['accumulation'] /  float(ext[1:3])
 
     #
     #

@@ -82,7 +82,7 @@ def get_accumulation(end_date:         Optional[Any]   = None,
 
         'reflectivity'          2D reflectivity on destination grid (if requested)
 
-        'precip_rate'           2D reflectivity on destination grid (if requested)
+        'precip_rate'           precipitation rate on destination grid (if requested)
 
         'total_quality_index'   Quality index of data with 1 = best and 0 = worse
 
