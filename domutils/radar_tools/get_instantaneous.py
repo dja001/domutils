@@ -186,6 +186,8 @@ def get_instantaneous(valid_date:       Optional[Any]   = None,
     #
     #read data based on extension
     name, ext = os.path.splitext(data_recipe)
+    #print(data_recipe)
+    
     if ext == '.h5':
         #
         #
@@ -206,8 +208,7 @@ def get_instantaneous(valid_date:       Optional[Any]   = None,
                                       latlon=latlon)
     elif (ext == '.01h'  or 
           ext == '.06h'  or
-          ext == '.24h'   or
-          ext == '') :
+          ext == '.24h') :
         #
         #
         #Stage IV grib format
@@ -243,9 +244,9 @@ def get_instantaneous(valid_date:       Optional[Any]   = None,
                                                        dbz_to_r=True)
             except:
                 raise ValueError('Could not convert precip rate to reflectivity')
-        elif 'accumulation' in out_dict: # it is necessary stage IV
+        elif 'accumulation' in out_dict: # it is necessary stage IV (mm/h)
             out_dict['precip_rate'] =  out_dict['accumulation'] /  float(ext[1:3])
-
+            out_dict['precip_rate'][out_dict['accumulation'] == -999.] = -999.
     #
     #
     #remove speckle with median filter if desired

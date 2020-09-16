@@ -155,10 +155,14 @@ def get_accumulation(end_date:         Optional[Any]   = None,
                 'duration':   duration }
 
 
-    #time interval between radar observations
+    #time interval between radar or stage IV observations
     name, ext = os.path.splitext(data_recipe)
     if ext == '.h5':
         radar_dt = 10.
+    elif (ext == '.01h'  or 
+          ext == '.06h'  or
+          ext == '.24h') :
+        radar_dt = float(ext[1:3])
     else:
         raise ValueError('Filetype: '+ext+' not yet supported')
     
