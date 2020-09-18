@@ -110,9 +110,8 @@ def read_stage4_composite(st4_file:   str=None,
     grb = gr.select(name=var_list)[0]
 
     # get the precipitation values: format np.ma
-    missing_val  = -999.
     data = grb.values
-    np.ma.set_fill_value(data, fill_value=missing_val)
+    np.ma.set_fill_value(data, fill_value=no_data)
     values = data.filled()
     
     #make datestamp for output

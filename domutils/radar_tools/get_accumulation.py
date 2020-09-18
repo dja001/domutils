@@ -162,10 +162,17 @@ def get_accumulation(end_date:         Optional[Any]   = None,
     elif (ext == '.01h'  or 
           ext == '.06h'  or
           ext == '.24h') :
-        radar_dt = float(ext[1:3])
+        # accumulation length in minutes
+        radar_dt = float(ext[1:3]) * 60
     else:
         raise ValueError('Filetype: '+ext+' not yet supported')
     
+    # raise an error if  radar dt > duration : important for stage IV 
+    # eg.: cannot create 1h accumulation from 24h or 6h grib files
+    if radar_dt > duration:
+        raise ValueError('Accumulation length in observation file \
+                           ({:d}h) is longer than requested accumulation\
+                           duration ({:d}h)'.format(int(radar_dt/60), int(duration/60)))
 
     #
     #
@@ -246,7 +253,7 @@ def get_accumulation(end_date:         Optional[Any]   = None,
         #projection from one grid to another
         proj_obj = geo_tools.ProjInds(src_lon=orig_lon,  src_lat=orig_lat,
                                       dest_lon=dest_lon, dest_lat=dest_lat,
-                                      average=average,   smooth_radius=smooth_radius,
+                                      average=average, smooth_radius=smooth_radius,
                                       missing=missing)
         if average or smooth_radius is not None:
             #interpolation involving some averaging
@@ -279,8 +286,11 @@ def get_accumulation(end_date:         Optional[Any]   = None,
         # rate (mm/h) * duration time (h) = accumulation (mm)
         #number of hours of accumulation period
         duration_hours = duration/60.
-        out_dict['accumulation'] = out_dict['avg_precip_rate'] * duration_hours
-    #
+        out_dict['accumulation'] = np.where(np.isclose(out_dict["avg_precip_rate"], missing),
+                                            missing, 
+                                            out_dict["avg_precip_rate"]* duration_hours)
+        
+        
     if desired_quantity == 'reflectivity':
         logger.info('get_accumulation computing reflectivity from avg precip rate')
         out_dict['reflectivity'] = exponential_zr(out_dict['avg_precip_rate'],

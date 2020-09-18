@@ -245,9 +245,11 @@ def get_instantaneous(valid_date:       Optional[Any]   = None,
             except:
                 raise ValueError('Could not convert precip rate to reflectivity')
         elif 'accumulation' in out_dict: # it is necessary stage IV (mm/h)
-            out_dict['precip_rate'] =  out_dict['accumulation'] /  float(ext[1:3])
-            out_dict['precip_rate'][out_dict['accumulation'] == -999.] = -999.
-    #
+            accum_len_h = np.float(ext[1:3])          
+            out_dict['precip_rate'] = np.where(np.isclose(out_dict['accumulation'], missing),
+                                               missing,
+                                               out_dict['accumulation']/accum_len_h)
+
     #
     #remove speckle with median filter if desired
     if median_filt is not None:
