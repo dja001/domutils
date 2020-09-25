@@ -186,8 +186,6 @@ def get_instantaneous(valid_date:       Optional[Any]   = None,
     #
     #read data based on extension
     name, ext = os.path.splitext(data_recipe)
-    #print(data_recipe)
-    
     if ext == '.h5':
         #
         #
@@ -213,7 +211,7 @@ def get_instantaneous(valid_date:       Optional[Any]   = None,
         #
         #Stage IV grib format
         out_dict = read_stage4_composite(data_file,
-                                      latlon=latlon)        
+                                         latlon=latlon)        
     else:
         raise ValueError('Filetype: '+ext+' not yet supported')
 
@@ -236,20 +234,25 @@ def get_instantaneous(valid_date:       Optional[Any]   = None,
                 raise ValueError('Could not convert precip rate to reflectivity')
 
     if desired_quantity == 'precip_rate' or require_precip_rate :
-        if ('precip_rate' not in out_dict) and ('accumulation' not in out_dict):
-            #conversion from R to dBZ
-            try: 
-                out_dict['precip_rate'] = exponential_zr(out_dict['reflectivity'],
-                                                       coef_a=coef_a, coef_b=coef_b,
-                                                       dbz_to_r=True)
+        if 'precip_rate' not in out_dict:
+            #First try to get precip_rate from an accumulation 
+            try:
+                this_accum = out_dict['accumulation']
+                accum_len_h = np.float(ext[1:3])          
+                out_dict['precip_rate'] = np.where(np.isclose(this_accum, missing),
+                                                   missing,
+                                                   this_accum/accum_len_h)
             except:
-                raise ValueError('Could not convert precip rate to reflectivity')
-        elif 'accumulation' in out_dict: # it is necessary stage IV (mm/h)
-            accum_len_h = np.float(ext[1:3])          
-            out_dict['precip_rate'] = np.where(np.isclose(out_dict['accumulation'], missing),
-                                               missing,
-                                               out_dict['accumulation']/accum_len_h)
+                #If that did not work out, try to compute precip_rate from reflectivity
+                try: 
+                    out_dict['precip_rate'] = exponential_zr(out_dict['reflectivity'],
+                                                             coef_a=coef_a, coef_b=coef_b,
+                                                             dbz_to_r=True)
+                except:
+                    raise ValueError('Could not obtain precip_rate from an accumulation or reflectivity')
 
+
+    #
     #
     #remove speckle with median filter if desired
     if median_filt is not None:

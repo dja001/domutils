@@ -80,6 +80,8 @@ def get_accumulation(end_date:         Optional[Any]   = None,
 
         'duration'              Accumulation length (minutes)
 
+        'accumulation'          2D accumulation (mm) on destination grid 
+
         'reflectivity'          2D reflectivity on destination grid (if requested)
 
         'precip_rate'           precipitation rate on destination grid (if requested)
@@ -163,12 +165,12 @@ def get_accumulation(end_date:         Optional[Any]   = None,
           ext == '.06h'  or
           ext == '.24h') :
         # accumulation length in minutes
-        radar_dt = float(ext[1:3]) * 60
+        radar_dt = np.float(ext[1:3]) * 60.
     else:
         raise ValueError('Filetype: '+ext+' not yet supported')
     
     # raise an error if  radar dt > duration : important for stage IV 
-    # eg.: cannot create 1h accumulation from 24h or 6h grib files
+    # eg.: cannot create 1h accumulation from grib files containing 24h or 6h accumulation
     if radar_dt > duration:
         raise ValueError('Accumulation length in observation file \
                            ({:d}h) is longer than requested accumulation\
@@ -253,7 +255,7 @@ def get_accumulation(end_date:         Optional[Any]   = None,
         #projection from one grid to another
         proj_obj = geo_tools.ProjInds(src_lon=orig_lon,  src_lat=orig_lat,
                                       dest_lon=dest_lon, dest_lat=dest_lat,
-                                      average=average, smooth_radius=smooth_radius,
+                                      average=average,   smooth_radius=smooth_radius,
                                       missing=missing)
         if average or smooth_radius is not None:
             #interpolation involving some averaging

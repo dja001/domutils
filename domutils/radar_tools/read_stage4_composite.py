@@ -1,9 +1,9 @@
 from typing import Callable, Iterator, Union, Optional, List, Iterable, MutableMapping
 
 def read_stage4_composite(st4_file:   str=None,
-                       latlon:     Optional[bool] = False,
-                       no_data:    Optional[float]= -9999.,
-                       verbose:    Optional[int]  = 0) :
+                          latlon:     Optional[bool] = False,
+                          no_data:    Optional[float]= -9999.,
+                          verbose:    Optional[int]  = 0) :
 
     """ Read Stage IV precipitation accumulations available at:
         
@@ -70,7 +70,6 @@ def read_stage4_composite(st4_file:   str=None,
     import logging
     import time
     import numpy as np
-    from rpnpy.rpndate import RPNDate
     import os, sys, inspect
     import pygrib
     
@@ -115,9 +114,7 @@ def read_stage4_composite(st4_file:   str=None,
     values = data.filled()
     
     #make datestamp for output
-    datev = grb.analDate + datetime.timedelta(hours=timestepval)
-    date_obj = RPNDate(datev)
-    valid_date = date_obj.toDateTime()
+    valid_date = grb.analDate + datetime.timedelta(hours=timestepval)
     
     #construct a fake quality index = 1 wherever we have data or undetect
     total_quality_index = np.ones_like(values)
