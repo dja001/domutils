@@ -24,7 +24,7 @@ def read_stage4_composite(st4_file:   str=None,
    
     **** 
     WARNING: when downloading stIV files the files: st4_pr.YYYYMMDDHH.06.h 
-            is for the caribean domain while ST4.YYYYMMDDHH.06.h is for 
+            is for the Caribean domain while ST4.YYYYMMDDHH.06.h is for 
             the North American domain 
     ***
     

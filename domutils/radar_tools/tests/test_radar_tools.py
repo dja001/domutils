@@ -100,7 +100,7 @@ class TestStringMethods(unittest.TestCase):
 
 
         #example 1
-        # get a 6-h accumulatation from a 6-hour accumulation file 
+        # get a 6-h accumulation from a 6-hour accumulation file 
         # stage IV 6h accumulation length;    01, 06 or 24 are possible
         data_recipe      = 'ST4.%Y%m%d%H.06h'
 

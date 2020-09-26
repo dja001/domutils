@@ -101,6 +101,12 @@ See :ref:`legsTutorial` for details.
     ...                            n_col=6,
     ...                            over_high='extend', under_low='white',
     ...                            excep_val=[undetect,missing], excep_col=['grey_200','grey_120'])
+    >>> #accumulations
+    >>> ranges = [1.,2.,5.,10., 20., 50., 100.]
+    >>> acc_color_map = legs.PalObj(range_arr=ranges,
+    ...                             n_col=6,
+    ...                             over_high='extend', under_low='white',
+    ...                             excep_val=[undetect,missing], excep_col=['grey_200','grey_120'])
 
 
 
@@ -439,10 +445,10 @@ Average all inputs within a radius
     >>> #get data on destination grid averaging all points
     >>> #within a circle of a given radius
     >>> #also apply the median filter on input data
-    >>> this_date = datetime.datetime(2019, 10, 31, 16, 30, 0)
+    >>> end_date = datetime.datetime(2019, 10, 31, 16, 30, 0)
     >>> data_path = parentdir + '/test_data/odimh5_radar_composites/'
     >>> data_recipe = '%Y/%m/%d/qcomp_%Y%m%d%H%M.h5'
-    >>> dat_dict = radar_tools.get_instantaneous(valid_date=this_date,
+    >>> dat_dict = radar_tools.get_instantaneous(valid_date=end_date,
     ...                                          data_path=data_path,
     ...                                          data_recipe=data_recipe,
     ...                                          latlon=True,
@@ -485,7 +491,7 @@ On-the-fly computation of precipitation accumulations
     >>> duration = 60.  #duration of accumulation in minutes
     >>> data_path = parentdir + '/test_data/odimh5_radar_composites/'
     >>> data_recipe = '%Y/%m/%d/qcomp_%Y%m%d%H%M.h5'
-    >>> dat_dict = radar_tools.get_accumulation(end_date=this_date,
+    >>> dat_dict = radar_tools.get_accumulation(end_date=end_date,
     ...                                         duration=duration,
     ...                                         data_path=data_path,
     ...                                         data_recipe=data_recipe,
@@ -512,7 +518,7 @@ On-the-fly computation of precipitation accumulations
     water during a period of one hour and interpolate the result to a different grid using the 
     *smooth_radius* keyword.
     
-    >>> dat_dict = radar_tools.get_accumulation(end_date=this_date,
+    >>> dat_dict = radar_tools.get_accumulation(end_date=end_date,
     ...                                         duration=duration,
     ...                                         data_path=data_path,
     ...                                         data_recipe=data_recipe,
@@ -561,6 +567,125 @@ On-the-fly computation of precipitation accumulations
     .. image:: _static/one_hour_accum_interpolated.svg
         :align: center
 
+
+
+Reading in stage IV accumulations
+-----------------------------------------------------------------
+    The *get_accumulation* method can also be used to read and manipulate 
+    "stage IV" Quantitative Precipitation Estimates.
+
+
+    The data can be obtained from:
+
+    https://data.eol.ucar.edu/dataset/21.093
+
+        * Files of the form: *ST4.YYYYMMDDHH.??.h*   are for the North American domain
+        * Files of the form: *st4_pr.YYYYMMDDHH.??.h* are for the Caribean domain 
+
+Read one file and get lat/lon of the data grid
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+    For this example, we get a 6-h accumulation of precipitation in mm from a 
+    6-hour accumulation file. This is basically just reading one file.
+    
+    >>> #6h accumulations of precipitation
+    >>> end_date = datetime.datetime(2019, 8, 19, 18, 0)
+    >>> duration = 360.  #duration of accumulation in minutes here 6h
+    >>> data_path = parentdir + '/test_data/stage4_composites/'
+    >>> data_recipe = 'ST4.%Y%m%d%H.06h' #note the '06h' for a 6h accumulation file
+    >>> dat_dict = radar_tools.get_accumulation(end_date=end_date,
+    ...                                         duration=duration,
+    ...                                         data_path=data_path,
+    ...                                         data_recipe=data_recipe,
+    ...                                         latlon=True)
+    >>> 
+    >>> #show data
+    >>> fig_name ='_static/stageIV_six_hour_accum_orig_grid.svg'
+    >>> title = '6h accumulation original grid'
+    >>> units = '[mm]'
+    >>> data       = dat_dict['accumulation']
+    >>> latitudes  = dat_dict['latitudes']
+    >>> longitudes = dat_dict['longitudes']
+    >>> plot_img(fig_name, title, units, data, latitudes, longitudes,
+    ...          acc_color_map, equal_legs=True)
+
+
+    .. image:: _static/stageIV_six_hour_accum_orig_grid.svg
+        :align: center
+
+Read one file, interpolate to a different grid, convert to average precipitation rate
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+    The *get_accumulation* method becomes more usefull if you want to  interpolate the data at the 
+    same time that it is read and/or if you want to compute derived quantities.
+
+    In this next example, we read the same 6h accumulation file but this time, we will
+    get the average precipitation rate over the 10km grid used in the previous example. 
+
+    >>> #6h average precipitation rate on 10km grid
+    >>> end_date = datetime.datetime(2019, 8, 19, 18, 0)
+    >>> duration = 360.  #duration of accumulation in minutes here 6h
+    >>> data_path = parentdir + '/test_data/stage4_composites/'
+    >>> data_recipe = 'ST4.%Y%m%d%H.06h' #note the '06h' for a 6h accumulation file
+    >>> dat_dict = radar_tools.get_accumulation(desired_quantity='avg_precip_rate', #what quantity want
+    ...                                         end_date=end_date,
+    ...                                         duration=duration,
+    ...                                         data_path=data_path,
+    ...                                         data_recipe=data_recipe,
+    ...                                         dest_lon=gem_lon,       #lat/lon of 10km grid
+    ...                                         dest_lat=gem_lat,
+    ...                                         smooth_radius=12.)  #use smoothing radius of 12km for the interpolation
+    >>> 
+    >>> #show data
+    >>> fig_name ='_static/stageIV_six_hour_pr_10km_grid.svg'
+    >>> title = '6h average precip rate on 10km grid'
+    >>> units = '[mm/h]'
+    >>> data       = dat_dict['avg_precip_rate']
+    >>> latitudes  = gem_lat
+    >>> longitudes = gem_lon
+    >>> plot_img(fig_name, title, units, data, latitudes, longitudes,
+    ...          pr_color_map, equal_legs=True)
+
+
+    .. image:: _static/stageIV_six_hour_pr_10km_grid.svg
+        :align: center
+
+Construct accumulation from several files 
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+    Finally, use the *get_accumulation* method to construct accumulations of arbitrary length
+    from stage IV accumulations. 
+
+    Here, we construct a 3h accumulation from three consecutive 1h accumulations. 
+    As before, the data is interpolated to a 10 km grid. 
+
+    >>> #3h accumulation from three 1h accumulations file
+    >>> end_date = datetime.datetime(2020, 6, 30, 3, 0)
+    >>> duration = 180.  #duration of accumulation in minutes here 3h
+    >>> data_path = parentdir + '/test_data/stage4_composites/'
+    >>> data_recipe = 'ST4.%Y%m%d%H.01h' #note the '01h' for a 1h accumulation file
+    >>> dat_dict = radar_tools.get_accumulation(end_date=end_date,
+    ...                                         duration=duration,
+    ...                                         data_path=data_path,
+    ...                                         data_recipe=data_recipe,
+    ...                                         dest_lon=gem_lon,   #lat/lon of 10km grid
+    ...                                         dest_lat=gem_lat,
+    ...                                         smooth_radius=5.)  #use smoothing radius of 5km for the interpolation
+    >>> 
+    >>> #show data
+    >>> fig_name ='_static/stageIV_3h_accum_10km_grid.svg'
+    >>> title = '3h accumulation on 10km grid'
+    >>> units = '[mm]'
+    >>> data       = dat_dict['accumulation']
+    >>> latitudes  = gem_lat
+    >>> longitudes = gem_lon
+    >>> plot_img(fig_name, title, units, data, latitudes, longitudes,
+    ...          acc_color_map, equal_legs=True)
+
+
+    .. image:: _static/stageIV_3h_accum_10km_grid.svg
+        :align: center
 
 
 
