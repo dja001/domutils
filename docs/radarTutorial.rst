@@ -589,7 +589,7 @@ Read one file and get lat/lon of the data grid
     6-hour accumulation file. This is basically just reading one file.
     
     >>> #6h accumulations of precipitation
-    >>> end_date = datetime.datetime(2019, 8, 19, 18, 0)
+    >>> end_date = datetime.datetime(2019, 10, 31, 18, 0)
     >>> duration = 360.  #duration of accumulation in minutes here 6h
     >>> data_path = parentdir + '/test_data/stage4_composites/'
     >>> data_recipe = 'ST4.%Y%m%d%H.06h' #note the '06h' for a 6h accumulation file
@@ -623,7 +623,7 @@ Read one file, interpolate to a different grid, convert to average precipitation
     get the average precipitation rate over the 10km grid used in the previous example. 
 
     >>> #6h average precipitation rate on 10km grid
-    >>> end_date = datetime.datetime(2019, 8, 19, 18, 0)
+    >>> end_date = datetime.datetime(2019, 10, 31, 18, 0)
     >>> duration = 360.  #duration of accumulation in minutes here 6h
     >>> data_path = parentdir + '/test_data/stage4_composites/'
     >>> data_recipe = 'ST4.%Y%m%d%H.06h' #note the '06h' for a 6h accumulation file
@@ -661,7 +661,7 @@ Construct accumulation from several files
     As before, the data is interpolated to a 10 km grid. 
 
     >>> #3h accumulation from three 1h accumulations file
-    >>> end_date = datetime.datetime(2020, 6, 30, 3, 0)
+    >>> end_date = datetime.datetime(2019, 10, 31, 23, 0)
     >>> duration = 180.  #duration of accumulation in minutes here 3h
     >>> data_path = parentdir + '/test_data/stage4_composites/'
     >>> data_recipe = 'ST4.%Y%m%d%H.01h' #note the '01h' for a 1h accumulation file
