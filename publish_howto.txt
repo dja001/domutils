@@ -14,7 +14,7 @@ Notes for me to remember steps involved in publishing this package
 - run unitttests
   python -m unittest discover
 
-    This should find and run 122 tests
+    This should find and run ~123 tests
 
 - run doctests and make documentation
   cd docs/
@@ -28,7 +28,10 @@ Notes for me to remember steps involved in publishing this package
   https://doi.org/10.5281/zenodo.3635906    
   At the moment, only me (dominik) can do that. Contact me and I will do it for you. 
 
-  Updating the dataset version in download_test_data.sh will be necessary
+  Updating the dataset version and file list will be necessary
+  download_test_data.sh
+
+  Run the tests with the new test_data directory if it got changed
 
 - adjust version number in VERSION
 

@@ -9,6 +9,11 @@ Please use the following tags when editing this file:
 *Fixed* for any bug fixes. 
 
 
+## [2.0.12] - 2020-09-10
+### Added
+- radar_tools now supporting stageIV accumulations
+- new scripts for easier update of the test data on zenodo
+
 ## [2.0.11] - 2020-09-10
 ### Changed
 - Option to change cartopy_dir in make_radar_fst.py

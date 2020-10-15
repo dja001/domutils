@@ -8,8 +8,8 @@ set -v
 #get doi for the test data associated with this version of domutils
 #DOI will be 10.5281/zenodo.${record_number}
 #
-#v1.0.3
-record_number=3952871
+#v1.0.4
+record_number=4091651
 
 
 function download 
@@ -26,6 +26,9 @@ cd test_data
 #download files
 file_list=(goes_gpm_data.pickle
            pal_demo_data.pickle
+           hrdps_5p1_prp0.fst
+           prepare_tgz_for_zenodo.sh
+           tarsum.py
            radar_continental_2.5km_2882x2032.pickle)
 for this_file in ${file_list[@]} ; do
     download $this_file
@@ -33,17 +36,16 @@ done
 
 #download and untar tarballs
 arch_list=(odimh5_radar_composites.tgz
+           stage4_composites.tgz
            std_radar_mosaics.tgz)
 for this_file in ${arch_list[@]} ; do
     download $this_file
     tar -xvf $this_file
-    rm -f $this_file
 done
 
 #download images and put a copy in docs/
 download _static.tgz
 tar -xvf _static.tgz
-rm -f _static.tgz
 cp -rf _static ../docs/
 
 set +v

@@ -104,7 +104,7 @@ class TestStringMethods(unittest.TestCase):
         # stage IV 6h accumulation length;    01, 06 or 24 are possible
         data_recipe      = 'ST4.%Y%m%d%H.06h'
 
-        out_dict_acc_ex1 = radar_tools.get_accumulation(end_date=datetime.datetime(2019,8,19,18,0),
+        out_dict_acc_ex1 = radar_tools.get_accumulation(end_date=datetime.datetime(2019,10,31,18),
                                                         duration=360.,  #6h in minutes
                                                         data_path=data_path,
                                                         data_recipe=data_recipe,
@@ -115,7 +115,8 @@ class TestStringMethods(unittest.TestCase):
 
         #test that sum of precip is the same as expected
         sum_precip = accumulation[np.nonzero(accumulation > 0.)].sum()
-        self.assertAlmostEqual(sum_precip, 396740.76000000007)
+        self.assertAlmostEqual(sum_precip, 858057.64)
+        
 
 
         #example 2
@@ -123,7 +124,7 @@ class TestStringMethods(unittest.TestCase):
         # stage IV 1h accumulation length;    01, 06 or 24 are possible
         data_recipe      = 'ST4.%Y%m%d%H.01h'
 
-        out_dict_acc_ex2 = radar_tools.get_accumulation(end_date=datetime.datetime(2020,6,30,3),
+        out_dict_acc_ex2 = radar_tools.get_accumulation(end_date=datetime.datetime(2019,10,31,23),
                                                         duration=180.,    #3h in minutes
                                                         data_path=data_path,
                                                         data_recipe=data_recipe,
@@ -134,7 +135,8 @@ class TestStringMethods(unittest.TestCase):
 
         #test that sum of precip is the same as expected
         sum_precip = accumulation[np.nonzero(accumulation > 0.)].sum()
-        self.assertAlmostEqual(sum_precip,   229820.859999999986)
+        self.assertAlmostEqual(sum_precip, 346221.57)
+        
 
 if __name__ == '__main__':
     unittest.main()
