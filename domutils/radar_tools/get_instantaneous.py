@@ -21,7 +21,10 @@ def get_instantaneous(valid_date:       Optional[Any]   = None,
 
     Provides one interface 
     for:
-        - support of Odim h5 composites and URP composites in the standard format
+        - support of :
+            o Odim h5 composites 
+            o URP composites in the standard format
+            o Stage IV files
         - output to an arbitrary output grid
         - Consistent median filter on precip observations and the accompanying quality index
         - Various types of averaging 
@@ -70,7 +73,7 @@ def get_instantaneous(valid_date:       Optional[Any]   = None,
 
         'reflectivity'        2D reflectivity on destination grid (if requested)
 
-        'precip_rate'         2D reflectivity on destination grid (if requested)
+        'precip_rate'         2D precipitation rate on destination grid (if requested)
 
         'total_quality_index' Quality index of data with 1 = best and 0 = worse
 
@@ -93,6 +96,7 @@ def get_instantaneous(valid_date:       Optional[Any]   = None,
     import numpy as np
     from . import read_h5_composite
     from . import read_fst_composite
+    from . import read_stage4_composite
     from . import exponential_zr
     from . import median_filter
     #import geo_tools from parent module
@@ -200,7 +204,14 @@ def get_instantaneous(valid_date:       Optional[Any]   = None,
         #CMC *standard* format
         out_dict = read_fst_composite(data_file,
                                       latlon=latlon)
-
+    elif (ext == '.01h'  or 
+          ext == '.06h'  or
+          ext == '.24h') :
+        #
+        #
+        #Stage IV grib format
+        out_dict = read_stage4_composite(data_file,
+                                         latlon=latlon)        
     else:
         raise ValueError('Filetype: '+ext+' not yet supported')
 
@@ -224,13 +235,21 @@ def get_instantaneous(valid_date:       Optional[Any]   = None,
 
     if desired_quantity == 'precip_rate' or require_precip_rate :
         if 'precip_rate' not in out_dict:
-            #conversion from R to dBZ
-            try: 
-                out_dict['precip_rate'] = exponential_zr(out_dict['reflectivity'],
-                                                       coef_a=coef_a, coef_b=coef_b,
-                                                       dbz_to_r=True)
+            #First try to get precip_rate from an accumulation 
+            try:
+                this_accum = out_dict['accumulation']
+                accum_len_h = np.float(ext[1:3])          
+                out_dict['precip_rate'] = np.where(np.isclose(this_accum, missing),
+                                                   missing,
+                                                   this_accum/accum_len_h)
             except:
-                raise ValueError('Could not convert precip rate to reflectivity')
+                #If that did not work out, try to compute precip_rate from reflectivity
+                try: 
+                    out_dict['precip_rate'] = exponential_zr(out_dict['reflectivity'],
+                                                             coef_a=coef_a, coef_b=coef_b,
+                                                             dbz_to_r=True)
+                except:
+                    raise ValueError('Could not obtain precip_rate from an accumulation or reflectivity')
 
 
     #

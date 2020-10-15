@@ -80,9 +80,11 @@ def get_accumulation(end_date:         Optional[Any]   = None,
 
         'duration'              Accumulation length (minutes)
 
+        'accumulation'          2D accumulation (mm) on destination grid 
+
         'reflectivity'          2D reflectivity on destination grid (if requested)
 
-        'precip_rate'           2D reflectivity on destination grid (if requested)
+        'precip_rate'           precipitation rate on destination grid (if requested)
 
         'total_quality_index'   Quality index of data with 1 = best and 0 = worse
 
@@ -155,13 +157,24 @@ def get_accumulation(end_date:         Optional[Any]   = None,
                 'duration':   duration }
 
 
-    #time interval between radar observations
+    #time interval between radar or stage IV observations
     name, ext = os.path.splitext(data_recipe)
     if ext == '.h5':
         radar_dt = 10.
+    elif (ext == '.01h'  or 
+          ext == '.06h'  or
+          ext == '.24h') :
+        # accumulation length in minutes
+        radar_dt = np.float(ext[1:3]) * 60.
     else:
         raise ValueError('Filetype: '+ext+' not yet supported')
     
+    # raise an error if  radar dt > duration : important for stage IV 
+    # eg.: cannot create 1h accumulation from grib files containing 24h or 6h accumulation
+    if radar_dt > duration:
+        raise ValueError('Accumulation length in observation file \
+                           ({:d}h) is longer than requested accumulation\
+                           duration ({:d}h)'.format(int(radar_dt/60), int(duration/60)))
 
     #
     #
@@ -275,8 +288,11 @@ def get_accumulation(end_date:         Optional[Any]   = None,
         # rate (mm/h) * duration time (h) = accumulation (mm)
         #number of hours of accumulation period
         duration_hours = duration/60.
-        out_dict['accumulation'] = out_dict['avg_precip_rate'] * duration_hours
-    #
+        out_dict['accumulation'] = np.where(np.isclose(out_dict["avg_precip_rate"], missing),
+                                            missing, 
+                                            out_dict["avg_precip_rate"]* duration_hours)
+        
+        
     if desired_quantity == 'reflectivity':
         logger.info('get_accumulation computing reflectivity from avg precip rate')
         out_dict['reflectivity'] = exponential_zr(out_dict['avg_precip_rate'],
