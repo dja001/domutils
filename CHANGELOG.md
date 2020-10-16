@@ -9,7 +9,11 @@ Please use the following tags when editing this file:
 *Fixed* for any bug fixes. 
 
 
-## [2.0.12] - 2020-09-10
+## [2.0.13] - 2020-10-15
+### Added
+- figures added to test data for docs to render well -- no changes to code
+
+## [2.0.12] - 2020-10-15
 ### Added
 - radar_tools now supporting stageIV accumulations
 - new scripts for easier update of the test data on zenodo
