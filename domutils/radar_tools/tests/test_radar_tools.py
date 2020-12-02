@@ -96,7 +96,6 @@ class TestStringMethods(unittest.TestCase):
 
         # data deposit for the test
         data_path         = test_data_dir + "/stage4_composites/"
-        dateformat        = "%Y%m%d%H"
 
 
         #example 1
@@ -136,6 +135,53 @@ class TestStringMethods(unittest.TestCase):
         #test that sum of precip is the same as expected
         sum_precip = accumulation[np.nonzero(accumulation > 0.)].sum()
         self.assertAlmostEqual(sum_precip, 346221.57)
+
+
+    def test_coeff_ab(self):
+        """ test that coef_a and coefb have an impact when use by get_accumulations
+
+        """
+
+        import os
+        import numpy as np
+        import domutils
+        import domutils.radar_tools as radar_tools
+        import datetime
+
+        #setting up directories
+        domutils_dir = os.path.dirname(domutils.__file__)
+        package_dir  = os.path.dirname(domutils_dir)
+        test_data_dir = package_dir+'/test_data/'
+
+
+        # data deposit for the test
+        data_path =     test_data_dir + 'odimh5_radar_composites/'
+
+
+        duration = 60.  #duration of accumulation in minutes
+        data_recipe = '%Y/%m/%d/qcomp_%Y%m%d%H%M.h5'
+        dat_dict = radar_tools.get_accumulation(end_date=datetime.datetime(2019, 10, 31, 16, 30, 0),
+                                                duration=duration,
+                                                data_path=data_path,
+                                                data_recipe=data_recipe)
+
+        #the accumulation we just read
+        accumulation_300_1p4 = dat_dict['accumulation']
+
+        dat_dict = radar_tools.get_accumulation(end_date=datetime.datetime(2019, 10, 31, 16, 30, 0),
+                                                duration=duration,
+                                                data_path=data_path,
+                                                data_recipe=data_recipe, 
+                                                coef_a=200, coef_b=1.6)
+
+        #the accumulation we just read
+        accumulation_200_1p6 = dat_dict['accumulation']
+
+        #test that sum of precip is the same as expected
+        sum_precip = np.sum(accumulation_200_1p6 - accumulation_300_1p4)
+        self.assertAlmostEqual(sum_precip, 35628.67517835721)
+        
+        
         
 
 if __name__ == '__main__':

@@ -196,9 +196,11 @@ def get_accumulation(end_date:         Optional[Any]   = None,
                                  odim_latlon_file=odim_latlon_file,
                                  data_recipe=data_recipe,
                                  median_filt=median_filt,
+                                 coef_a=coef_a,
+                                 coef_b=coef_b,
                                  latlon=latlon)
     data_shape = dat_dict['precip_rate'].shape
-    if latlon is not None:
+    if latlon:
         orig_lat = dat_dict['latitudes']
         orig_lon = dat_dict['longitudes']
     #init accumulation arrays
@@ -220,7 +222,9 @@ def get_accumulation(end_date:         Optional[Any]   = None,
                                      data_path=data_path,
                                      odim_latlon_file=odim_latlon_file,
                                      data_recipe=data_recipe,
-                                     median_filt=median_filt)
+                                     median_filt=median_filt,
+                                     coef_a=coef_a,
+                                     coef_b=coef_b)
         if dat_dict is not None:
             accum_dat[:,:,kk] = dat_dict['precip_rate']
             accum_qi[:,:,kk]  = dat_dict['total_quality_index']
