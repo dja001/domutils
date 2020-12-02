@@ -388,9 +388,11 @@ class ProjInds():
                  min_hits:      Optional[Any]=1,
                  missing:       Optional[float]=-9999.):
 
+        from packaging import version
         from os import linesep as newline
         import warnings
         import numpy as np
+        import cartopy
         import cartopy.img_transform as cimgt
         import matplotlib.pyplot as plt
         #local functions
@@ -415,7 +417,12 @@ class ProjInds():
             dummy_ax = dummy_fig.add_axes([0.,0.,1.,1.], projection=dest_crs)
             if extent is not None:
                 dummy_ax.set_extent(extent)
-            dummy_ax.outline_patch.set_linewidth(0) #No axes contour line
+
+            #No axes contour line
+            if version.parse(cartopy.__version__) >= version.parse("0.18.0"):
+                dummy_ax.spines['geo'].set_linewidth(0)
+            else:
+                dummy_ax.outline_patch.set_linewidth(0) 
             
             if extent is not None:
                 #get corners of image in data space
@@ -729,6 +736,8 @@ class ProjInds():
                 Nothing
         """
         import numpy as np
+        from packaging import version
+        import cartopy
         import cartopy.crs as ccrs
         import warnings
 
@@ -759,7 +768,10 @@ class ProjInds():
                 rgba = np.concatenate([rgb,alpha],axis=2)
 
                 #no lines on the contour of the axes
-                ax.outline_patch.set_linewidth(0.0)
+                if version.parse(cartopy.__version__) >= version.parse("0.18.0"):
+                    ax.spines['geo'].set_linewidth(0)
+                else:
+                    ax.outline_patch.set_linewidth(0) 
 
                 #plot mask
                 ax.imshow(rgba, axes=ax, interpolation='nearest', 

@@ -9,6 +9,17 @@ Please use the following tags when editing this file:
 *Fixed* for any bug fixes. 
 
 
+## [2.0.15] - 2020-12-01
+### Added
+- packaging added to conda dependencies
+
+
+## [2.0.14] - 2020-12-01
+### Fixed
+- in get_accumulation coef_a and coef_b are now passed to get_instantaneous as they should
+### Fixed
+- use new syntax for linewidth with cartopy 0.18
+
 ## [2.0.13] - 2020-10-15
 ### Added
 - figures added to test data for docs to render well -- no changes to code

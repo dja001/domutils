@@ -31,6 +31,7 @@ def plot_rdpr_rdqi(fst_file:   str=None,
     import numpy as np
     import matplotlib as mpl
     import matplotlib.pyplot as plt
+    from   packaging import version
     import cartopy
     import cartopy.crs as ccrs
     import cartopy.feature as cfeature
@@ -160,7 +161,11 @@ def plot_rdpr_rdqi(fst_file:   str=None,
         #setup axes
         ax = fig.add_axes(pos, projection=proj_aea)
         ax.set_extent(map_extent)
-        ax.outline_patch.set_linewidth(.3)
+        #thinner lines
+        if version.parse(cartopy.__version__) >= version.parse("0.18.0"):
+            ax.spines['geo'].set_linewidth(0.3)
+        else:
+            ax.outline_patch.set_linewidth(0.3) 
         #plot image caption
         ax.annotate('RDPR', size=30,
                      xy=(xp, yp), xycoords='axes fraction')
@@ -189,7 +194,11 @@ def plot_rdpr_rdqi(fst_file:   str=None,
         #setup axes
         ax = fig.add_axes(pos, projection=proj_aea)
         ax.set_extent(map_extent)
-        ax.outline_patch.set_linewidth(.3)
+        #thinner lines
+        if version.parse(cartopy.__version__) >= version.parse("0.18.0"):
+            ax.spines['geo'].set_linewidth(0.3)
+        else:
+            ax.outline_patch.set_linewidth(0.3) 
         #plot image caption
         ax.annotate('RDQI', size=30,
                      xy=(xp, yp), xycoords='axes fraction')

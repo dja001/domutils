@@ -10,6 +10,8 @@ class TestStringMethods(unittest.TestCase):
 
         import os
         import numpy as np
+        from packaging import version
+        import cartopy
         import cartopy.crs as ccrs
         import cartopy.feature as cfeature
         import matplotlib.pyplot as plt
@@ -60,7 +62,11 @@ class TestStringMethods(unittest.TestCase):
         pos = [.1, .1, rec_w/fig_w, rec_h/fig_h]
         ax = fig.add_axes(pos, projection=proj_rob)
         x1, x2, y1, y2 = ax.get_extent()
-        ax.outline_patch.set_linewidth(.3)
+        #thinner lines
+        if version.parse(cartopy.__version__) >= version.parse("0.18.0"):
+            ax.spines['geo'].set_linewidth(0.3)
+        else:
+            ax.outline_patch.set_linewidth(0.3) 
         projected_rgb = color_map.to_rgb(projected_data)
         ax.imshow(projected_rgb, interpolation='nearest', aspect='auto', 
                   extent=[x1,x2,y1,y2], origin='upper')
