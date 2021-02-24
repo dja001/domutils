@@ -14,7 +14,7 @@ Notes for me to remember steps involved in publishing this package
 - run unitttests
   python -m unittest discover
 
-    This should find and run 124 tests
+    This should find and run 125 tests
 
 - run doctests and make documentation
   cd docs/

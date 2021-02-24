@@ -8,8 +8,8 @@ set -v
 #get doi for the test data associated with this version of domutils
 #DOI will be 10.5281/zenodo.${record_number}
 #
-#v1.0.5
-record_number=4092118
+#v1.0.7
+record_number=4585648
 
 
 function download 
@@ -36,6 +36,7 @@ done
 
 #download and untar tarballs
 arch_list=(odimh5_radar_composites.tgz
+           odimh5_radar_volume_scans.tgz
            stage4_composites.tgz
            std_radar_mosaics.tgz)
 for this_file in ${arch_list[@]} ; do

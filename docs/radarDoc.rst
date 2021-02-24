@@ -13,6 +13,9 @@ radar_tools API
 .. automodule:: domutils.radar_tools.read_h5_composite
    :members: 
 
+.. automodule:: domutils.radar_tools.read_h5_vol
+   :members: 
+
 .. automodule:: domutils.radar_tools.read_fst_composite
    :members: 
 
