@@ -1,4 +1,8 @@
 
+
+#to run a single test
+#  python test_radar_tools.py TestStringMethods.test_read_odim_vol
+
 import unittest
 
 class TestStringMethods(unittest.TestCase):
@@ -72,6 +76,57 @@ class TestStringMethods(unittest.TestCase):
 
         #test fails if images are not similar
         self.assertEqual(images_are_similar, True)
+
+
+    def test_read_odim_vol(self):
+        """ test funtion that reads volume scans in ODIM H5 format
+        """
+        import os
+        import numpy as np
+        import domutils
+        import domutils.radar_tools as radar_tools
+        import datetime
+
+        #setting up directories
+        domutils_dir = os.path.dirname(domutils.__file__)
+        package_dir  = os.path.dirname(domutils_dir)
+        test_data_dir = package_dir+'/test_data/'
+
+
+        # data deposit for the test
+        data_path         = test_data_dir + "/odimh5_radar_volume_scans/"
+
+        sample_file = data_path + '2019071120_24_ODIMH5_PVOL6S_VOL.qc.casbv.h5'
+
+        res = radar_tools.read_h5_vol(odim_file=sample_file, 
+                                      elevations=[0.4], 
+                                      quantities=['dbzh'],
+                                      include_quality=True,
+                                      latlon=True)
+        #check returned radar dictionary
+        keys=str(res.keys())
+        should_be="dict_keys(['radar_height', 'radar_lat', 'radar_lon', 'date_str', '0.4'])"
+        self.assertEqual(keys == should_be, True)
+
+        #check returned ppi dictionary
+        ppi_keys=str(res['0.4'].keys())
+        should_be=("dict_keys(['dbzh', 'quality_beamblockage', 'quality_att',"+
+                   " 'quality_broad', 'quality_qi_total', 'nominal_elevation',"+
+                   " 'elevations', 'azimuths', 'ranges', 'latitudes', 'longitudes'])")
+        self.assertEqual(ppi_keys == should_be, True)
+
+        #check returned values
+        dbz = res['0.4']['dbzh'][700,300:310]
+        should_be = np.array([43.,  41.,  42.,  41.5, 41.5, 42.5, 44.5, 42.,  43.,  40.5])
+
+        #check returned latitudes
+        lats = res['0.4']['latitudes'][700,300:310]
+        should_be = np.array( [47.03682545, 47.04124917, 47.04567286, 
+                               47.05009653, 47.05452016, 47.05894377, 
+                               47.06336734, 47.06779089, 47.07221441, 47.07663789])
+
+        self.assertEqual(np.isclose(np.sum(lats-should_be), 0.), True)
+
 
 
     def test_read_stageiv(self):

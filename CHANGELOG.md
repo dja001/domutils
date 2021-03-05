@@ -9,10 +9,21 @@ Please use the following tags when editing this file:
 *Fixed* for any bug fixes. 
 
 
+## [2.0.16] - 2021-03-05
+### Added
+- new function "radar_tools.read_h5_vol" for reading volume scans in ODIM H5 format
+- new function "radar_tools.model_43" for dealing with polar radar geometry and 4/3 earth approximation
+- new function "radar_tools.median_filter.remap_data" allowing fast applications of any kind of 
+  boxcar-type operations
+- new function "radar_tools.rotation_matrix_components" which allows fast
+  computation of lat/lons using simple numpy operations
+- New example in gallery that uses all new elements above
+### Changed
+- "radar_tools.lat_lon_range_az" is much faster for input arrays and now broadcasts inputs together
+
 ## [2.0.15] - 2020-12-01
 ### Added
 - packaging added to conda dependencies
-
 
 ## [2.0.14] - 2020-12-01
 ### Fixed
