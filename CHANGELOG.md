@@ -8,6 +8,11 @@ Please use the following tags when editing this file:
 *Removed* for now removed features.
 *Fixed* for any bug fixes. 
 
+## [2.0.17] - 2021-05-07
+### Added
+support for fst files in get_accumulations
+### Fixed
+geo_tools no longer crashes with 1d inputs
 
 ## [2.0.16] - 2021-03-05
 ### Added

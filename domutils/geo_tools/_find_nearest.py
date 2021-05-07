@@ -58,6 +58,12 @@ def _find_nearest(source_lon:  Any,
     dest_xx=np.asarray(dest_lon)
     dest_yy=np.asarray(dest_lat)
     orig_shape = source_xx.shape
+    if source_xx.ndim == 1:
+        if extend_x or extend_y:
+            raise ValueError('extension not supported for 1D inputs use:   extend_x=True, extend_y=True')
+        nx = source_xx.size
+        ny = 1
+        orig_shape = (nx,ny)
     if source_xx.ndim == 2:
         #extension requires 2D fields
         [nx, ny] = source_xx.shape
@@ -86,7 +92,7 @@ def _find_nearest(source_lon:  Any,
             source_yy=extended_lat
     else:
         if extend_x or extend_y:
-            raise ValueError('extension requires 2D fields')
+            raise ValueError('extension requires 2D inputs')
     
     #everything to xyz coords - both source and destination
     proj_ll = ccrs.Geodetic()
