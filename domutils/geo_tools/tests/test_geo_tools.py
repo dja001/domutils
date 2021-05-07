@@ -245,6 +245,54 @@ class TestStringMethods(unittest.TestCase):
         ##test that sum of projected_data equals some pre-validated value
         self.assertListEqual(projected_data.tolist(), expected)
 
+    def test_1d_inputs(self):
+        '''
+        make sure ProjInds accepts 1D inputs for lat/lon and data
+        This example is otherwise the same as above
+        '''
+
+        import os
+        import numpy as np
+        import cartopy.crs as ccrs
+        import cartopy.feature as cfeature
+        import matplotlib.pyplot as plt
+        import domutils
+        import domutils.legs as legs
+        import domutils.geo_tools as geo_tools
+
+
+        #destination grid
+        dest_lon =     [ [-100., -100 , -100  ],
+                         [-90. , -90  , -90   ],
+                         [-80. , -80  , -80   ] ]
+        dest_lat =     [ [ 30  ,  40  ,  50   ],
+                         [ 30  ,  40  ,  50   ],
+                         [ 30  ,  40  ,  50   ] ]
+
+        #source data
+        src_lon =      np.array([ [-101., -101 ],
+                                  [-88. , -88  ] ]).ravel()
+        src_lat =      np.array([ [ 30  ,  40  ],
+                                  [ 30  ,  40  ] ]).ravel()
+        src_data =     np.array([ [  1.,  2], 
+                                  [  3,   4] ]).ravel()
+        
+        #instantiate object to handle geographical projection of data
+        proj_inds = geo_tools.ProjInds(src_lon = src_lon, src_lat = src_lat, 
+                                       dest_lon=dest_lon, dest_lat=dest_lat,
+                                       extend_x=False, extend_y=False)
+        
+        #geographical projection of data into axes space
+        projected_data = proj_inds.project_data(src_data)
+
+        #reference data when this works
+        expected =     [ [  1., 2., 2.], 
+                         [  3., 4., 4.],
+                         [  3., 4., 4.] ]
+
+        ##test that sum of projected_data equals some pre-validated value
+        self.assertListEqual(projected_data.tolist(), expected)
+
         
 
 
