@@ -14,7 +14,7 @@ Notes for me to remember steps involved in publishing this package
 - run unitttests
   python -m unittest discover
 
-    This should find and run 125 tests
+    This should find and run 128 tests
 
 - run doctests and make documentation
   cd docs/
@@ -25,9 +25,49 @@ Notes for me to remember steps involved in publishing this package
 
 - If the test makes a figure or that new test data is required
   the a new test dataset will have to be published in a new version of the repository on zenodo
-  https://doi.org/10.5281/zenodo.3635906    
   At the moment, only me (dominik) can do that. Contact me and I will do it for you. 
 
+  Instructions for updating the zenodo archive:
+
+     - Make sure that you start with the current version of test_data on zenodo
+       cd /root/of/domutils/package/
+       ./download_test_data.sh
+
+     - Make new dirs, change file as required by new tests or examples
+
+     - don't forget to include "_static" if new images are generated
+       cp -rf docs/_static test_data/_static
+
+     - don't forget to include "test_results" if the have changed
+       cp -rf test_results test_data/test_results
+
+     When you are happy with the changes, you have to update the Zenodo repository
+
+     - Go in the directory containing test datasets:
+       cd /home/dja001/shared_stuff/files/test_data_for_domutils_on_zenodo/
+
+     - Copy the modified test_data directory into its own versionned directory
+       cp -r  ~/python/packages/domutils_package/test_data v1.0.9
+
+     - List differences with previous version and build .tgz for archive
+      ./prepare_tgz_for_zenodo.sh v1.0.8 
+
+     - Login on zenodo with @gmail.com account
+       - delete files that are modified
+       - upload new and modified files
+       - change publication date
+       - change version
+       - publish
+
+     - get record number by clicking on new version
+       eg  5497958
+
+     - adjust version and record number in download_test_data.sh
+       - don't forget to add new files and .tgz if needed
+
+
+  If the zenodo archive was changes, it must be tested
+  rm -rf test_data test_results
   Updating the dataset version and file list will be necessary
   download_test_data.sh
 
@@ -44,8 +84,9 @@ Notes for me to remember steps involved in publishing this package
     - You probably want to cleanup
     python setup.py clean --all
     rm -rf dist
+    python setup.py sdist bdist_wheel
 
- python setup.py sdist bdist_wheel
+        Optionnal
         - upload to TEST pypi
         twine upload --repository-url https://test.pypi.org/legacy/ dist/*
 
@@ -55,7 +96,7 @@ twine upload dist/*
 - from the root of the repo from somewhere with internet connexion
     To load in environment if not already done:
         conda install anaconda-client conda-build
-conda build conda_build/domutils
+conda build --py 3.7 --py 3.8 --py 3.9  conda_build/domutils
 
 and upload it to anaconda cloud
 

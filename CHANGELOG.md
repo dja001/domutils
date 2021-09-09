@@ -8,11 +8,21 @@ Please use the following tags when editing this file:
 *Removed* for now removed features.
 *Fixed* for any bug fixes. 
 
+## [2.0.18] - 2021-09-09
+### Added
+- radar_tools  Added a reader for MRMS files, they can now be read with 
+               get_instantaneous / get_accumulation like any other file types
+- radar_tools/read_sqlite_vol.py  A new reader for sqlite radar volume data destined for assimilation in MIDAS
+- radar_tools/read_h5_vol now checks version of odim file 
+- radar_tools/model_43 now computes rate of change for height as a function of dist_earth 
+- get_accumulation  now raises a warning and return None if first accumulation file is missing
+
+
 ## [2.0.17] - 2021-05-07
 ### Added
-support for fst files in get_accumulations
+- Support for fst files in get_accumulations
 ### Fixed
-geo_tools no longer crashes with 1d inputs
+- geo_tools no longer crashes with 1d inputs
 
 ## [2.0.16] - 2021-03-05
 ### Added

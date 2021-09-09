@@ -172,6 +172,66 @@ Baltrad ODIM H5
         :align: center
 
 
+MRMS precipitation rates in grib2 format
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+    Reading precipitation rates from MRMS is done in a very similar way with the 
+    *get_instantaneous* method.
+
+    >>> import os, inspect
+    >>> import datetime
+    >>> import domutils.radar_tools as radar_tools
+    >>>
+    >>> #when we want data
+    >>> this_date = datetime.datetime(2019, 10, 31, 16, 30, 0)
+    >>>
+    >>> #where is the data
+    >>> currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+    >>> parentdir  = os.path.dirname(currentdir) #directory where this package lives
+    >>> data_path = parentdir + '/test_data/mrms_grib2/'
+    >>>
+    >>> #how to construct filename. 
+    >>> #   See documentation for the *strftime* method in the datetime module
+    >>> #   Note the *.grib2* extention, this is where we specify that we wants mrms data
+    >>> data_recipe = 'PrecipRate_00.00_%Y%m%d-%H%M%S.grib2'
+    >>>
+    >>> #Notre that the file RadarQualityIndex_00.00_20191031-163000.grib2.gz must be present in the 
+    >>> #same directory for the quality index to be defined.
+    >>>  
+    >>> #get precipitation on native grid
+    >>> #with latlon=True, we will also get the data coordinates
+    >>> dat_dict = radar_tools.get_instantaneous(valid_date=this_date,
+    ...                                          data_path=data_path,
+    ...                                          data_recipe=data_recipe,
+    ...                                          desired_quantity='precip_rate',
+    ...                                          latlon=True)
+    >>> #show what we just got
+    >>> for key in dat_dict.keys():
+    ...     if key == 'valid_date':
+    ...         print(key,dat_dict[key])
+    ...     else:
+    ...         print(key,dat_dict[key].shape)
+    precip_rate (3500, 7000)
+    total_quality_index (3500, 7000)
+    valid_date 2019-10-31 16:30:00
+    latitudes (3500, 7000)
+    longitudes (3500, 7000)
+    >>> 
+    >>> #show data
+    >>> fig_name ='_static/mrms_precip_rate.svg'
+    >>> title = 'MRMS precip rates on original grid'
+    >>> units = '[mm/h]'
+    >>> data       = dat_dict['precip_rate']
+    >>> latitudes  = dat_dict['latitudes']
+    >>> longitudes = dat_dict['longitudes']
+    >>>
+    >>> plot_img(fig_name, title, units, data, latitudes, longitudes,
+    ...          pr_color_map, equal_legs=True)
+
+    .. image:: _static/mrms_precip_rate.svg
+        :align: center
+
+
 4-km mosaics from URP
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

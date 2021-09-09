@@ -8,8 +8,8 @@ set -v
 #get doi for the test data associated with this version of domutils
 #DOI will be 10.5281/zenodo.${record_number}
 #
-#v1.0.7
-record_number=4585648
+#v1.0.9
+record_number=5497958
 
 
 function download 
@@ -37,6 +37,8 @@ done
 #download and untar tarballs
 arch_list=(odimh5_radar_composites.tgz
            odimh5_radar_volume_scans.tgz
+           sqlite_radar_volume_scans.tgz
+           mrms_grib2.tgz
            stage4_composites.tgz
            std_radar_mosaics.tgz)
 for this_file in ${arch_list[@]} ; do
@@ -48,6 +50,11 @@ done
 download _static.tgz
 tar -xvf _static.tgz
 cp -rf _static ../docs/
+
+#download test_results and make a copy in package root
+download test_results.tgz
+tar -xvf test_results.tgz
+cp -rf test_results ../
 
 set +v
 

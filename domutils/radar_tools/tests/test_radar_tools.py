@@ -192,6 +192,65 @@ class TestStringMethods(unittest.TestCase):
         self.assertAlmostEqual(sum_precip, 346221.57)
 
 
+    def test_read_mrms(self):
+        """ test funtion that reads mrms data
+
+        """
+
+        import os
+        import numpy as np
+        import domutils
+        import domutils.radar_tools as radar_tools
+        import datetime
+
+        #setting up directories
+        domutils_dir = os.path.dirname(domutils.__file__)
+        package_dir  = os.path.dirname(domutils_dir)
+        test_data_dir = package_dir+'/test_data/'
+
+        # data deposit for the test
+        data_path         = test_data_dir + "/mrms_grib2/"
+
+
+        #
+        #
+        #example 1
+        # get precipitation rates from mrms file
+        data_recipe      = 'PrecipRate_00.00_%Y%m%d-%H%M%S.grib2'
+
+        out_dict_pr = radar_tools.get_instantaneous(valid_date=datetime.datetime(2019,10,31,16,30,0),
+                                                    data_path=data_path,
+                                                    data_recipe=data_recipe,
+                                                    desired_quantity="precip_rate",
+                                                    latlon=True)
+        #the accumulation we just read
+        precip_rate = out_dict_pr['precip_rate']
+
+        #test that sum of precip is the same as expected
+        sum_precip = precip_rate[np.nonzero(precip_rate > 0.)].sum()
+        self.assertAlmostEqual(sum_precip, 2328047.4)
+        
+        
+
+
+        #example 2
+        # get a 30 minutes accumulatation from MRMS precip rate file available every two minutes
+        data_recipe      = 'PrecipRate_00.00_%Y%m%d-%H%M%S.grib2'
+
+        out_dict_acc_ex2 = radar_tools.get_accumulation(end_date=datetime.datetime(2019,10,31,16,30,0),
+                                                        duration=30.,    #minutes
+                                                        data_path=data_path,
+                                                        data_recipe=data_recipe,
+                                                        desired_quantity="accumulation",
+                                                        latlon=True)
+        #the accumulation we just read
+        accumulation = out_dict_acc_ex2['accumulation']
+
+        #test that sum of precip is the same as expected
+        sum_precip = accumulation[np.nonzero(accumulation > 0.)].sum()
+        self.assertAlmostEqual(sum_precip, 1186789.0932664848)
+
+
     def test_coeff_ab(self):
         """ test that coef_a and coefb have an impact when use by get_accumulations
 
@@ -237,6 +296,64 @@ class TestStringMethods(unittest.TestCase):
         self.assertAlmostEqual(sum_precip, 35628.67517835721)
         
         
+    def test_read_sqlite_vol(self):
+        """ test funtion that reads volume scans in sqlite format
+        """
+        import os
+        import numpy as np
+        import domutils
+        import domutils.radar_tools as radar_tools
+        import datetime
+
+        #setting up directories
+        domutils_dir = os.path.dirname(domutils.__file__)
+        package_dir  = os.path.dirname(domutils_dir)
+        test_data_dir = package_dir+'/test_data/sqlite_radar_volume_scans/'
+        
+        sample_file = test_data_dir + '2019070206_ra'
+
+        #get everything in file
+        this_date = datetime.datetime(2019,7,2,3,6,0)
+        res = radar_tools.read_sqlite_vol(sqlite_file=sample_file, 
+                                          radars = ['casbv'],
+                                          vol_scans = [this_date],
+                                          quantities = ['OBSVALUE'],
+                                          elevations = [0.4], 
+                                          latlon=True)
+        #radars in file
+        radars = str(res.keys())
+        should_be="dict_keys(['casbv'])"
+        self.assertEqual(radars == should_be, True)
+
+        #check returned radar dictionary
+        keys=str(res['casbv'].keys())
+        should_be="dict_keys(['radar_lat', 'radar_lon', 'radar_height', datetime.datetime(2019, 7, 2, 3, 6)])"
+        self.assertEqual(keys == should_be, True)
+
+        #check returned elevation dictionary
+        elev_keys=str(res['casbv'][this_date].keys())
+        should_be="dict_keys(['0.4'])"
+        self.assertEqual(elev_keys == should_be, True)
+
+        #check returned quantities
+        qty_keys=str(res['casbv'][this_date]['0.4'].keys())
+        should_be=("dict_keys(['azimuths', 'elevations', 'ranges', 'obsvalue', 'id_obs',"+
+                   " 'range', 'half_delta_range', 'half_delta_azimuth', 'latitudes', 'longitudes'])")
+        self.assertEqual(qty_keys == should_be, True)
+
+        #check some returned values for Doppler velocities
+        dvel = res['casbv'][this_date]['0.4']['obsvalue'][0,150:160]
+        should_be = np.array([-9.99900000e+03, -3.01732165e+00, -3.01732165e+00, -9.99900000e+03,
+                              -3.39448702e+00, -3.39448702e+00, -3.39448702e+00, -3.39448702e+00,
+                              -9.99900000e+03, -3.01732165e+00,])
+        self.assertEqual(np.allclose(dvel, should_be), True)
+
+        #check returned latitudes
+        lats = res['casbv'][this_date]['0.4']['latitudes'][0,150:160]
+        should_be = np.array( [46.38282768, 46.38732164, 46.39181559, 46.39630952, 46.40080344, 46.40529735,
+                               46.40979124, 46.41428512, 46.41877898, 46.42327284,])
+
+        self.assertEqual(np.allclose(lats,should_be), True)
         
 
 if __name__ == '__main__':

@@ -1,5 +1,5 @@
 {% set name = "domutils" %}
-{% set version = "2.0.17" %}
+{% set version = "2.0.18" %}
 
 package:
   name: "{{ name }}"
@@ -19,7 +19,7 @@ requirements:
     - numpy >=1.17.0
     - pip
     - python
-    - python =3.7.0
+    - python >=3.7.0
     - packaging
 
   run:

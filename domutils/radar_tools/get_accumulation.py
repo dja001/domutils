@@ -170,6 +170,9 @@ def get_accumulation(end_date:         Optional[Any]   = None,
     elif ext == '.fst':
         radar_dt = 10.
         warnings.warn('Using fst files assuming precip rates are available every 10 minutes')
+    elif ext == '.grib2':
+        radar_dt = 2.
+        warnings.warn('Using MRMS files assuming that they are available every 2 minutes')
     else:
         raise ValueError('Filetype: '+ext+' not yet supported')
     
@@ -203,6 +206,10 @@ def get_accumulation(end_date:         Optional[Any]   = None,
                                  coef_a=coef_a,
                                  coef_b=coef_b,
                                  latlon=latlon)
+    if dat_dict is None:
+        warnings.warn('Unable to get first file in accumulation, returning None')
+        return None
+
     data_shape = dat_dict['precip_rate'].shape
     if latlon:
         orig_lat = dat_dict['latitudes']
@@ -296,6 +303,7 @@ def get_accumulation(end_date:         Optional[Any]   = None,
         # rate (mm/h) * duration time (h) = accumulation (mm)
         #number of hours of accumulation period
         duration_hours = duration/60.
+        logger.info(f'precip rate multiplied by {duration_hours}')
         out_dict['accumulation'] = np.where(np.isclose(out_dict["avg_precip_rate"], missing),
                                             missing, 
                                             out_dict["avg_precip_rate"]* duration_hours)
