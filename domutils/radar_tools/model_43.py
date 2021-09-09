@@ -32,18 +32,29 @@ def model_43(dist_beam:   Optional[Any] = None,
 
     Examples:
 
-           >>> #beam height
+           >>> #you can verify relationships against one another
            >>> import domutils.radar_tools as radar_tools
-           >>> radar_tools.model_43(elev=30, dist_beam=100., want=('height'))
+           >>> radar_tools.model_43(elev=30, dist_beam=100., want='height')
            50.43885848738864
-           >>> radar_tools.model_43(elev=30, dist_beam=100., want=('dist_earth'))
+           >>> radar_tools.model_43(elev=30, dist_beam=100., want='dist_earth')
            86.09282939359983
-           >>> radar_tools.model_43(elev=30, dist_earth=86.09282939359983, want=('height'))
+           >>> radar_tools.model_43(elev=30, dist_earth=86.09282939359983, want='height')
            50.43885848738864
-           >>> radar_tools.model_43(elev=30, dist_earth=86.09282939359983, want=('dist_beam'))
+           >>> radar_tools.model_43(elev=30, dist_earth=86.09282939359983, want='dist_beam')
            99.99999999999999
-           >>> radar_tools.model_43(dist_earth=86.09282939359983, height=50.43885848738864, want=('elev'))
+           >>> radar_tools.model_43(dist_earth=86.09282939359983, height=50.43885848738864, want='elev')
            30.000000000000107
+           >>> #
+           >>> #rate of change for height as a function of dist_earth
+           >>> radar_tools.model_43(dist_earth=100., elev=30., want='d_height__d_dist_earth')
+           0.5972551219854002
+           >>> #is very close to one we can estimate numerically
+           >>> dx = 1.
+           >>> h2 = radar_tools.model_43(dist_earth=100.+dx/2., elev=30., want='height')
+           >>> h1 = radar_tools.model_43(dist_earth=100.-dx/2., elev=30., want='height')
+           >>> (h2-h1)/dx
+           0.5972551244358328
+           >>> #
            >>> #input values will be broadcaster together
            >>> radar_tools.model_43(elev=30, dist_beam=[25., 50, 100.], want=('height'))
            array([12.52755023, 25.11003868, 50.43885849])
@@ -85,6 +96,16 @@ def model_43(dist_beam:   Optional[Any] = None,
             return (np.cos(elev_rad) / np.cos(elev_rad + dist_earth/Re)) * (Re+hrad) - Re
         else :
             raise ValueError('combination of inputs not supported for quantity height')
+
+
+    if want == 'd_height__d_dist_earth':
+
+        if dist_earth is None or elev is None:
+            raise ValueError('Need dist_earth and elev to compute d height / d dist_earth')
+        
+        #rate of change of radar beam height as a function of dist_earth
+        return ( np.cos(elev_rad) * (Re+hrad) * np.sin(elev_rad + dist_earth/Re) ) / ( Re * np.cos(elev_rad + dist_earth/Re)**2. ) 
+        
 
     elif want == 'dist_beam':
         if dist_earth is not None and elev is not None:

@@ -68,7 +68,7 @@ def read_h5_vol(odim_file:   str=None,
         >>> odim_file = parentdir+'/test_data//odimh5_radar_volume_scans/2019071120_24_ODIMH5_PVOL6S_VOL.qc.casbv.h5'
         >>> res = radar_tools.read_h5_vol(odim_file=odim_file, 
         ...                               elevations=[0.4], 
-        ...                               quantities=['dbzh'],
+        ...                               quantities=['all'],
         ...                               include_quality=True,
         ...                               latlon=True)
         >>> #check returned radar dictionary
@@ -77,7 +77,7 @@ def read_h5_vol(odim_file:   str=None,
         >>> #
         >>> #check returned PPI dictionary
         >>> print(res['0.4'].keys())
-        dict_keys(['dbzh', 'quality_beamblockage', 'quality_att', 'quality_broad', 'quality_qi_total', 'nominal_elevation', 'elevations', 'azimuths', 'ranges', 'latitudes', 'longitudes'])
+        dict_keys(['dbzh', 'vradh', 'th', 'rhohv', 'uphidp', 'wradh', 'phidp', 'zdr', 'dr', 'kdp', 'sqih', 'quality_beamblockage', 'quality_att', 'quality_broad', 'quality_qi_total', 'nominal_elevation', 'elevations', 'azimuths', 'ranges', 'latitudes', 'longitudes'])
 
 
 
@@ -106,8 +106,11 @@ def read_h5_vol(odim_file:   str=None,
 
     logger.info('Reading: ' + str(quantities) +' from: ' + odim_file)
 
-    #quantities to lower caps
-    quantities = [qty.lower() for qty in quantities]
+    #quantities as lower caps list
+    if quantities == 'all':
+        quantities = ['all']
+    else:
+        quantities = [qty.lower() for qty in quantities]
 
     #open odim file for reading
     h5_obj = h5py.File(odim_file, 'r')
@@ -118,6 +121,16 @@ def read_h5_vol(odim_file:   str=None,
 
     #in volume scans datasets corresponds to nominal elevations
     full_list = list(h5_obj.keys())
+
+    #file info 
+    file_what_dict = dict(h5_obj['what'].attrs)
+    #get number from byte string  e.g.  '2.3' from b'H5rad 2.3'
+    file_version = file_what_dict['version'].decode('utf-8').split()[1]
+
+    supported_versions = ['2.2', '2.3']
+    if file_version not in supported_versions:
+        raise ValueError(f'Odim H5 file version {file_version} is not supported')
+
 
     #radar info 
     file_where_dict = dict(h5_obj['where'].attrs)
@@ -152,7 +165,7 @@ def read_h5_vol(odim_file:   str=None,
                         #check attributes for quantity being represented
                         data_what_dict = dict(this_dataset[l2]['what'].attrs)
                         this_quantity = data_what_dict['quantity'].decode('utf-8').lower()
-                        if str(this_quantity) in quantities:
+                        if (str(this_quantity) in quantities) or ('all' in quantities):
                             #we have the quantity we were looking for
                             found_something = True
                             output_is_empty = False
@@ -178,6 +191,8 @@ def read_h5_vol(odim_file:   str=None,
                             out_dict[elevation_str][this_quantity] = data_float
 
                     if include_quality and l2.startswith('quality') :
+                        found_something = True
+                        output_is_empty = False
                         data_how_dict = dict(this_dataset[l2]['how'].attrs)
                         quality_name = 'quality_'+data_how_dict['task'].decode('utf-8').split('.')[-1]
                         #
@@ -193,6 +208,13 @@ def read_h5_vol(odim_file:   str=None,
                         out_dict[elevation_str][quality_name] = data_float
 
                 if found_something:
+                    #if we were looking for something specific, print a warning if it was not found
+                    for this_quantity in quantities:
+                        if this_quantity == 'all':
+                            continue
+                        if this_quantity not in out_dict[elevation_str].keys():
+                            logger.warning(f'Quantity {this_quantity} was not found in file.')
+
                     #add meta data for the retrieved field(s)
                     #
                     out_dict[elevation_str]['nominal_elevation'] = this_elevation

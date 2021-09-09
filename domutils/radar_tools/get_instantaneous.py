@@ -97,6 +97,7 @@ def get_instantaneous(valid_date:       Optional[Any]   = None,
     from . import read_h5_composite
     from . import read_fst_composite
     from . import read_stage4_composite
+    from . import read_mrms
     from . import exponential_zr
     from . import median_filter
     #import geo_tools from parent module
@@ -212,6 +213,9 @@ def get_instantaneous(valid_date:       Optional[Any]   = None,
         #Stage IV grib format
         out_dict = read_stage4_composite(data_file,
                                          latlon=latlon)        
+    elif ext == '.grib2':
+        out_dict = read_mrms(data_file, quantity=desired_quantity,
+                             latlon=latlon)        
     else:
         raise ValueError('Filetype: '+ext+' not yet supported')
 
