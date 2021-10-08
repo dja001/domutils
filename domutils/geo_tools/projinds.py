@@ -622,7 +622,9 @@ class ProjInds():
         if self.smooth_radius_m is None :
             #make sure data is of the right shape
             if (np_data.shape != self.data_shape) :
-                raise ValueError("data is not of the same shape as the coordinates used to initiate projection object")
+                raise ValueError((f"data is not of the same shape as the coordinates used "  +
+                                  f"to initiate projection object; received {np_data.shape} "+
+                                  f"and was expecting {self.data_shape}"))
         else:
             #there are no constraints on data shape if smoothing is used during interpolation
             pass
