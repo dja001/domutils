@@ -5,7 +5,8 @@ def lat_lon_extend(lon1_in:   Any,
                    lon2_in:   Any,
                    lat2_in:   Any,
                    crs:       Any=None,
-                   half_dist: bool=False) :
+                   half_dist: bool=False,
+                   predefined_theta=None) :
     """ Extends latitude and longitudes on a sphere
 
        Given two points (pt1 and pt2) on a sphere, this function returns a third point (pt3) at the 
@@ -34,6 +35,7 @@ def lat_lon_extend(lon1_in:   Any,
             crs:        Instance of Cartopy geoAxes in which pt coordinates are defined 
                         (default is PlateCarree)
             half_dist:  If true, pt 3 will be located at half the distance between pt1 and pt2
+            predefined_theta:  (array like) radians. If set, will determine distance between pt2 and pt3
 
        Returns:
             (longitude, latitude)    (array like) of extended point 3
@@ -99,7 +101,10 @@ def lat_lon_extend(lon1_in:   Any,
     for ind, (v1, v2) in enumerate(zip(xyz_pt1, xyz_pt2)):
 
         #solve for angle
-        theta = np.arccos( np.sum(v1*v2) / (np.linalg.norm(v1)*np.linalg.norm(v2)) )
+        if predefined_theta is not None:
+            theta = predefined_theta
+        else:
+            theta = np.arccos( np.sum(v1*v2) / (np.linalg.norm(v1)*np.linalg.norm(v2)) )
         if half_dist :
             theta /= 2.
 

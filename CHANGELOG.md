@@ -8,6 +8,12 @@ Please use the following tags when editing this file:
 *Removed* for now removed features.
 *Fixed* for any bug fixes. 
 
+
+## [2.0.19] - 2021-10-08
+### Added
+- geo_tools  A more verbose error message when projecting data with the wrong size
+- geo_tools  new variable for arbritrary distances in lat_lon_extend
+
 ## [2.0.18] - 2021-09-09
 ### Added
 - radar_tools  Added a reader for MRMS files, they can now be read with 
