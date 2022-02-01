@@ -9,6 +9,11 @@ Please use the following tags when editing this file:
 *Fixed* for any bug fixes. 
 
 
+## [2.0.20] - 2022-02-01
+### Added
+- radar_tools  capability to read startazA and stopazA in odim volume files
+- radar_tools  sqlite vol scans now return measurement height along with latlon
+
 ## [2.0.19] - 2021-10-08
 ### Added
 - geo_tools  A more verbose error message when projecting data with the wrong size

@@ -110,9 +110,10 @@ class TestStringMethods(unittest.TestCase):
 
         #check returned ppi dictionary
         ppi_keys=str(res['0.4'].keys())
+        print(ppi_keys)
         should_be=("dict_keys(['dbzh', 'quality_beamblockage', 'quality_att',"+
                    " 'quality_broad', 'quality_qi_total', 'nominal_elevation',"+
-                   " 'elevations', 'azimuths', 'ranges', 'latitudes', 'longitudes'])")
+                   " 'azimuths', 'elevations', 'ranges', 'latitudes', 'longitudes'])")
         self.assertEqual(ppi_keys == should_be, True)
 
         #check returned values
@@ -337,8 +338,9 @@ class TestStringMethods(unittest.TestCase):
 
         #check returned quantities
         qty_keys=str(res['casbv'][this_date]['0.4'].keys())
+        print(qty_keys)
         should_be=("dict_keys(['azimuths', 'elevations', 'ranges', 'obsvalue', 'id_obs',"+
-                   " 'range', 'half_delta_range', 'half_delta_azimuth', 'latitudes', 'longitudes'])")
+                   " 'range', 'half_delta_range', 'half_delta_azimuth', 'latitudes', 'longitudes', 'm43_heights'])")
         self.assertEqual(qty_keys == should_be, True)
 
         #check some returned values for Doppler velocities

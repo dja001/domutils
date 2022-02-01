@@ -77,7 +77,7 @@ def read_h5_vol(odim_file:   str=None,
         >>> #
         >>> #check returned PPI dictionary
         >>> print(res['0.4'].keys())
-        dict_keys(['dbzh', 'vradh', 'th', 'rhohv', 'uphidp', 'wradh', 'phidp', 'zdr', 'dr', 'kdp', 'sqih', 'quality_beamblockage', 'quality_att', 'quality_broad', 'quality_qi_total', 'nominal_elevation', 'elevations', 'azimuths', 'ranges', 'latitudes', 'longitudes'])
+        dict_keys(['dbzh', 'vradh', 'th', 'rhohv', 'uphidp', 'wradh', 'phidp', 'zdr', 'dr', 'kdp', 'sqih', 'quality_beamblockage', 'quality_att', 'quality_broad', 'quality_qi_total', 'nominal_elevation', 'azimuths', 'elevations', 'ranges', 'latitudes', 'longitudes'])
 
 
 
@@ -220,8 +220,26 @@ def read_h5_vol(odim_file:   str=None,
                     out_dict[elevation_str]['nominal_elevation'] = this_elevation
                     #
                     data_how_dict = dict(this_dataset['how'].attrs)
+                    if 'azangles' in data_how_dict.keys():
+                        #older versions of odim
+                        out_dict[elevation_str]['azimuths']   = np.asarray(data_how_dict['azangles'])                    
+                    elif 'startazA' in data_how_dict.keys():
+                        #here we get azimuth start and stop
+                        start_rad = np.deg2rad(data_how_dict['startazA'])
+                        stop_rad  = np.deg2rad(data_how_dict['stopazA'])
+                        start_xx = np.sin(start_rad)
+                        start_yy = np.cos(start_rad)
+                        stop_xx  = np.sin(stop_rad) 
+                        stop_yy  = np.cos(stop_rad)
+                        sum_xx = start_xx + stop_xx
+                        sum_yy = start_yy + stop_yy
+                        mid_angle = np.rad2deg(np.arctan2(sum_xx, sum_yy))
+
+                        out_dict[elevation_str]['azimuths']   = mid_angle
+                    else:
+                        raise ValueError('cannot find azimuths in odim file')
+                    #elevations
                     out_dict[elevation_str]['elevations'] = np.asarray(data_how_dict['elangles'])
-                    out_dict[elevation_str]['azimuths']   = np.asarray(data_how_dict['azangles'])
                     #
                     data_where_dict = dict(this_dataset['where'].attrs)
                     range_values = data_where_dict['rstart'] + data_where_dict['rscale']/2. + np.arange(0, data_where_dict['nbins'])*data_where_dict['rscale']

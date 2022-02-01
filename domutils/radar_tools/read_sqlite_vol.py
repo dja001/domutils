@@ -18,7 +18,7 @@ def read_sqlite_vol(sqlite_file:      str=None,
 
     Args:
         sqlite_file:      /path/to/sqlite_file.sqlite
-        latlon:           When true, will output latitudes and longitudes of the returned PPIs
+        latlon:           When true, will output latitudes, longitudes and height above ground (4/3Re) of the returned PPIs
         elevations:       float or list of float for the desired nominal elevation. Set to 'all' to return all elevations in a file
         quantities:       desired quantities has to match column name in body table of sqlite files
                           (ie 
@@ -65,7 +65,7 @@ def read_sqlite_vol(sqlite_file:      str=None,
         >>> #
         >>> #check returned PPI dictionary
         >>> print(res['0.4'].keys())
-        dict_keys(['dbzh', 'quality_beamblockage', 'quality_att', 'quality_broad', 'quality_qi_total', 'nominal_elevation', 'elevations', 'azimuths', 'ranges', 'latitudes', 'longitudes'])
+        dict_keys(['dbzh', 'quality_beamblockage', 'quality_att', 'quality_broad', 'quality_qi_total', 'nominal_elevation', 'elevations', 'azimuths', 'ranges', 'latitudes', 'longitudes', 'm43_heights'])
 
 
 
@@ -114,17 +114,17 @@ def read_sqlite_vol(sqlite_file:      str=None,
     # Quantities to retrive in data table
     cursor = conn.execute('select * from data')
     column_names_in_files = [desc[0] for desc in cursor.description]
+    logger.info(f'Available column names in file data table: {column_names_in_files}')
     if quantities == 'all':
         quantities_to_retrieve = column_names_in_files
     else:
         quantities_to_retrieve = []
         for this_quantity in quantities:
-            #caps insensitive comparison
-            if this_quantity.lower() in (col.lower() for col in column_names_in_files):
+            if this_quantity in column_names_in_files:
                 quantities_to_retrieve.append(this_quantity)
             else:
-                warnings.warn(f'desired quantity "{this_quantity}" is not in file')
-    #some stuff we never wanted for output
+                logger.warning(f'desired quantity "{this_quantity}" is not in "{column_names_in_files}"')
+    #some stuff we never want for output
     never_wanted = ['ID_DATA', 'ID_OBS', 'HALF_DELTA_RANGE', 'HALF_DELTA_AZIMUTH']
     for element in never_wanted:
         if element in quantities_to_retrieve:
@@ -165,9 +165,10 @@ def read_sqlite_vol(sqlite_file:      str=None,
     #make list of volume scans in file
     vol_scan_in_file = []
     for entry in entries:
-        vol_scan_date = str(entry['DATE']).strip() + str(entry['TIME']).strip()
-        if vol_scan_date not in vol_scan_in_file :
-            vol_scan_in_file.append(vol_scan_date)
+        if entry['ID_STN'] in radar_dict.keys():
+            vol_scan_date = str(entry['DATE']).zfill(6) + str(entry['TIME']).zfill(6)
+            if vol_scan_date not in vol_scan_in_file :
+                vol_scan_in_file.append(vol_scan_date)
     #convert strings to datetime
     vol_scan_in_file = [ datetime.datetime.strptime(this_str,"%Y%m%d%H%M%S" ) for this_str in vol_scan_in_file ]
     vol_scan_in_file.sort()
@@ -242,7 +243,7 @@ def read_sqlite_vol(sqlite_file:      str=None,
                 c.execute(query)
                 headers = c.fetchall()
                 if len(headers) == 0:
-                    warning.warn('No results for query:'+query+'   skipping')
+                    warnings.warn('No results for query:'+query+'   skipping')
                 else:
                     output_is_empty = False
 
@@ -312,7 +313,12 @@ def read_sqlite_vol(sqlite_file:      str=None,
                     #this depends on whether the PPi was averaged or not
                     query = f'select DESCRIPTION from info where NAME == "SUPEROBBING" ;'
                     c.execute(query)
-                    superobb_on_off = c.fetchone()[0]
+                    superobb_on_off = c.fetchone()
+                    if  superobb_on_off is None:
+                        #info table missing, assume its averaged
+                        superobb_on_off = 'ON'
+                    else:
+                        superobb_on_off = superobb_on_off[0]
                     if  superobb_on_off == 'ON':
                         averaged_ppi = True
 
@@ -328,7 +334,7 @@ def read_sqlite_vol(sqlite_file:      str=None,
 
                         averaged_ppi = False
 
-                        #
+                        #     
                         min_range    = range_start_arr.min()
                         max_range    = range_stop_arr.max()
 
@@ -440,6 +446,9 @@ def read_sqlite_vol(sqlite_file:      str=None,
                         dist_earth = radar_tools.model_43(elev=melevs, dist_beam=mranges/1e3, 
                                                           hrad=radar_dict[this_radar]['radar_height']/1e3, 
                                                           want='dist_earth')
+                        m43_heights = radar_tools.model_43(elev=melevs, dist_beam=mranges/1e3, 
+                                                           hrad=radar_dict[this_radar]['radar_height']/1e3, 
+                                                           want='height')
                         #compute the lat/lon values associated with a given PPI
                         longitudes, latitudes = geo_tools.lat_lon_range_az(radar_dict[this_radar]['radar_lon'], 
                                                                            radar_dict[this_radar]['radar_lat'], 
@@ -449,8 +458,9 @@ def read_sqlite_vol(sqlite_file:      str=None,
                         longitudes = np.where(np.isclose(melevs,no_data), no_data, longitudes)
                         latitudes  = np.where(np.isclose(melevs,no_data), no_data, latitudes)
                         #save output
-                        out_dict[this_radar][this_time][nominal_elevation]['latitudes']  = latitudes
-                        out_dict[this_radar][this_time][nominal_elevation]['longitudes'] = longitudes
+                        out_dict[this_radar][this_time][nominal_elevation]['latitudes']   = latitudes
+                        out_dict[this_radar][this_time][nominal_elevation]['longitudes']  = longitudes
+                        out_dict[this_radar][this_time][nominal_elevation]['m43_heights'] = m43_heights
 
 
     #we are done reading the file
