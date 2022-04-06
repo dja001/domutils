@@ -69,7 +69,7 @@ def read_fst_composite(fst_file:   str=None,
     import domcmc.fst_tools as fst_tools
 
     #logging
-    logger = logging.getLogger(__name__)
+    logger = logging.getLogger()
 
     if verbose > 0:
         logger.warning('verbose keyword is deprecated, please set logging level in calling handler')

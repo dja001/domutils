@@ -9,6 +9,13 @@ Please use the following tags when editing this file:
 *Fixed* for any bug fixes. 
 
 
+## [2.0.21] - 2022-04-06
+### Changed
+- radar_tools  use multiprocessing instead of dask im make_fst
+- radar_tools  change logger call to work with forked processed
+- _py_tools    provide option when inkscape is not available
+
+
 ## [2.0.20] - 2022-02-01
 ### Added
 - radar_tools  capability to read startazA and stopazA in odim volume files

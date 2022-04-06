@@ -1,25 +1,23 @@
-import dask
 
 #identify logger names based on package hierarchy
 logging_basename = 'domutils.radar_tools'
 
 
-@dask.delayed
-def dask_to_fst(*args, **kwargs):
+def multi_to_fst(*args, **kwargs):
     import sys
     import logging
-    from dask.distributed import get_worker
+    import multiprocessing
 
     #logger name is the same for all workers
-    logger = logging.getLogger(logging_basename)
+    process_logger = logging.getLogger()
 
     #add handlers if none are present for this worker
-    if not len(logger.handlers):
+    if not len(process_logger.handlers):
         command_line_args = args[2]
-        logger.setLevel(command_line_args.log_level)
+        process_logger.setLevel(command_line_args.log_level)
         logging.captureWarnings(True)
         #handlers
-        worker_id = str(get_worker().id).lower()
+        worker_id = str(multiprocessing.current_process().name)
         stream_handler = logging.StreamHandler(sys.stdout)
         file_handler = logging.FileHandler('logs/'+worker_id, 'w')
         #levels
@@ -31,8 +29,8 @@ def dask_to_fst(*args, **kwargs):
         formatter_file= logging.Formatter('%(asctime)s - %(name)s in %(funcName)s - %(levelname)s - %(message)s')
         file_handler.setFormatter(formatter_file)
         #add handlers
-        logger.addHandler(stream_handler)
-        logger.addHandler(file_handler)
+        process_logger.addHandler(stream_handler)
+        process_logger.addHandler(file_handler)
 
     return to_fst(*args, **kwargs)
 
@@ -50,7 +48,7 @@ def to_fst(valid_date, fst_template, args):
     from domutils import radar_tools
     import domutils._py_tools as dpy
 
-    logger = logging.getLogger(logging_basename)
+    logger = logging.getLogger()
     logger.info('to_fst starting to process date: '+str(valid_date))
 
     #output filename and directory
@@ -238,17 +236,17 @@ def to_datetime(time_str):
 def make_fst(t0, tf, dt, args):
     """ read odim H5, manipulate it, and write to fst
 
-    depending on the number of cpus, serial execution or parallel execution with dask will be chosen 
+    depending on the number of cpus, serial execution or parallel execution with multiprocessing will be chosen 
     """
 
     import os
     import datetime
     import glob
     import logging
+    import signal
+    import multiprocessing
+
     import numpy as np
-    import dask
-    import dask.distributed
-    import dask.array
 
     from domcmc import fst_tools
 
@@ -266,7 +264,7 @@ def make_fst(t0, tf, dt, args):
     if fst_template is None:
         raise ValueError('Problem getting PR from: ',args.sample_pr_file )
 
-    #if only 1 cpu, dask is not used
+    #if only 1 cpu, do serial execution in a for loop
     # makes for easier debugging 
     if args.ncores == 1 :
         #serial execution
@@ -274,33 +272,44 @@ def make_fst(t0, tf, dt, args):
         for this_date in date_list:
             to_fst(this_date, fst_template, args)
     else :
-        #parallel conversion with dask
-        logger.info('Launching PARALLEL execution of code with dask')
+        #parallel conversion with nultiprocessing
+        logger.info('Launching PARALLEL execution of code with multiprocessing')
 
-        #open dask client for parallel execution
-        #   level 40 hides dask warnings which are numerous and annoying 
-        client = dask.distributed.Client(processes=True, threads_per_worker=1,n_workers=args.ncores,silence_logs=40)
+        #setup parallel submission
+        original_sigint_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
+        pool = multiprocessing.Pool(args.ncores)
+        signal.signal(signal.SIGINT, original_sigint_handler)
 
-        # My functions returns 1 if success
-        sample = np.array([1])
-
-        #delay data passed to function
-        fst_template = dask.delayed(fst_template) 
-        args         = dask.delayed(args) 
-
-        #a generator for the result list
-        res_list = [dask.array.from_delayed(dask_to_fst(this_date, fst_template, args), sample.shape, sample.dtype) for this_date in date_list]
-
-        #to dask array
-        res_array = dask.array.concatenate(res_list)
+        #function that gets called when something goes wrong in the poop
+        def kill_pool(err_msg):
+            print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
+            print('Error message from failing task:')
+            print(err_msg)
+            print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
+            pool.terminate()
         
-        # No computation is performed here.
-        res_sum = res_array.sum()
+        #jobs are launched in parallel
+        res_list = []
+        for this_date in date_list:
+            res_list.append(
+                    pool.apply_async( multi_to_fst, 
+                                      args=(this_date, fst_template, args), 
+                                      error_callback=kill_pool,
+                                    ) 
+                )
 
-        #parallel execution
-        num_sucess = res_sum.compute()
-        print('sucess', num_sucess, 'files processed')
+        #get results
+        results = np.asarray([_res.get() for _res in res_list])
 
+        # Normal termination
+        pool.close()
+        pool.join()
+
+        # check that we received all correct termination
+        if results.sum() != len(date_list) :
+            print(results)
+            print(len(date_tup_list))
+            raise RuntimeError('did not receive correct termination from all processes')
 
 
 def main():
@@ -365,6 +374,7 @@ def main():
     import datetime
     import logging
     import domutils._py_tools as dpy
+
 
     #keep track of runtime
     time_start = time.time()
@@ -452,16 +462,17 @@ def main():
     dt = parse_num(args.output_dt) * 60. #convert dt to seconds
 
 
-    # logging is configured to write everytiing to stdout in addition to a log file
-    # in a 'logs' directory
 
     #make sure 'logs' directory exists and is empty
     if os.path.isdir('logs'):
         os.system('rm -f ./logs/main.log')
-        os.system('rm -f ./logs/worker*')
+        os.system('rm -f ./logs/ForkPoolWorker*')
     else:
         #no need for parallel stuff here but the function already exists and will get the job done.
         dpy.parallel_mkdir('logs')
+
+    # logging is configured to write everything to stdout in addition to a log file
+    # in a 'logs' directory
     logging.captureWarnings(True)
     logger = logging.getLogger(logging_basename)
     logger.setLevel(args.log_level)
@@ -479,6 +490,8 @@ def main():
     #add handlers
     logger.addHandler(stream_handler)
     logger.addHandler(file_handler)
+
+
 
     #log header
     logger.info('')
