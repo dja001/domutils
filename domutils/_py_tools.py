@@ -23,6 +23,7 @@ def convert(pic_name, img_type, del_orig=False, density=300, geometry='100%', de
     #convert figure to gif, png, ... while preserving hack for lmRoman typeface
     # this is very much work in progress
 
+    import warnings
     import subprocess
     import os
     import shutil
@@ -30,49 +31,53 @@ def convert(pic_name, img_type, del_orig=False, density=300, geometry='100%', de
     file_name, file_extension = os.path.splitext(pic_name)
     source_file = pic_name
 
-
-    """
-    STEP 1
-      use inkscape to get a post-script from matplotlib's svg 
-      inkscape will handle axes clipping correctly
-      with del_eps=False you will even have post-scripts files for LateX
-    """
-    made_eps = False
-    if file_extension == '.svg' :
-        made_eps = True
-        eps_name = file_name+'.eps'
-        cmd = ['inkscape', '-z', source_file, '-E', eps_name]
-        process = subprocess.Popen(cmd, stdout=subprocess.PIPE)
-        output, error = process.communicate()
-        source_file = eps_name
-
-    """
-    STEP 2
-      use convert to get whatever format you like. 
-      png, gif, jpg, etc... 
-    """
-    if img_type != 'eps' :
-        #convert to gif using convert
-        cmd = ['convert', '-density', str(density), '-geometry', geometry, source_file, file_name +'.' + img_type]
-        process = subprocess.Popen(cmd, stdout=subprocess.PIPE)
-        output, error = process.communicate()
-
     #recipe for conversion to pdf
     #these days, I tend to output svg which I then edit with Inkscape and then save as pdf for use with beamer
     #ps2pdf -dEPSCrop -dColorConversionStrategy=/LeaveColorUnchanged  -dEncodeColorImages=false  -dEncodeGrayImages=false  -dEncodeMonoImages=false
 
-    """
-    STEP 3
-      cleanup
-    """
-    #delete temp file
-    if del_orig :
-        os.remove(pic_name)
+    if shutil.which('inkscape') is not None:
+        #inkscape is available on system
 
-    if made_eps :
-        if del_eps and not img_type == 'eps' :
-            #ignore del_eps when desired fig type is eps
-            os.remove(eps_name)
+        """
+        STEP 1
+          use inkscape to get a post-script from matplotlib's svg 
+          inkscape will handle axes clipping correctly
+          with del_eps=False you will even have post-scripts files for LateX
+        """
+        made_eps = False
+        if file_extension == '.svg' :
+            made_eps = True
+            eps_name = file_name+'.eps'
+            cmd = ['inkscape', '-z', source_file, '-E', eps_name]
+            process = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+            output, error = process.communicate()
+            source_file = eps_name
+
+        """
+        STEP 2
+          use convert to get whatever format you like. 
+          png, gif, jpg, etc... 
+        """
+        if img_type != 'eps' :
+            #convert to gif using convert
+            cmd = ['convert', '-density', str(density), '-geometry', geometry, source_file, file_name +'.' + img_type]
+            process = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+            output, error = process.communicate()
+
+        """
+        STEP 3
+          cleanup
+        """
+        #delete temp file
+        if del_orig :
+            os.remove(pic_name)
+
+        if made_eps :
+            if del_eps and not img_type == 'eps' :
+                #ignore del_eps when desired fig type is eps
+                os.remove(eps_name)
+    else:
+        warnings.warn('Inkscape not available on system, no conversion performed, you will have to live with matplotlibs conversions')
 
 
 

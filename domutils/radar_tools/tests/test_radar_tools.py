@@ -65,7 +65,7 @@ class TestStringMethods(unittest.TestCase):
         make_radar_fst.to_fst(args.t0, fst_template, args)
 
         #pre saved figure
-        new_figure = '/fs/homeu1/eccc/mrd/ords/rpndat/dja001/python/packages/domutils_package/test_results//make_radar_fst/20191031_1600.svg'
+        new_figure = test_results_dir+'20191031_1600.svg'
 
         #pre saved figure for what the results should be
         reference_image = package_dir+'/test_data/_static/'+os.path.basename(new_figure)

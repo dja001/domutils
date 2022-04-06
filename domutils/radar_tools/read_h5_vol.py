@@ -93,7 +93,7 @@ def read_h5_vol(odim_file:   str=None,
     import domutils.geo_tools   as geo_tools
 
     #logging
-    logger = logging.getLogger(__name__)
+    logger = logging.getLogger()
 
     #checks that filename was provided and is valid
     if odim_file is None :

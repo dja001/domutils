@@ -28,6 +28,8 @@ def plot_rdpr_rdqi(fst_file:   str=None,
     from os import linesep as newline
     import datetime
     import logging
+    import gc
+    import shutil
     import numpy as np
     import matplotlib as mpl
     import matplotlib.pyplot as plt
@@ -41,7 +43,7 @@ def plot_rdpr_rdqi(fst_file:   str=None,
     import domutils._py_tools as dpy
 
     #logging
-    logger = logging.getLogger(__name__)
+    logger = logging.getLogger()
 
     #use provided data path for cartiopy shapefiles
     #TODO there has got to be a better way to do this!
@@ -229,18 +231,24 @@ def plot_rdpr_rdqi(fst_file:   str=None,
 
     #save figure
     svg_name = fig_dir + this_date.strftime(fig_name_recipe)
-    logger.info('Saving figure:'+svg_name+', changing typeface and converting format if needed.')
-    plt.savefig(svg_name)
-    plt.close(fig)
 
+    if shutil.which('inkscape') is not None:
+        #inkscape is available, use it for conversion
+        logger.info('Saving figure:'+svg_name+', changing typeface and converting format if needed.')
+        plt.savefig(svg_name)
 
-    dpy.lmroman(svg_name)
-    if fig_format != 'svg':
-        dpy.convert(svg_name, fig_format, del_orig=True, density=500, geometry='50%')
+        dpy.lmroman(svg_name)
+        if fig_format != 'svg':
+            dpy.convert(svg_name, fig_format, del_orig=True, density=500, geometry='50%')
+    else:
+        #inkscape not available
+        logger.info('Inkscape not available, will use matplotlibs conversion tools')
+        file_name, file_extension = os.path.splitext(svg_name)
+        plt.savefig(f'{file_name}.{fig_format}', format=fig_format, dpi=300)
 
     #not sure what is accumulating but adding this garbage collection step 
     #prevents jobs from aborting when a large number of files are made 
-    #gc.collect()
-    #not sure if needed anymore... keeping commented command here just in case. 
+    plt.close(fig)
+    gc.collect()
 
     logger.info('plot_rdpr_rdqi Done')

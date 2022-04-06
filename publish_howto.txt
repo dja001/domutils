@@ -96,7 +96,7 @@ twine upload dist/*
 - from the root of the repo from somewhere with internet connexion
     To load in environment if not already done:
         conda install anaconda-client conda-build
-conda build --py 3.7 --py 3.8 --py 3.9  conda_build/domutils
+conda build --py 3.7 --py 3.8 --py 3.9 --py 3.10  conda_build/domutils 
 
 and upload it to anaconda cloud
 
