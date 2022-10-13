@@ -113,7 +113,7 @@ class TestStringMethods(unittest.TestCase):
         print(ppi_keys)
         should_be=("dict_keys(['dbzh', 'quality_beamblockage', 'quality_att',"+
                    " 'quality_broad', 'quality_qi_total', 'nominal_elevation',"+
-                   " 'azimuths', 'elevations', 'ranges', 'latitudes', 'longitudes'])")
+                   " 'azimuths', 'elevations', 'ranges', 'latitudes', 'longitudes', 'm43_heights'])")
         self.assertEqual(ppi_keys == should_be, True)
 
         #check returned values

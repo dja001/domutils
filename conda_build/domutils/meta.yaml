@@ -1,5 +1,5 @@
 {% set name = "domutils" %}
-{% set version = "2.0.21" %}
+{% set version = "2.0.22" %}
 
 package:
   name: "{{ name }}"
@@ -13,7 +13,7 @@ build:
 
 requirements:
   host:
-    - cartopy >=0.17.0
+    - cartopy>=0.17.0,<0.20|>=0.21
     - h5py >=2.9.0
     - matplotlib >=3.1.1
     - numpy >=1.17.0
@@ -23,7 +23,7 @@ requirements:
     - packaging
 
   run:
-    - cartopy >=0.17.0
+    - cartopy>=0.17.0,<0.20|>=0.21
     - h5py >=2.9.0
     - matplotlib >=3.1.1
     - numpy >=1.17.0

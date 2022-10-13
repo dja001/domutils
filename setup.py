@@ -22,6 +22,8 @@ setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     packages=find_packages(),    
-    install_requires=['python >= 3.7.0', 'matplotlib >= 3.1.1', 'numpy >= 1.17.0', 'cartopy >= 0.17.0', 'h5py >= 2.9.0', 
-                      'packaging', 'pygrib'],
+    ## dependencies are commented since they are now handled by conda
+    ## if you install with pip, you probably know what you are doing and dependencies are no longer enforced to facilitate development and testing
+    #install_requires=['python >= 3.7.0', 'matplotlib >= 3.1.1', 'numpy >= 1.17.0', 'cartopy >= 0.17.0', 'h5py >= 2.9.0', 
+    #                  'packaging', 'pygrib'],
 )

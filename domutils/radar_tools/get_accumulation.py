@@ -166,7 +166,7 @@ def get_accumulation(end_date:         Optional[Any]   = None,
           ext == '.06h'  or
           ext == '.24h') :
         # accumulation length in minutes
-        radar_dt = np.float(ext[1:3]) * 60.
+        radar_dt = float(ext[1:3]) * 60.
     elif ext == '.fst':
         radar_dt = 10.
         warnings.warn('Using fst files assuming precip rates are available every 10 minutes')

@@ -8,13 +8,18 @@ Please use the following tags when editing this file:
 *Removed* for now removed features.
 *Fixed* for any bug fixes. 
 
+## [2.0.22] - 2022-09-13
+### Changed
+- radar_tools  remove annoying ShapelyDeprecationWarnings
+- radar_tools  add 4/3 heights to output when reading sqlite volumes
+- radar_tools  possibility to read only certain elevation in sqlite volume scans
+- radar_tools  changed a few np.float and np.int for float and int
 
 ## [2.0.21] - 2022-04-06
 ### Changed
 - radar_tools  use multiprocessing instead of dask im make_fst
 - radar_tools  change logger call to work with forked processed
 - _py_tools    provide option when inkscape is not available
-
 
 ## [2.0.20] - 2022-02-01
 ### Added
@@ -34,7 +39,6 @@ Please use the following tags when editing this file:
 - radar_tools/read_h5_vol now checks version of odim file 
 - radar_tools/model_43 now computes rate of change for height as a function of dist_earth 
 - get_accumulation  now raises a warning and return None if first accumulation file is missing
-
 
 ## [2.0.17] - 2021-05-07
 ### Added
@@ -93,7 +97,6 @@ Please use the following tags when editing this file:
 - plot_rdpr_rdqi.py a module that plots the content of the standard file above.
 ### Fixed
 - several examples had img_res=(nx,ny) size inverted. img_res should be ( x pixel E-W , y pixel N-S)
-
 
 ## [2.0.7] - 2020-07-16
 ### Added 
