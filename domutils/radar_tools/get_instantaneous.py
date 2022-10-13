@@ -164,7 +164,7 @@ def get_instantaneous(valid_date:       Optional[Any]   = None,
         except :
             raise ValueError('Could get minute from datetime object valid_date*')
 
-        for tt in np.arange(0, np.float(nearest_time)):
+        for tt in np.arange(0, float(nearest_time)):
             this_time = valid_date - datetime.timedelta(minutes=tt)
             minutes = this_time.minute
             remainder = np.mod(minutes, nearest_time)
@@ -214,6 +214,9 @@ def get_instantaneous(valid_date:       Optional[Any]   = None,
         out_dict = read_stage4_composite(data_file,
                                          latlon=latlon)        
     elif ext == '.grib2':
+        #
+        #
+        #MRMS grib format
         out_dict = read_mrms(data_file, quantity=desired_quantity,
                              latlon=latlon)        
     else:
@@ -242,7 +245,7 @@ def get_instantaneous(valid_date:       Optional[Any]   = None,
             #First try to get precip_rate from an accumulation 
             try:
                 this_accum = out_dict['accumulation']
-                accum_len_h = np.float(ext[1:3])          
+                accum_len_h = float(ext[1:3])          
                 out_dict['precip_rate'] = np.where(np.isclose(this_accum, missing),
                                                    missing,
                                                    this_accum/accum_len_h)

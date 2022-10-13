@@ -34,9 +34,15 @@ def plot_rdpr_rdqi(fst_file:   str=None,
     import matplotlib as mpl
     import matplotlib.pyplot as plt
     from   packaging import version
+
+    #remove annoying shapely deprecation warnings
+    import warnings
+    from shapely.errors import ShapelyDeprecationWarning
+    warnings.filterwarnings('ignore', category=ShapelyDeprecationWarning)
     import cartopy
     import cartopy.crs as ccrs
     import cartopy.feature as cfeature
+
     import domutils.legs as legs
     import domcmc.fst_tools as fst_tools
     import domutils.geo_tools as geo_tools
@@ -96,6 +102,8 @@ def plot_rdpr_rdqi(fst_file:   str=None,
     mpl.rcParams['svg.fonttype'] = 'none'
     # Hi def figure
     mpl.rcParams['figure.dpi'] = dpi
+    # pretty font in figures
+    #mpl.rcParams['font.family'] = 'Latin Modern Roman'
     # instantiate figure
     fig = plt.figure(figsize=(fig_w, fig_h))
 
