@@ -172,9 +172,9 @@ def read_sqlite_vol(sqlite_file:      str=None,
     #convert strings to datetime
     vol_scan_in_file = [ datetime.datetime.strptime(this_str,"%Y%m%d%H%M%S" ) for this_str in vol_scan_in_file ]
     vol_scan_in_file.sort()
-    logger.info('Available volume scan date(s) in file:')
-    for date in vol_scan_in_file:
-        logger.info(date)
+    #logger.info('Available volume scan date(s) in file:')
+    #for date in vol_scan_in_file:
+    #    logger.info(date)
     #restrict our reading to one or a few volume scan times if required
     if vol_scans == 'all' :
         vol_scan_list = vol_scan_in_file
@@ -195,9 +195,10 @@ def read_sqlite_vol(sqlite_file:      str=None,
     elev_format = '{:4.1f}'
     elevs_in_file = []
     for entry in entries:
-        this_elevation    = elev_format.format(entry['NOMINAL_PPI_ELEVATION']).strip()
-        if this_elevation not in elevs_in_file:
-            elevs_in_file.append(this_elevation)
+        if entry['ID_STN'] in radar_dict.keys():
+            this_elevation    = elev_format.format(entry['NOMINAL_PPI_ELEVATION']).strip()
+            if this_elevation not in elevs_in_file:
+                elevs_in_file.append(this_elevation)
     #restrict our reading to one or a few PPIs if required
     if elevations == 'all' :
         elevation_list = elevs_in_file
@@ -211,7 +212,33 @@ def read_sqlite_vol(sqlite_file:      str=None,
             else:
                 warnings.warn(f'desired elevation {this_elevation} is not in file')
     #sort list of nominal elevations for prettier outputs
-    elevation_list.sort()
+    elevation_float = np.sort(np.array(elevation_list,dtype=float))
+    elevation_list = [ f'{this_elevation:.1f}' for this_elevation in elevation_float]
+
+    #
+    #
+    #Some info on what is available when
+    for this_radar in radar_dict.keys():
+        for this_time in vol_scan_list:
+            yyyymodd = this_time.strftime("%Y%m%d")
+            hhmiss   = this_time.strftime("%H%M%S")
+            #get elevations at this time
+            query = (f'select NOMINAL_PPI_ELEVATION from header '
+                     f'where ID_STN == "{this_radar}" '
+                     f'and DATE == {yyyymodd} '
+                     f'and TIME == {hhmiss}; '
+                    )
+            c.execute(query)
+            elevations = c.fetchall()
+            if len(elevations) == 0:
+                warnings.warn('No elevations for query:'+query+' Something weird is going on.')
+            else:
+                elev_list = []
+                for this_elev in elevations:
+                    elev_rounded = np.round(this_elev['NOMINAL_PPI_ELEVATION']*100.)/100.
+                    if not np.any(np.isclose(np.array(elev_list), elev_rounded)):
+                        elev_list.append(elev_rounded)
+            print(this_radar, this_time, 'elevs: ', np.sort(elev_list))
 
     #Fill output dictionary reconstructing one PPI at a time.
     output_is_empty = True
@@ -235,7 +262,7 @@ def read_sqlite_vol(sqlite_file:      str=None,
                 elev_low_bound  = float(nominal_elevation)-small
                 elev_high_bound = float(nominal_elevation)+small
                 #header tables
-                query = (f'select ID_OBS, LAT, LON, CENTER_ELEVATION, CENTER_AZIMUTH, RANGE_START, RANGE_END from header '
+                query = (f'select ID_OBS, LAT, LON, CENTER_ELEVATION, CENTER_AZIMUTH, RANGE_START, RANGE_END, NOMINAL_PPI_ELEVATION from header '
                          f'where ID_STN == "{this_radar}" '
                          f'and DATE == {yyyymodd} '
                          f'and TIME == {hhmiss} '
@@ -248,7 +275,7 @@ def read_sqlite_vol(sqlite_file:      str=None,
                     output_is_empty = False
 
                 #figure out azimuths, elevations and id_obs for this PPI
-                id_obs_arr      = np.zeros(len(headers), dtype=np.int)
+                id_obs_arr      = np.zeros(len(headers), dtype=int)
                 azimuth_in_ppi  = np.zeros(len(headers))
                 elevation_in_ppi= np.zeros(len(headers))
                 range_start_arr = np.zeros(len(headers))
@@ -376,7 +403,7 @@ def read_sqlite_vol(sqlite_file:      str=None,
 
                     #fill output dict for this PPI
                     out_dict[this_radar][this_time][nominal_elevation]['azimuths']   = azimuth_arr
-                    out_dict[this_radar][this_time][nominal_elevation]['elevations'] = np.full((n_azimuths,), np.float(nominal_elevation))
+                    out_dict[this_radar][this_time][nominal_elevation]['elevations'] = np.full((n_azimuths,), float(nominal_elevation))
                     out_dict[this_radar][this_time][nominal_elevation]['ranges']     = range_bin_arr
                     #initialize out_dict with nodata for each ppi to fill
                     for this_quantity in quantities_to_retrieve:

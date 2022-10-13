@@ -77,7 +77,7 @@ def read_h5_vol(odim_file:   str=None,
         >>> #
         >>> #check returned PPI dictionary
         >>> print(res['0.4'].keys())
-        dict_keys(['dbzh', 'vradh', 'th', 'rhohv', 'uphidp', 'wradh', 'phidp', 'zdr', 'dr', 'kdp', 'sqih', 'quality_beamblockage', 'quality_att', 'quality_broad', 'quality_qi_total', 'nominal_elevation', 'azimuths', 'elevations', 'ranges', 'latitudes', 'longitudes'])
+        dict_keys(['dbzh', 'vradh', 'th', 'rhohv', 'uphidp', 'wradh', 'phidp', 'zdr', 'dr', 'kdp', 'sqih', 'quality_beamblockage', 'quality_att', 'quality_broad', 'quality_qi_total', 'nominal_elevation', 'azimuths', 'elevations', 'ranges', 'latitudes', 'longitudes', 'm43_heights'])
 
 
 
@@ -256,12 +256,14 @@ def read_h5_vol(odim_file:   str=None,
                         #on 2D grid
                         melevs, mranges = np.meshgrid(ll_elevations, ll_ranges, indexing='ij')
                         #distance following curvature of the earth  /1e3 since this function takes km in
-                        dist_earth = radar_tools.model_43(elev=melevs, dist_beam=mranges/1e3, hrad=radar_height/1e3, want='dist_earth')
+                        dist_earth  = radar_tools.model_43(elev=melevs, dist_beam=mranges/1e3, hrad=radar_height/1e3, want='dist_earth')
+                        m43_heights = radar_tools.model_43(elev=melevs, dist_beam=mranges/1e3, hrad=radar_height/1e3, want='height')
                         #compute the lat/lon values associated with a given PPI
                         longitudes, latitudes = geo_tools.lat_lon_range_az(radar_lon, radar_lat, dist_earth, ll_azimuths[:,np.newaxis])
                         #save output
-                        out_dict[elevation_str]['latitudes']  = latitudes
-                        out_dict[elevation_str]['longitudes'] = longitudes
+                        out_dict[elevation_str]['latitudes']   = latitudes
+                        out_dict[elevation_str]['longitudes']  = longitudes
+                        out_dict[elevation_str]['m43_heights'] = m43_heights
 
     h5_obj.close()
 

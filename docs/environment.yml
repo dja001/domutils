@@ -7,7 +7,7 @@ dependencies:
       - python=3.7
       - numpy
       - scipy 
-      - cartopy 
+      - cartopy>=0.17.0,<0.20|>=0.21;
       - matplotlib
       - h5py
       - conda-forge::sphinx-autodoc-typehints 

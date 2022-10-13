@@ -11,6 +11,7 @@ Notes for me to remember steps involved in publishing this package
    On the science network, can link to dataset with:
    /home/dja001/shared_stuff/files/test_data_for_domutils_on_zenodo/v?.?.?
 
+  On a computer with access to inkscape:
 - run unitttests
   python -m unittest discover
 
@@ -66,7 +67,7 @@ Notes for me to remember steps involved in publishing this package
        - don't forget to add new files and .tgz if needed
 
 
-  If the zenodo archive was changes, it must be tested
+  If the zenodo archive was changed, it must be tested
   rm -rf test_data test_results
   Updating the dataset version and file list will be necessary
   download_test_data.sh
