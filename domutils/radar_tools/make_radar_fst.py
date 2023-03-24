@@ -145,8 +145,22 @@ def to_fst(valid_date, fst_template, args):
     logger.info('writing ' + output_file)
     iunit = rmn.fstopenall(output_file,rmn.FST_RW)
 
-    #write >> ^^ to output file
-    rmn.writeGrid(iunit, fst_template['grid'])
+    if 'combined_yy_grid' in fst_template.keys():
+        #write ^> to output file
+        rmn.writeGrid(iunit, fst_template['combined_yy_grid'])
+
+        #put precip rate into combined YY array
+        nx, ny = precip_rate.shape
+        reshaped_pr = np.full((nx, ny*2), -9999.)
+        reshaped_qi = np.zeros((nx, ny*2))
+        reshaped_pr[:,0:ny] = precip_rate
+        reshaped_qi[:,0:ny] = quality_index
+        precip_rate   = reshaped_pr
+        quality_index = reshaped_qi
+
+    else:
+        #write >> ^^ to output file
+        rmn.writeGrid(iunit, fst_template['grid'])
 
     #make RDPR entry
     rdpr_entry = copy.deepcopy(fst_template['meta'])
