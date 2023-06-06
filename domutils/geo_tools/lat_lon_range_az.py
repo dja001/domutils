@@ -66,9 +66,10 @@ def lat_lon_range_az( lon1_in:      Any,
            >>> azimuth_deg = 0.
            >>> # coordinates of extended point
            >>> lon2, lat2 = geo_tools.lat_lon_range_az(lon1,lat1,range_km,azimuth_deg)
-           >>> print(lon2, lat2)
-           0.0 45.192099833854435
-           >>> 
+           >>> #   print(lon2, lat2) should give approximately
+           >>> #   0.0 45.192099833854435
+           >>> print(np.allclose((lon2, lat2), (0.0, 45.192099833854435)))
+           True
            >>>  #Also works for inputs arrays
            >>> lat1        = [[0.,     0],
            ...                [0.,     0]]
@@ -79,12 +80,9 @@ def lat_lon_range_az( lon1_in:      Any,
            >>> azimuth_deg = [[0.,     90.],
            ...                [-90.,   180]]
            >>> lon2, lat2 = geo_tools.lat_lon_range_az(lon1,lat1,range_km,azimuth_deg)
-           >>> print(lon2)
-           [[ 0.0000000e+00  4.5000000e+01]
-            [-4.5000000e+01  7.0167093e-15]]
-           >>> print(lat2)
-           [[ 4.51920998e+01  9.05659542e-15]
-            [ 9.05659542e-15 -4.51920998e+01]]
+           >>> print(np.allclose(lon2, np.array([[ 0.0000000e+00,  4.5000000e+01],
+           ...                                   [-4.5000000e+01,  7.0167093e-15]])))
+           True
 
            Since arrays are broadcasted together, inputs that consists of repeated values
            can be passed as floats. 

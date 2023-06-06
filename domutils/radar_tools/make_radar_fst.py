@@ -115,7 +115,7 @@ def to_fst(valid_date, fst_template, args):
 
     #if we got nothing, fill output with nodata and zeros
     if dat_dict is None:
-        logger.warning('no data found or file unreadeable, I observations are set to -9999. with quality index = 0.')
+        logger.warning('no data found or file unreadeable, observations are set to -9999. with quality index = 0.')
         expected_shape  = dest_lat.shape
         precip_rate     = np.full(expected_shape, -9999.)
         quality_index   = np.zeros(expected_shape)

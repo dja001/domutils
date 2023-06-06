@@ -244,6 +244,86 @@ class TestStringMethods(unittest.TestCase):
                [  0,   0,   0]]   #     6       black
         self.assertEqual(rgb_img.tolist(),ans)
 
+    def renders_in_non_geo_plots(self):
+        ''' test funtion that make a fst file from odim h5 mosaic file
+
+        I would need to find a way to test the entire script that parses arguments with argparse
+        
+        '''
+
+        import os
+        import numpy as np
+        import scipy.signal
+        import matplotlib.pyplot as plt
+        import matplotlib as mpl
+        import domutils.legs as legs
+        import domutils
+        import domutils._py_tools as py_tools
+
+        #setting up directories
+        domutils_dir = os.path.dirname(domutils.__file__)
+        package_dir  = os.path.dirname(domutils_dir)
+        test_results_dir = package_dir+'/test_results/make_radar_fst/'
+        if not os.path.isdir(test_results_dir):
+            os.makedirs(test_results_dir)
+
+        
+        #Gaussian bell mock data
+        npts = 1024
+        half_npts = int(npts/2)
+        x = np.linspace(-1., 1, half_npts+1)
+        y = np.linspace(-1., 1, half_npts+1)
+        xx, yy = np.meshgrid(x, y)
+        gauss_bulge = np.exp(-(xx**2 + yy**2) / .6**2)
+        #exceptions are usefull for NoData, missing values, etc
+        #lets assing exception values to the Gaussian Bulge data
+        gauss_bulge_with_exceptions = np.copy(gauss_bulge)
+        gauss_bulge_with_exceptions[388:488, 25:125] = -9999.
+        gauss_bulge_with_exceptions[388:488,150:250] = -6666.
+        gauss_bulge_with_exceptions[388:488,275:375] = -3333.
+        
+        # figure properties
+        mpl.rcParams.update({'font.size': 15})
+        fig_w, fig_h = 5.6, 5.#size of figure
+        fig = plt.figure(figsize=(fig_w, fig_h))
+
+        rec_w = 4.           #size of axes
+        rec_h = 4.           #size of axes
+        sp_w  = 2.           #horizontal space between axes
+        sp_h  = 1.           #vertical space between axes
+        
+        x0 = (.5)/fig_w 
+        y0 = .5/fig_h
+        ax = fig.add_axes([x0,y0,rec_w/fig_w,rec_h/fig_h])
+        for axis in ['top','bottom','left','right']:   
+            ax.spines[axis].set_linewidth(.3)
+        limits = (-1.,1.)           #data extent for axes
+        dum = ax.set_xlim(limits)   # "dum =" to avoid printing output
+        dum = ax.set_ylim(limits) 
+        ticks  = [-1.,0.,1.]        #tick values
+        dum = ax.set_xticks(ticks)
+        dum = ax.set_yticks(ticks)
+
+        mapping_3_except = legs.PalObj(excep_val=[-9999.,      -6666.,    -3333.],
+                                       excep_col=['dark_green','grey_80', 'light_pink'])
+        mapping_3_except.plot_data(ax=ax,data=gauss_bulge_with_exceptions,
+                                   palette='right', pal_units='[unitless]',
+                                   pal_format='{:2.0f}')
+        
+        #newly generated figure
+        new_figure = test_results_dir+'three_exceptions.svg'
+        plt.savefig(new_figure)
+
+        #pre saved figure for what the results should be
+        reference_image = package_dir+'/test_data/_static/'+'three_exceptions.svg'
+
+        #compare image with saved reference
+        #copy reference image to testdir
+        images_are_similar = py_tools.render_similarly(new_figure, reference_image)
+
+        #test fails if images are not similar
+        self.assertEqual(images_are_similar, True)
+
 
 
 if __name__ == '__main__':
