@@ -1,6 +1,7 @@
 
 #identify logger names based on package hierarchy
 logging_basename = 'domutils.radar_tools'
+import numpy as np
 
 
 def multi_to_fst(*args, **kwargs):
@@ -42,13 +43,15 @@ def to_fst(valid_date, fst_template, args):
     import time
     import copy
     import logging
-    import numpy as np
     import rpnpy.librmn.all as rmn
     from rpnpy.rpndate import RPNDate
     from domutils import radar_tools
     import domutils._py_tools as dpy
 
     logger = logging.getLogger()
+    if not len(logger.handlers):
+        #if logger not set in multi_to_fst, we are running serially, use main logger
+        logger = logging.getLogger(logging_basename)
     logger.info('to_fst starting to process date: '+str(valid_date))
 
     #output filename and directory
@@ -247,7 +250,7 @@ def to_datetime(time_str):
     return datetime.datetime(yyyy,mo,dd,hh,mi,ss)
 
 
-def make_fst(t0, tf, dt, args):
+def make_fst(args):
     """ read odim H5, manipulate it, and write to fst
 
     depending on the number of cpus, serial execution or parallel execution with multiprocessing will be chosen 
@@ -260,18 +263,12 @@ def make_fst(t0, tf, dt, args):
     import signal
     import multiprocessing
 
-    import numpy as np
 
     from domcmc import fst_tools
 
 
     #logging
     logger = logging.getLogger(logging_basename)
-
-    #make list of dates where radar data is needed
-    t_len = (tf-t0) + datetime.timedelta(seconds=1)    #+ 1 second for inclusive end point
-    elasped_seconds = t_len.days*3600.*24. + t_len.seconds
-    date_list = [t0 + datetime.timedelta(seconds=x) for x in np.arange(0,elasped_seconds,dt)]
 
     logger.info('getting output domain from: '+ args.sample_pr_file)
     fst_template = fst_tools.get_data(args.sample_pr_file, var_name='PR', latlon=True)
@@ -283,7 +280,7 @@ def make_fst(t0, tf, dt, args):
     if args.ncores == 1 :
         #serial execution
         logger.info('Launching SERIAL execution of code')
-        for this_date in date_list:
+        for this_date in args.input_date_list:
             to_fst(this_date, fst_template, args)
     else :
         #parallel conversion with nultiprocessing
@@ -304,7 +301,7 @@ def make_fst(t0, tf, dt, args):
         
         #jobs are launched in parallel
         res_list = []
-        for this_date in date_list:
+        for this_date in args.input_date_list:
             res_list.append(
                     pool.apply_async( multi_to_fst, 
                                       args=(this_date, fst_template, args), 
@@ -320,10 +317,73 @@ def make_fst(t0, tf, dt, args):
         pool.join()
 
         # check that we received all correct termination
-        if results.sum() != len(date_list) :
+        if results.sum() != len(args.input_date_list) :
             print(results)
             print(len(date_tup_list))
             raise RuntimeError('did not receive correct termination from all processes')
+
+
+def make_motion_vectors(args):
+    """ given radar observations available at a evenly separated list of time, compute motion vectors
+
+    depending on the number of cpus, serial execution or parallel execution with multiprocessing will be chosen 
+    """
+
+    import os
+    import datetime
+    import glob
+    import logging
+    import signal
+    import multiprocessing
+    import pysteps
+    import domutils
+    import time
+
+
+    from domcmc import fst_tools
+
+    #logging
+    logger = logging.getLogger(logging_basename)
+
+    #read first entry to get dimensions
+    z_v = fst_tools.get_data(var_name='RDPR', dir_name=args.output_dir, datev=args.input_date_list[0])['values']
+    nx, ny = z_v.shape
+    nt = 3
+    z_acc = np.zeros((nt, ny, nx))
+    z_acc[0,:,:] = np.transpose(domutils.radar_tools.exponential_zr(z_v, r_to_dbz=True))
+
+    #read second entry
+    print(args.input_date_list[1])
+    z_v = fst_tools.get_data(var_name='RDPR', dir_name=args.output_dir, datev=args.input_date_list[1])['values']
+    z_acc[1,:,:] = np.transpose(domutils.radar_tools.exponential_zr(z_v, r_to_dbz=True))
+
+    #dbz_acc = domutils.radar_tools.exponential_zr(pr_acc, r_to_dbz=True)
+    u_arr = np.zeros((nx, ny, len(args.input_date_list)-2))
+    v_arr = np.zeros((nx, ny, len(args.input_date_list)-2))
+    oflow_method = pysteps.motion.get_method("LK")
+    for tt, this_time in enumerate(args.input_date_list[2:]):
+        print(this_time)
+        t1 = time.time()
+        z_v = fst_tools.get_data(var_name='RDPR', dir_name=args.output_dir, datev=this_time)['values']
+        z_acc[2,:,:] = np.transpose(domutils.radar_tools.exponential_zr(z_v, r_to_dbz=True))
+        t2 = time.time()
+        
+        #remove small values
+        min_dbz = 0.
+        z_acc = np.where(z_acc < min_dbz, 0., z_acc)
+        
+        #oflow_method = pysteps.motion.get_method("farneback")
+        t3 = time.time()
+        uv_motion = oflow_method(z_acc)
+        t4 = time.time()
+        print('read', t2-t1, 'mv',t4-t3)
+        u_arr[:,:,tt] = np.transpose(uv_motion[0,:,:])
+        v_arr[:,:,tt] = np.transpose(uv_motion[1,:,:])
+
+        #shift before next round
+        z_acc[0,:,:] = z_acc[1,:,:]
+        z_acc[1,:,:] = z_acc[2,:,:]
+
 
 
 def main():
@@ -363,7 +423,7 @@ def main():
                 --h5_latlon_file   /home/dja001/shared_stuff/files/radar_continental_2.5km_2882x2032.pickle   \
                 --t0               ${t_start}                                                                 \
                 --tf               ${t_stop}                                                                  \
-                --output_dt        10                                                                         \
+                --input_dt         10                                                                         \
                 --sample_pr_file   /space/hall4/sitestore/eccc/mrd/rpndat/dja001/domains/hrdps_5p1_prp0.fst   \
                 --ncores           40                                                                         \
                 --complete_dataset True                                                                       \
@@ -402,11 +462,15 @@ def main():
     parser.add_argument("--fst_file_struc"   , type=str,   required=True,  help="strftime syntax for constructing fst filenames")
     parser.add_argument("--h5_file_struc"    , type=str,   required=True,  help="strftime syntax for constructing H5  filenames")
     parser.add_argument("--h5_latlon_file"   , type=str,   required=False, help="Pickle file containing the lat/lons of the Baltrad grid")
-    parser.add_argument("--t0"               , type=str,   required=True,  help="yyyymmsshhmmss begining time; datestring")
-    parser.add_argument("--tf"               , type=str,   required=False, help="yyyymmsshhmmss end      time; datestring")
+    parser.add_argument("--input_t0"         , type=str,   required=True,  help="yyyymmsshhmmss begining time; datestring")
+    parser.add_argument("--input_tf"         , type=str,   required=False, help="yyyymmsshhmmss end      time; datestring")
+    parser.add_argument("--input_dt"         , type=str,   required=True,  help="interval (minutes) between input radar mosaics")
     parser.add_argument("--fcst_len"         , type=float, required=False, help="duration of forecast (hours)")
     parser.add_argument("--accum_len"        , type=str,   required=False, help="duration of accumulation (minutes)")
+    parser.add_argument("--output_t0"        , type=str,   required=False, help="yyyymmsshhmmss begining time; datestring")
+    parser.add_argument("--output_tf"        , type=str,   required=False, help="yyyymmsshhmmss end      time; datestring")
     parser.add_argument("--output_dt"        , type=str,   required=True,  help="interval (minutes) between output radar mosaics")
+    parser.add_argument("--t_interp_method"  , type=str,   default='None', help="time interpolation method")
     parser.add_argument("--sample_pr_file"   , type=str,   required=True,  help="File containing PR to establish the domain")
     parser.add_argument("--ncores"           , type=int,   default=1,      help="number of cores for parallel execution")
     parser.add_argument("--complete_dataset" , type=str,   default='False',help="Skip existing files, default is to clobber them")
@@ -465,15 +529,26 @@ def main():
         raise ValueError('Argument --complete_dataset can only be set to True or False')
 
     #change date from string to datetime object
-    t0 = to_datetime(args.t0)
-    if args.tf is not None:
-        #if tf provided use it
-        tf = to_datetime(args.tf)
+    args.input_t0 = to_datetime(args.input_t0)
+    if args.input_tf is not None:
+        #if input_tf provided use it
+        args.input_tf = to_datetime(args.input_tf)
     else:
         #otherwise get it from fcst len
-        tf = t0 + datetime.timedelta(seconds=args.fcst_len*3600.)
+        args.input_tf = args.input_t0 + datetime.timedelta(seconds=args.fcst_len*3600.)
+    args.input_dt = parse_num(args.input_dt) * 60. #convert input_dt to seconds
 
-    dt = parse_num(args.output_dt) * 60. #convert dt to seconds
+    #output dates
+    if args.output_t0 is None:
+        args.output_t0 = args.input_t0
+    else:
+        args.output_t0 = to_datetime(args.output_t0)
+    if args.output_tf is None:
+        args.output_tf = args.input_tf
+    else:
+        args.output_tf = to_datetime(args.output_tf)
+    args.output_dt = parse_num(args.output_dt) * 60. #convert input_dt to seconds
+
 
 
 
@@ -521,9 +596,35 @@ def main():
     logger.info('')
     logger.info('')
 
+    #make list of dates where input radar data is needed and add it to arguments
+    t_len = (args.input_tf-args.input_t0) + datetime.timedelta(seconds=1)    #+ 1 second for inclusive end point
+    elasped_seconds = t_len.days*3600.*24. + t_len.seconds
+    args.input_date_list = [args.input_t0 + datetime.timedelta(seconds=x) for x in np.arange(0,elasped_seconds,args.input_dt)]
 
-    #make std files
-    make_fst(t0, tf, dt, args)
+    #make list of dates where output radar data is desired
+    t_len = (args.output_tf-args.output_t0) + datetime.timedelta(seconds=1)    #+ 1 second for inclusive end point
+    elasped_seconds = t_len.days*3600.*24. + t_len.seconds
+    args.output_date_list = [args.output_t0 + datetime.timedelta(seconds=x) for x in np.arange(0,elasped_seconds,args.output_dt)]
+
+
+    #compute motion vectors
+    if args.t_interp_method == 'None':
+        if args.output_date_list != args.input_date_list:
+            raise ValueError('Select a time interpolation method if output is desired at times different from input')
+        else:
+            #make std files
+            make_fst(args)
+
+    elif args.t_interp_method == 'nowcast':
+        #process radar file and write output to fst files
+        output_dir = args.output_dir 
+        args.output_dir = output_dir + 'processed/'
+        #make_fst(args)
+
+        #compute motion vectors associated with processed outputs
+        make_motion_vectors(args)
+    else:
+        raise ValueError('type of time interpolation not supported.')
 
     #we are done
     time_stop = time.time()
