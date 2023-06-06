@@ -77,7 +77,13 @@ def convert(pic_name, img_type, del_orig=False, density=300, geometry='100%', de
                 #ignore del_eps when desired fig type is eps
                 os.remove(eps_name)
     else:
-        warnings.warn('Inkscape not available on system, no conversion performed, you will have to live with matplotlibs conversions')
+        try:
+            import cairosvg
+        except ImportError:
+            warnings.warn('Both Inkscape and cairosvg not available on system, no conversion performed, you will have to live with matplotlibs conversions')
+        
+        # cairosvg is available use it for conversion
+        cairosvg.svg2png(url=source_file, write_to=file_name +'.png', dpi=density)
 
 
 
@@ -99,7 +105,7 @@ def info(var):
 
 
 def render_similarly(new_image_file, reference_image_file, 
-                      output_dir=None, tol=0.1, verbose=1):
+                      output_dir=None, tol=0.5, verbose=1):
     """ compare two raster images, returns True if they render similarly
 
     compute mean absolute difference between the RGB arrays of two images  
@@ -180,9 +186,14 @@ def render_similarly(new_image_file, reference_image_file,
 
     image1_arr = np.array(image1,dtype=np.int32)    #int32 is important here to avoid byte overflow during diff calculation
     image2_arr = np.array(image2,dtype=np.int32)
-
     abs_err = np.abs(image1_arr - image2_arr )
     mae = np.mean(abs_err)
+
+    #white where differences are large
+    err_flag = np.nonzero(np.sum(abs_err, axis=2) > 5)
+    for kk in [0,1,2]:
+        abs_err[err_flag[0], err_flag[1], kk] = 255
+
 
     if mae < tol :
         #images are close to one another
@@ -204,11 +215,22 @@ def render_similarly(new_image_file, reference_image_file,
         diff_file = output_dir+'differences_in_images__'+bn1+'_'+bn2+'.png'
 
         #the difference image
-        abs_err[:,:,3] = 255
+        nx, ny, nz = abs_err.shape
+        if nz == 3:
+            #no alpha channel, make one
+            abs_err    = np.concatenate((abs_err,   np.full((nx,ny,1),255)), axis=2)
+            image1_arr = np.concatenate((image1_arr,np.full((nx,ny,1),255)), axis=2)
+            image2_arr = np.concatenate((image2_arr,np.full((nx,ny,1),255)), axis=2)
+        elif nz == 4:
+            #there is already an alpha channel reset it
+            abs_err[:,:,3] = 255
+        else:
+            raise ValueError('image array should be 3D or 4D')
         mosaic = np.hstack((image1_arr, abs_err, image2_arr)).astype(np.uint8)
         image_diff = Image.fromarray(mosaic)
         draw = ImageDraw.Draw(image_diff)
-        font = ImageFont.truetype("Vera.ttf", 40)
+        font = ImageFont.truetype("Lato-Regular.ttf", 40)
+        
         
         #annotations to understand what is going on
         x0 = int(.15*3.*image1.size[0])

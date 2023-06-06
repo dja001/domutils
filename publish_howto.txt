@@ -1,4 +1,21 @@
 
+Command to create a development environment 
+
+cartopy .20 has a bug and cartopy 0.21 is noticeably slower than previous versions.... 
+
+mamba create -n dev_env_v3 attrdict cartopy=0.19.0.post1 matplotlib=3.3.4 conda-pack dask h5py pygrib packaging scipy sphinx sphinx-gallery sphinx_rtd_theme cairosvg sphinx-autodoc-typehints twine -c conda-forge
+pip install -e ~/python/packages/domcmc_package
+pip install -e ~/python/packages/domutils_package
+
+dasverif 
+docutils
+domcmc
+gridded-obs
+radvelso
+
+
+
+
 Notes for me to remember steps involved in publishing this package
 
 - create branch on local machine
@@ -11,8 +28,7 @@ Notes for me to remember steps involved in publishing this package
    On the science network, can link to dataset with:
    /home/dja001/shared_stuff/files/test_data_for_domutils_on_zenodo/v?.?.?
 
-  On a computer with access to inkscape:
-- run unitttests
+- run unit tests
   python -m unittest discover
 
     This should find and run 128 tests
@@ -51,9 +67,12 @@ Notes for me to remember steps involved in publishing this package
        cp -r  ~/python/packages/domutils_package/test_data v1.0.9
 
      - List differences with previous version and build .tgz for archive
+      cd v1.0.9
+      chmod 755 prepare_tgz_for_zenodo.sh
       ./prepare_tgz_for_zenodo.sh v1.0.8 
 
      - Login on zenodo with @gmail.com account
+       - go on domutils repo, click update
        - delete files that are modified
        - upload new and modified files
        - change publication date
@@ -70,7 +89,7 @@ Notes for me to remember steps involved in publishing this package
   If the zenodo archive was changed, it must be tested
   rm -rf test_data test_results
   Updating the dataset version and file list will be necessary
-  download_test_data.sh
+  ./download_test_data.sh
 
   Run the tests with the new test_data directory if it got changed
 
@@ -97,7 +116,7 @@ twine upload dist/*
 - from the root of the repo from somewhere with internet connexion
     To load in environment if not already done:
         conda install anaconda-client conda-build
-conda build --py 3.7 --py 3.8 --py 3.9 --py 3.10  conda_build/domutils 
+conda build --py 3.7 --py 3.8 --py 3.9 --py 3.10 --py 3.11 conda_build/domutils 
 
 and upload it to anaconda cloud
 

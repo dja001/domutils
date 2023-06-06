@@ -8,6 +8,15 @@ Please use the following tags when editing this file:
 *Removed* for now removed features.
 *Fixed* for any bug fixes. 
 
+## [2.1.0] - 2023-06-06
+### Added
+- radar_tools  Support for Yin-Yang grid in make_fst script. 
+- _py_tools    Now uses cairosvg for conversions svg->png when inkscake is not available.
+- geo_tools    A few tests are made more bobust to bit pattern changes with np.isclose().
+- legs         A new test checks the rendering of a non-geo-axes figure. 
+### Changed
+- Now runs with cartopy 19 + matplotlib 5.2.1. Cartopy 21.1 too slow.
+
 ## [2.0.22] - 2022-09-13
 ### Changed
 - radar_tools  remove annoying ShapelyDeprecationWarnings

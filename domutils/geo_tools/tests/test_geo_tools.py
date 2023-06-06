@@ -1,3 +1,5 @@
+#info to run only one test
+#python test_geo_tools.py TestStringMethods.test_no_extent_in_cartopy_projection
 
 import unittest
 
@@ -14,12 +16,15 @@ class TestStringMethods(unittest.TestCase):
         import cartopy
         import cartopy.crs as ccrs
         import cartopy.feature as cfeature
+        import matplotlib as mpl
         import matplotlib.pyplot as plt
         import domutils
         import domutils.legs as legs
         import domutils.geo_tools as geo_tools
         import domutils._py_tools as py_tools
 
+
+        mpl.rcParams.update({'font.size': 15})
 
         regular_lons =     [ [-100., -100 , -100  ],
                              [-90. , -90  , -90   ],
@@ -298,4 +303,7 @@ class TestStringMethods(unittest.TestCase):
 
 
 if __name__ == '__main__':
+
     unittest.main()
+
+

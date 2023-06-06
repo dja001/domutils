@@ -68,7 +68,7 @@ class TestStringMethods(unittest.TestCase):
         new_figure = test_results_dir+'20191031_1600.svg'
 
         #pre saved figure for what the results should be
-        reference_image = package_dir+'/test_data/_static/'+os.path.basename(new_figure)
+        reference_image = package_dir+'/test_data/test_results/make_radar_fst/'+os.path.basename(new_figure)
 
         #compare image with saved reference
         #copy reference image to testdir
