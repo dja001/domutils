@@ -2,11 +2,13 @@
 #identify logger names based on package hierarchy
 logging_basename = 'domutils.radar_tools'
 import numpy as np
+import logging
+import dask
+import dask.distributed
 
 
 def multi_to_fst(*args, **kwargs):
     import sys
-    import logging
     import multiprocessing
 
     #logger name is the same for all workers
@@ -42,7 +44,6 @@ def to_fst(valid_date, fst_template, args):
     import os
     import time
     import copy
-    import logging
     import rpnpy.librmn.all as rmn
     from rpnpy.rpndate import RPNDate
     from domutils import radar_tools
@@ -139,65 +140,7 @@ def to_fst(valid_date, fst_template, args):
         etiquette_smooth_radius = args.smooth_radius
     etiket = 'MED'+"{:1d}".format(etiquette_median_filt)+'SM'+"{:02d}".format(etiquette_smooth_radius)
 
-    #prepare std objects
-    #cmc timestamp
-    date_obj = RPNDate(valid_date)
-    cmc_timestamp = date_obj.datev
-
-    #open fst file
-    logger.info('writing ' + output_file)
-    iunit = rmn.fstopenall(output_file,rmn.FST_RW)
-
-    if 'combined_yy_grid' in fst_template.keys():
-        #write ^> to output file
-        rmn.writeGrid(iunit, fst_template['combined_yy_grid'])
-
-        #put precip rate into combined YY array
-        nx, ny = precip_rate.shape
-        reshaped_pr = np.full((nx, ny*2), -9999.)
-        reshaped_qi = np.zeros((nx, ny*2))
-        reshaped_pr[:,0:ny] = precip_rate
-        reshaped_qi[:,0:ny] = quality_index
-        precip_rate   = reshaped_pr
-        quality_index = reshaped_qi
-
-    else:
-        #write >> ^^ to output file
-        rmn.writeGrid(iunit, fst_template['grid'])
-
-    #make RDPR entry
-    rdpr_entry = copy.deepcopy(fst_template['meta'])
-    rdpr_entry['nomvar']        = 'RDPR'
-    rdpr_entry['etiket']        = etiket
-    rdpr_entry['dateo']         = cmc_timestamp
-    rdpr_entry['datev']         = cmc_timestamp
-    rdpr_entry['ip2']           = 0
-    rdpr_entry['deet']          = 0
-    rdpr_entry['npas']          = 0
-    rdpr_entry['nbits']         = 32
-    rdpr_entry['typvar']        = 'I'
-    rdpr_entry['d']             = np.asfortranarray(precip_rate, dtype='float32')
-
-    #make RDQI entry
-    rdqi_entry = copy.deepcopy(fst_template['meta'])
-    rdqi_entry['nomvar']        = 'RDQI'
-    rdqi_entry['etiket']        = etiket
-    rdqi_entry['dateo']         = cmc_timestamp
-    rdqi_entry['datev']         = cmc_timestamp
-    rdqi_entry['ip2']           = 0
-    rdqi_entry['deet']          = 0
-    rdqi_entry['npas']          = 0
-    rdqi_entry['nbits']         = 32
-    rdqi_entry['typvar']        = 'I'
-    rdqi_entry['d']             = np.asfortranarray(quality_index, dtype='float32')
-
-    rmn.fstecr(iunit, rdpr_entry)
-    rmn.fstecr(iunit, rdqi_entry)
-
-    #close file
-    rmn.fstcloseall(iunit)
-
-    logger.info('Done writing ' + output_file)
+    write_fst_file(valid_date, precip_rate, quality_index, args, etiket=etiket)
 
     #make a figure for this std file if the argument figure_dir was provided
     if args.figure_dir is not None:
@@ -259,7 +202,6 @@ def make_fst(args):
     import os
     import datetime
     import glob
-    import logging
     import signal
     import multiprocessing
 
@@ -279,7 +221,7 @@ def make_fst(args):
     # makes for easier debugging 
     if args.ncores == 1 :
         #serial execution
-        logger.info('Launching SERIAL execution of code')
+        logger.info('Launching SERIAL execution of obs processing')
         for this_date in args.input_date_list:
             to_fst(this_date, fst_template, args)
     else :
@@ -291,7 +233,7 @@ def make_fst(args):
         pool = multiprocessing.Pool(args.ncores)
         signal.signal(signal.SIGINT, original_sigint_handler)
 
-        #function that gets called when something goes wrong in the poop
+        #function that gets called when something goes wrong in the pool
         def kill_pool(err_msg):
             print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
             print('Error message from failing task:')
@@ -322,67 +264,340 @@ def make_fst(args):
             print(len(date_tup_list))
             raise RuntimeError('did not receive correct termination from all processes')
 
+@dask.delayed
+def dask_motion_vector_at_one_time(*args, **kwargs):
+    return motion_vector_at_one_time(*args, **kwargs)
+
+def motion_vector_at_one_time(this_time, args):
+    """ read 3 precip field and compute motion vectors at one time
+
+    re-reading precipt field is not the mot efficient but the time needed to do this
+    is negligible compared to to computing motion vectors
+    """
+
+    import domutils
+    import domutils._py_tools as dpy
+    import pysteps
+    from domcmc import fst_tools
+
+    # index in time array
+    tt = args.input_date_list.index(this_time)
+    print('Computing movion vectors, end time: ', this_time)
+
+    # number of timesteps for motion vectors
+    nt = 3
+    z_acc = np.zeros((nt, args.out_ny, args.out_nx))
+
+    # read precip, convert to reflectivity and reshape to make pysteps happy
+    z_v = fst_tools.get_data(var_name='RDPR', dir_name=args.output_dir, datev=args.input_date_list[tt-2])['values']
+    z_acc[0,:,:] = np.transpose(domutils.radar_tools.exponential_zr(z_v, r_to_dbz=True))
+    z_v = fst_tools.get_data(var_name='RDPR', dir_name=args.output_dir, datev=args.input_date_list[tt-1])['values']
+    z_acc[1,:,:] = np.transpose(domutils.radar_tools.exponential_zr(z_v, r_to_dbz=True))
+    z_v = fst_tools.get_data(var_name='RDPR', dir_name=args.output_dir, datev=args.input_date_list[tt  ])['values']
+    z_acc[2,:,:] = np.transpose(domutils.radar_tools.exponential_zr(z_v, r_to_dbz=True))
+
+    # remove small values
+    min_dbz = 0.
+    z_acc = np.where(z_acc < min_dbz, 0., z_acc)
+
+    # compute motion vectors
+    oflow_method = pysteps.motion.get_method("LK")
+    uv_motion = oflow_method(z_acc)
+
+    #save output to file
+    dpy.parallel_mkdir(args.motion_vectors_dir)
+    out_file = args.motion_vectors_dir + this_time.strftime('%Y%m%d%H%M_end_window.npy')
+    np.save(out_file, uv_motion)
+    
+    #           U               V
+    print('Motion vectors done', uv_motion.dtype)
+    return uv_motion
+    #return np.zeros((2, args.out_ny, args.out_nx), dtype=float)
+
 
 def make_motion_vectors(args):
-    """ given radar observations available at a evenly separated list of time, compute motion vectors
+    """ compute motion vectors for radar observations available at a evenly separated times
 
     depending on the number of cpus, serial execution or parallel execution with multiprocessing will be chosen 
     """
 
-    import os
-    import datetime
-    import glob
-    import logging
-    import signal
-    import multiprocessing
-    import pysteps
-    import domutils
     import time
-
-
+    import glob
+    import signal
+    import dask
+    import dask.array as da
     from domcmc import fst_tools
 
     #logging
     logger = logging.getLogger(logging_basename)
 
     #read first entry to get dimensions
-    z_v = fst_tools.get_data(var_name='RDPR', dir_name=args.output_dir, datev=args.input_date_list[0])['values']
+    z_v = fst_tools.get_data(var_name='RDPR', dir_name=args.processed_dir, datev=args.input_date_list[0])['values']
     nx, ny = z_v.shape
-    nt = 3
-    z_acc = np.zeros((nt, ny, nx))
-    z_acc[0,:,:] = np.transpose(domutils.radar_tools.exponential_zr(z_v, r_to_dbz=True))
+    args.out_nx = nx
+    args.out_ny = ny
 
-    #read second entry
-    print(args.input_date_list[1])
-    z_v = fst_tools.get_data(var_name='RDPR', dir_name=args.output_dir, datev=args.input_date_list[1])['values']
-    z_acc[1,:,:] = np.transpose(domutils.radar_tools.exponential_zr(z_v, r_to_dbz=True))
+    #for output we keep pysteps dim convention ny, ny, nx
+    nt = len(args.input_date_list)-2
 
-    #dbz_acc = domutils.radar_tools.exponential_zr(pr_acc, r_to_dbz=True)
-    u_arr = np.zeros((nx, ny, len(args.input_date_list)-2))
-    v_arr = np.zeros((nx, ny, len(args.input_date_list)-2))
-    oflow_method = pysteps.motion.get_method("LK")
-    for tt, this_time in enumerate(args.input_date_list[2:]):
-        print(this_time)
-        t1 = time.time()
-        z_v = fst_tools.get_data(var_name='RDPR', dir_name=args.output_dir, datev=this_time)['values']
-        z_acc[2,:,:] = np.transpose(domutils.radar_tools.exponential_zr(z_v, r_to_dbz=True))
-        t2 = time.time()
-        
-        #remove small values
-        min_dbz = 0.
-        z_acc = np.where(z_acc < min_dbz, 0., z_acc)
-        
-        #oflow_method = pysteps.motion.get_method("farneback")
-        t3 = time.time()
-        uv_motion = oflow_method(z_acc)
-        t4 = time.time()
-        print('read', t2-t1, 'mv',t4-t3)
-        u_arr[:,:,tt] = np.transpose(uv_motion[0,:,:])
-        v_arr[:,:,tt] = np.transpose(uv_motion[1,:,:])
 
-        #shift before next round
-        z_acc[0,:,:] = z_acc[1,:,:]
-        z_acc[1,:,:] = z_acc[2,:,:]
+    if args.ncores == 1 :
+        #serial execution
+        logger.info('Launching SERIAL computation of motion vectors')
+        u_arr = np.zeros((nt,ny,nx))
+        v_arr = np.zeros((nt,ny,nx))
+        for tt, this_time in enumerate(args.input_date_list[2:]):
+
+            uv = motion_vector_at_one_time(this_time, args)
+            
+            #shift before next round
+            u_arr[tt,:,:] = uv[0,:,:]
+            v_arr[tt,:,:] = uv[1,:,:]
+
+    else:
+        #parallel execution
+        logger.info('Launching PARALLEL computation of motion vectors')
+
+        #delay input data 
+        delayed_args = dask.delayed(args)
+
+        #delayed list of results
+        res_list = [da.from_delayed(dask_motion_vector_at_one_time(this_date, delayed_args), (2,ny,nx), np.float64) for this_date in args.input_date_list[2:] ]
+
+        #what output do we want
+        res_stack = da.stack(res_list)
+                
+        # computation happens here
+        tt1 = time.time()
+        big_arr = res_stack.compute()
+        tt2 = time.time()
+        print('  parallel execution took ', tt2-tt1, ' seconds')
+        print('')
+        print(big_arr.shape)
+
+def scale_wind(uv, fact_before):
+    """scale wind vector for mid timesteps
+    """
+
+    # conversion to rho theta (met angle convention)
+    rho = np.sqrt(uv[0,:,:]**2. + uv[1,:,:]**2.)
+    theta = np.arctan2(uv[0,:,:],uv[1,:,:])
+
+    # scale modulus
+    rho *= fact_before
+    uv[0,:,:] = rho * np.sin(theta)
+    uv[1,:,:] = rho * np.cos(theta)
+
+    # return scaled u and v components
+    return uv
+
+
+@dask.delayed
+def dask_t_interp_at_one_time(*args, **kwargs):
+    return t_interp_at_one_time(*args, **kwargs)
+
+def t_interp_at_one_time(out_time, args):
+    """nowcasting time interpolation using forward and backward advection
+    """
+
+    from domcmc import fst_tools
+    from pysteps import nowcasts
+    import pysteps 
+    import time
+
+    # find input time just after and just before
+    found = False
+    do_backward_advect = True
+    for t_after, this_time in enumerate(args.input_date_list):
+        if this_time > out_time:
+            found = True
+            break
+
+    if (t_after == 0) :
+        raise RuntimeError('desired out_time is before the first available input')
+
+    if found :
+        # found interval that brackets out time, all is well
+        t_before = t_after -1
+    else:
+        if out_time >= args.input_date_list[-1]:
+            # out_time is equal or larger than last input time
+            # only forward advection will be used to generate nowcast
+            do_backward_advect = False
+            t_before = -1
+        else:
+            raise RuntimeError('Something weird going on, stopping')
+
+    #initialize advection code
+    extrapolate = pysteps.extrapolation.interface.get_method("semilagrangian")
+
+    # multiplicative factors for intermediate timesteps before and after
+    fact_before = (out_time - args.input_date_list[t_before]).seconds / args.input_dt
+    # get wind before and after
+    wind_file = args.motion_vectors_dir + args.input_date_list[t_before].strftime('%Y%m%d%H%M_end_window.npy')
+    uv_before = np.load(wind_file)
+    # scale wind 
+    uv_before = scale_wind(uv_before, fact_before)
+    # get precip before and after
+    precip_before  = np.transpose(fst_tools.get_data(var_name='RDPR', dir_name=args.processed_dir, datev=args.input_date_list[t_before])['values'])
+    quality_before = np.transpose(fst_tools.get_data(var_name='RDQI', dir_name=args.processed_dir, datev=args.input_date_list[t_before])['values'])
+    # advect wind at appropriate time
+    forward_precip   = np.transpose(extrapolate(precip_before,  uv_before, 1, outval=0.))
+    forward_quality  = np.transpose(extrapolate(quality_before, uv_before, 1, outval=0.))
+
+    if do_backward_advect: 
+        # multiplicative factors for intermediate timesteps before and after
+        fact_after  = -1. * (args.input_date_list[t_after] - out_time ).seconds / args.input_dt
+        # get wind before and after
+        wind_file = args.motion_vectors_dir + args.input_date_list[t_after ].strftime('%Y%m%d%H%M_end_window.npy')
+        uv_after  = np.load(wind_file)
+        # scale wind 
+        uv_after  = scale_wind(uv_after,  fact_after)
+        # get precip before and after
+        precip_after   = np.transpose(fst_tools.get_data(var_name='RDPR', dir_name=args.processed_dir, datev=args.input_date_list[t_after] )['values'])
+        quality_after  = np.transpose(fst_tools.get_data(var_name='RDQI', dir_name=args.processed_dir, datev=args.input_date_list[t_after] )['values'])
+        # advect wind at appropriate time
+        backward_precip  = np.transpose(extrapolate(precip_after,   uv_after,  1, outval=0.))
+        backward_quality = np.transpose(extrapolate(quality_after,  uv_after,  1, outval=0.))
+
+        # average result weighted by separation time
+        precip_rate   = np.squeeze( (1. - fact_before)*forward_precip  + fact_before*backward_precip )
+        quality_index = np.squeeze( (1. - fact_before)*forward_quality + fact_before*backward_quality )
+
+    else:
+        # We only did forward advection
+        precip_rate   = np.squeeze(forward_precip )
+        quality_index = np.squeeze(forward_quality)
+
+    etiket = 'EXTRAPOL'
+    write_fst_file(out_time, precip_rate, quality_index, args, etiket=etiket)
+
+    return np.array([1], dtype=float)
+
+def nowcast_t_interp(args):
+    """ given precip estimates and motion vectors, do nowcasts as a mean of time interpolation
+
+    """
+
+    import time
+    import glob
+    import signal
+    import dask
+    import dask.array as da
+    from domcmc import fst_tools
+
+    #logging
+    logger = logging.getLogger(logging_basename)
+
+
+    if args.ncores == 1 :
+        #serial execution
+        logger.info('Launching SERIAL computation of nowcast time interpolation')
+
+        for out_time in args.output_date_list:
+            t_interp_at_one_time(out_time, args)
+    else:
+        #parallel execution
+        logger.info('Launching PARALLEL of nowcast time interpolation')
+
+        #delay input data 
+        delayed_args = dask.delayed(args)
+
+        #delayed list of results
+        res_list = [da.from_delayed(dask_t_interp_at_one_time(this_date, delayed_args), (1,), float) for this_date in args.output_date_list ]
+
+        #what output do we want
+        res_stack = da.stack(res_list)
+                
+        # computation happens here
+        tt1 = time.time()
+        big_arr = res_stack.compute()
+        tt2 = time.time()
+        print('  parallel execution took ', tt2-tt1, ' seconds')
+        print('')
+        print(big_arr.shape)
+
+
+
+
+def write_fst_file(out_date, precip_rate, quality_index, args, etiket=''):
+    """ write precip to a fst file
+    """
+    import os
+    import copy
+    import rpnpy.librmn.all as rmn
+    from rpnpy.rpndate import RPNDate
+    from domcmc import fst_tools
+
+    logger = logging.getLogger(logging_basename)
+
+    # read fst template
+    fst_template = fst_tools.get_data(args.sample_pr_file, var_name='PR')
+
+
+    #prepare std objects
+    #cmc timestamp
+    date_obj = RPNDate(out_date)
+    cmc_timestamp = date_obj.datev
+
+    #open fst file
+    output_file = args.output_dir + out_date.strftime(args.fst_file_struc)
+    if os.path.isfile(output_file):
+        os.remove(output_file)
+    logger.info('writing ' + output_file)
+    iunit = rmn.fstopenall(output_file,rmn.FST_RW)
+
+    if 'combined_yy_grid' in fst_template.keys():
+        #write ^> to output file
+        rmn.writeGrid(iunit, fst_template['combined_yy_grid'])
+
+        #put precip rate into combined YY array
+        nx, ny = precip_rate.shape
+        reshaped_pr = np.full((nx, ny*2), -9999.)
+        reshaped_qi = np.zeros((nx, ny*2))
+        reshaped_pr[:,0:ny] = precip_rate
+        reshaped_qi[:,0:ny] = quality_index
+        precip_rate   = reshaped_pr
+        quality_index = reshaped_qi
+
+    else:
+        #write >> ^^ to output file
+        rmn.writeGrid(iunit, fst_template['grid'])
+
+    #make RDPR entry
+    rdpr_entry = copy.deepcopy(fst_template['meta'])
+    rdpr_entry['nomvar']        = 'RDPR'
+    rdpr_entry['etiket']        = etiket
+    rdpr_entry['dateo']         = cmc_timestamp
+    rdpr_entry['datev']         = cmc_timestamp
+    rdpr_entry['ip2']           = 0
+    rdpr_entry['deet']          = 0
+    rdpr_entry['npas']          = 0
+    rdpr_entry['nbits']         = 32
+    rdpr_entry['typvar']        = 'I'
+    rdpr_entry['d']             = np.asfortranarray(precip_rate, dtype='float32')
+
+    #make RDQI entry
+    rdqi_entry = copy.deepcopy(fst_template['meta'])
+    rdqi_entry['nomvar']        = 'RDQI'
+    rdqi_entry['etiket']        = etiket
+    rdqi_entry['dateo']         = cmc_timestamp
+    rdqi_entry['datev']         = cmc_timestamp
+    rdqi_entry['ip2']           = 0
+    rdqi_entry['deet']          = 0
+    rdqi_entry['npas']          = 0
+    rdqi_entry['nbits']         = 32
+    rdqi_entry['typvar']        = 'I'
+    rdqi_entry['d']             = np.asfortranarray(quality_index, dtype='float32')
+
+    rmn.fstecr(iunit, rdpr_entry)
+    rmn.fstecr(iunit, rdqi_entry)
+
+    #close file
+    rmn.fstcloseall(iunit)
+
+    logger.info('Done writing ' + output_file)
+
 
 
 
@@ -446,7 +661,6 @@ def main():
     import argparse
     import time
     import datetime
-    import logging
     import domutils._py_tools as dpy
 
 
@@ -606,6 +820,9 @@ def main():
     elasped_seconds = t_len.days*3600.*24. + t_len.seconds
     args.output_date_list = [args.output_t0 + datetime.timedelta(seconds=x) for x in np.arange(0,elasped_seconds,args.output_dt)]
 
+    # initialize dask client if needed
+    if args.ncores > 1 :
+        client = dask.distributed.Client(processes=True, threads_per_worker=1,n_workers=args.ncores, silence_logs=40)
 
     #compute motion vectors
     if args.t_interp_method == 'None':
@@ -618,11 +835,19 @@ def main():
     elif args.t_interp_method == 'nowcast':
         #process radar file and write output to fst files
         output_dir = args.output_dir 
-        args.output_dir = output_dir + 'processed/'
-        #make_fst(args)
+        # override output dir since in this context these outputs are only intermediate results
+        args.output_dir    = output_dir + 'processed/'
+        args.processed_dir = args.output_dir
+        make_fst(args)
 
         #compute motion vectors associated with processed outputs
+        args.motion_vectors_dir = output_dir + 'motion_vectors/'
         make_motion_vectors(args)
+
+        #nowcast_time_interpolation
+        args.output_dir    = output_dir 
+        nowcast_t_interp(args)
+
     else:
         raise ValueError('type of time interpolation not supported.')
 
