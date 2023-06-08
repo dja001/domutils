@@ -4,12 +4,15 @@ logging_basename = 'domutils.radar_tools'
 import numpy as np
 import logging
 import dask
+import dask.array 
 import dask.distributed
 
 
-def multi_to_fst(*args, **kwargs):
+@dask.delayed
+def dask_to_fst(*args, **kwargs):
     import sys
     import multiprocessing
+    from dask.distributed import get_worker
 
     #logger name is the same for all workers
     process_logger = logging.getLogger()
@@ -20,7 +23,7 @@ def multi_to_fst(*args, **kwargs):
         process_logger.setLevel(command_line_args.log_level)
         logging.captureWarnings(True)
         #handlers
-        worker_id = str(multiprocessing.current_process().name)
+        worker_id = str(get_worker().id)
         stream_handler = logging.StreamHandler(sys.stdout)
         file_handler = logging.FileHandler('logs/'+worker_id, 'w')
         #levels
@@ -51,7 +54,7 @@ def to_fst(valid_date, fst_template, args):
 
     logger = logging.getLogger()
     if not len(logger.handlers):
-        #if logger not set in multi_to_fst, we are running serially, use main logger
+        #if logger not set  we are running serially, use main logger
         logger = logging.getLogger(logging_basename)
     logger.info('to_fst starting to process date: '+str(valid_date))
 
@@ -150,7 +153,7 @@ def to_fst(valid_date, fst_template, args):
                                    fig_format=args.figure_format,
                                    args=args)
 
-    return np.array([1])
+    return np.array([1.],dtype=float)
 
 
 
@@ -193,7 +196,7 @@ def to_datetime(time_str):
     return datetime.datetime(yyyy,mo,dd,hh,mi,ss)
 
 
-def make_fst(args):
+def obs_process(args):
     """ read odim H5, manipulate it, and write to fst
 
     depending on the number of cpus, serial execution or parallel execution with multiprocessing will be chosen 
@@ -203,9 +206,7 @@ def make_fst(args):
     import datetime
     import glob
     import signal
-    import multiprocessing
-
-
+    import time
     from domcmc import fst_tools
 
 
@@ -226,42 +227,58 @@ def make_fst(args):
             to_fst(this_date, fst_template, args)
     else :
         #parallel conversion with nultiprocessing
-        logger.info('Launching PARALLEL execution of code with multiprocessing')
+        logger.info('Launching PARALLEL execution of of observation processing')
 
-        #setup parallel submission
-        original_sigint_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
-        pool = multiprocessing.Pool(args.ncores)
-        signal.signal(signal.SIGINT, original_sigint_handler)
+        #delay input data 
+        delayed_args         = dask.delayed(args)
+        delayed_fst_template = dask.delayed(fst_template)
 
-        #function that gets called when something goes wrong in the pool
-        def kill_pool(err_msg):
-            print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
-            print('Error message from failing task:')
-            print(err_msg)
-            print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
-            pool.terminate()
-        
-        #jobs are launched in parallel
-        res_list = []
-        for this_date in args.input_date_list:
-            res_list.append(
-                    pool.apply_async( multi_to_fst, 
-                                      args=(this_date, fst_template, args), 
-                                      error_callback=kill_pool,
-                                    ) 
-                )
+        #delayed list of results
+        res_list = [dask.array.from_delayed(dask_to_fst(this_date, delayed_fst_template, delayed_args), (1,), float) for this_date in args.input_date_list ]
 
-        #get results
-        results = np.asarray([_res.get() for _res in res_list])
+        #what output do we want
+        res_stack = dask.array.stack(res_list)
+                
+        # computation happens here
+        tt1 = time.time()
+        big_arr = res_stack.compute()
+        tt2 = time.time()
+        print('  parallel execution took ', tt2-tt1, ' seconds')
+        print('')
+        print(big_arr.shape)
 
-        # Normal termination
-        pool.close()
-        pool.join()
+        ##setup parallel submission
+        #original_sigint_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
+        #pool = multiprocessing.Pool(args.ncores)
+        #signal.signal(signal.SIGINT, original_sigint_handler)
+
+        ##function that gets called when something goes wrong in the pool
+        #def kill_pool(err_msg):
+        #    print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
+        #    print('Error message from failing task:')
+        #    print(err_msg)
+        #    print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
+        #    pool.terminate()
+        #
+        ##jobs are launched in parallel
+        #res_list = []
+        #for this_date in args.input_date_list:
+        #    res_list.append(
+        #            pool.apply_async( dask_to_fst, 
+        #                              args=(this_date, fst_template, args), 
+        #                              error_callback=kill_pool,
+        #                            ) 
+        #        )
+
+        ##get results
+        #results = np.asarray([_res.get() for _res in res_list])
+
+        ## Normal termination
+        #pool.close()
+        #pool.join()
 
         # check that we received all correct termination
-        if results.sum() != len(args.input_date_list) :
-            print(results)
-            print(len(date_tup_list))
+        if big_arr.sum() != len(args.input_date_list) :
             raise RuntimeError('did not receive correct termination from all processes')
 
 @dask.delayed
@@ -325,7 +342,6 @@ def make_motion_vectors(args):
     import glob
     import signal
     import dask
-    import dask.array as da
     from domcmc import fst_tools
 
     #logging
@@ -362,10 +378,10 @@ def make_motion_vectors(args):
         delayed_args = dask.delayed(args)
 
         #delayed list of results
-        res_list = [da.from_delayed(dask_motion_vector_at_one_time(this_date, delayed_args), (2,ny,nx), np.float64) for this_date in args.input_date_list[2:] ]
+        res_list = [dask.array.from_delayed(dask_motion_vector_at_one_time(this_date, delayed_args), (2,ny,nx), np.float64) for this_date in args.input_date_list[2:] ]
 
         #what output do we want
-        res_stack = da.stack(res_list)
+        res_stack = dask.array.stack(res_list)
                 
         # computation happens here
         tt1 = time.time()
@@ -504,10 +520,10 @@ def nowcast_t_interp(args):
         delayed_args = dask.delayed(args)
 
         #delayed list of results
-        res_list = [da.from_delayed(dask_t_interp_at_one_time(this_date, delayed_args), (1,), float) for this_date in args.output_date_list ]
+        res_list = [dask.array.from_delayed(dask_t_interp_at_one_time(this_date, delayed_args), (1,), float) for this_date in args.output_date_list ]
 
         #what output do we want
-        res_stack = da.stack(res_list)
+        res_stack = dask.array.stack(res_list)
                 
         # computation happens here
         tt1 = time.time()
@@ -529,7 +545,7 @@ def write_fst_file(out_date, precip_rate, quality_index, args, etiket=''):
     from rpnpy.rpndate import RPNDate
     from domcmc import fst_tools
 
-    logger = logging.getLogger(logging_basename)
+    logger = logging.getLogger()
 
     # read fst template
     fst_template = fst_tools.get_data(args.sample_pr_file, var_name='PR')
@@ -824,27 +840,32 @@ def main():
     if args.ncores > 1 :
         client = dask.distributed.Client(processes=True, threads_per_worker=1,n_workers=args.ncores, silence_logs=40)
 
+
+
     #compute motion vectors
     if args.t_interp_method == 'None':
+        # No temporal interpolation, only observation processing
         if args.output_date_list != args.input_date_list:
             raise ValueError('Select a time interpolation method if output is desired at times different from input')
         else:
-            #make std files
-            make_fst(args)
+            # 1- process radar file and write output to fst files
+            obs_process(args)
 
     elif args.t_interp_method == 'nowcast':
-        #process radar file and write output to fst files
+
+        # 1- process radar file and write output to fst files
         output_dir = args.output_dir 
         # override output dir since in this context these outputs are only intermediate results
         args.output_dir    = output_dir + 'processed/'
         args.processed_dir = args.output_dir
-        make_fst(args)
+        obs_process(args)
+        exit()
 
-        #compute motion vectors associated with processed outputs
+        # 2- compute motion vectors associated with processed outputs
         args.motion_vectors_dir = output_dir + 'motion_vectors/'
         make_motion_vectors(args)
 
-        #nowcast_time_interpolation
+        # 3- use nowcast for time interpolation
         args.output_dir    = output_dir 
         nowcast_t_interp(args)
 
