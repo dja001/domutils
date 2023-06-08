@@ -1,42 +1,59 @@
 
 #identify logger names based on package hierarchy
-logging_basename = 'domutils.radar_tools'
 import numpy as np
-import logging
 import dask
 import dask.array 
 import dask.distributed
 
+def setup_logging(args, is_worker=False):
+    """setup logger and handlers
+
+    Because of parallel execution, logging has to be setup for every forked processes
+    so it is put in this reusable function
+    """
+
+    import sys 
+    import logging
+
+    # logging is configured to write everything to stdout in addition to a log file
+    # in a 'logs' directory
+    logging_basename = 'domutils.radar_tools'
+    logger = logging.getLogger(logging_basename)
+    if not len(logger.handlers):
+        logging.captureWarnings(True)
+        logger.setLevel(args.log_level)
+        #handlers
+        stream_handler = logging.StreamHandler(sys.stdout)
+        if is_worker:
+            worker_id = str(dask.distributed.get_worker().id)
+            file_handler = logging.FileHandler('logs/'+worker_id, 'w')
+        else:
+            file_handler = logging.FileHandler('logs/main.log', 'w')
+        #levels
+        stream_handler.setLevel(args.log_level)
+        file_handler.setLevel(args.log_level)
+        #format
+        file_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        if is_worker:
+            stream_formatter = logging.Formatter(worker_id+'    %(message)s')
+        else:
+            stream_formatter = file_formatter
+        stream_handler.setFormatter(stream_formatter)
+        file_handler.setFormatter(file_formatter)
+        #add handlers
+        logger.addHandler(stream_handler)
+        logger.addHandler(file_handler)
+
+    return logger
 
 @dask.delayed
 def dask_to_fst(*args, **kwargs):
     import sys
     import multiprocessing
-    from dask.distributed import get_worker
 
-    #logger name is the same for all workers
-    process_logger = logging.getLogger()
-
-    #add handlers if none are present for this worker
-    if not len(process_logger.handlers):
-        command_line_args = args[2]
-        process_logger.setLevel(command_line_args.log_level)
-        logging.captureWarnings(True)
-        #handlers
-        worker_id = str(get_worker().id)
-        stream_handler = logging.StreamHandler(sys.stdout)
-        file_handler = logging.FileHandler('logs/'+worker_id, 'w')
-        #levels
-        stream_handler.setLevel(command_line_args.log_level)
-        file_handler.setLevel(command_line_args.log_level)
-        #format
-        formatter_stream = logging.Formatter(worker_id+'    %(message)s')
-        stream_handler.setFormatter(formatter_stream)
-        formatter_file= logging.Formatter('%(asctime)s - %(name)s in %(funcName)s - %(levelname)s - %(message)s')
-        file_handler.setFormatter(formatter_file)
-        #add handlers
-        process_logger.addHandler(stream_handler)
-        process_logger.addHandler(file_handler)
+    #setup logger for dask worker if not already done
+    command_line_args = args[2]
+    logger = setup_logging(command_line_args, is_worker=True)
 
     return to_fst(*args, **kwargs)
 
@@ -52,10 +69,8 @@ def to_fst(valid_date, fst_template, args):
     from domutils import radar_tools
     import domutils._py_tools as dpy
 
-    logger = logging.getLogger()
-    if not len(logger.handlers):
-        #if logger not set  we are running serially, use main logger
-        logger = logging.getLogger(logging_basename)
+    logger = setup_logging(args)
+
     logger.info('to_fst starting to process date: '+str(valid_date))
 
     #output filename and directory
@@ -211,7 +226,7 @@ def obs_process(args):
 
 
     #logging
-    logger = logging.getLogger(logging_basename)
+    logger = setup_logging(args)
 
     logger.info('getting output domain from: '+ args.sample_pr_file)
     fst_template = fst_tools.get_data(args.sample_pr_file, var_name='PR', latlon=True)
@@ -345,7 +360,7 @@ def make_motion_vectors(args):
     from domcmc import fst_tools
 
     #logging
-    logger = logging.getLogger(logging_basename)
+    logger = setup_logging(args)
 
     #read first entry to get dimensions
     z_v = fst_tools.get_data(var_name='RDPR', dir_name=args.processed_dir, datev=args.input_date_list[0])['values']
@@ -503,7 +518,7 @@ def nowcast_t_interp(args):
     from domcmc import fst_tools
 
     #logging
-    logger = logging.getLogger(logging_basename)
+    logger = setup_logging(args)
 
 
     if args.ncores == 1 :
@@ -545,7 +560,7 @@ def write_fst_file(out_date, precip_rate, quality_index, args, etiket=''):
     from rpnpy.rpndate import RPNDate
     from domcmc import fst_tools
 
-    logger = logging.getLogger()
+    logger = setup_logging(args)
 
     # read fst template
     fst_template = fst_tools.get_data(args.sample_pr_file, var_name='PR')
@@ -780,37 +795,17 @@ def main():
     args.output_dt = parse_num(args.output_dt) * 60. #convert input_dt to seconds
 
 
-
-
     #make sure 'logs' directory exists and is empty
     if os.path.isdir('logs'):
         os.system('rm -f ./logs/main.log')
-        os.system('rm -f ./logs/ForkPoolWorker*')
+        os.system('rm -f ./logs/Worker*')
     else:
         #no need for parallel stuff here but the function already exists and will get the job done.
         dpy.parallel_mkdir('logs')
 
-    # logging is configured to write everything to stdout in addition to a log file
-    # in a 'logs' directory
-    logging.captureWarnings(True)
-    logger = logging.getLogger(logging_basename)
-    logger.setLevel(args.log_level)
-    #handlers
-    stream_handler = logging.StreamHandler(sys.stdout)
-    file_handler = logging.FileHandler('logs/main.log', 'w')
-    #levels
-    stream_handler.setLevel(args.log_level)
-    file_handler.setLevel(args.log_level)
-    #format
-    formatter = logging.Formatter('%(asctime)s - %(name)s in %(funcName)s - %(levelname)s - %(message)s')
     
-    stream_handler.setFormatter(formatter)
-    file_handler.setFormatter(formatter)
-    #add handlers
-    logger.addHandler(stream_handler)
-    logger.addHandler(file_handler)
-
-
+    # initialize logging
+    logger = setup_logging(args)
 
     #log header
     logger.info('')

@@ -79,7 +79,7 @@ def read_stage4_composite(st4_file:   str=None,
     sys.path.insert(0,parentdir) 
 
     #logging
-    logger = logging.getLogger()
+    logger = logging.getLogger(__name__)
 
     if verbose > 0:
         logger.warning('verbose keyword is deprecated, \

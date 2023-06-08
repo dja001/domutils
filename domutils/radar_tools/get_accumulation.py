@@ -114,7 +114,7 @@ def get_accumulation(end_date:         Optional[Any]   = None,
     import domutils.geo_tools as geo_tools
 
     #logging
-    logger = logging.getLogger()
+    logger = logging.getLogger(__name__)
 
     if verbose > 0:
         logger.warning('verbose keyword is deprecated, please set logging level in calling handler')

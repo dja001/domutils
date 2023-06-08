@@ -49,7 +49,7 @@ def plot_rdpr_rdqi(fst_file:   str=None,
     import domutils._py_tools as dpy
 
     #logging
-    logger = logging.getLogger()
+    logger = logging.getLogger(__name__)
 
     #use provided data path for cartiopy shapefiles
     #TODO there has got to be a better way to do this!
