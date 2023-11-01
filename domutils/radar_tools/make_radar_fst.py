@@ -19,6 +19,7 @@ def setup_logging(args, is_worker=False):
     # in a 'logs' directory
     logging_basename = 'domutils.radar_tools'
     logger = logging.getLogger(logging_basename)
+    # if this is a newly created logger, it will have no handlers
     if not len(logger.handlers):
         logging.captureWarnings(True)
         logger.setLevel(args.log_level)
@@ -74,11 +75,11 @@ def to_fst(valid_date, fst_template, args):
     logger.info('to_fst starting to process date: '+str(valid_date))
 
     #output filename and directory
-    output_file = args.output_dir + valid_date.strftime(args.fst_file_struc)
+    output_file = args.output_dir + valid_date.strftime(args.processed_file_struc)
     #if in complete mode and file exists, return and test next one
     if (os.path.isfile(output_file) and args.complete_dataset):
         logger.info(output_file+ ' exists and complete_dataset=True. Skipping to the next.')
-        return np.array([1])
+        return np.array([1], dtype=float)
     elif os.path.isfile(output_file):
         #file exists but we are not completing a dataset erase file before making a new one
         os.remove(output_file)
@@ -303,18 +304,36 @@ def dask_motion_vector_at_one_time(*args, **kwargs):
 def motion_vector_at_one_time(this_time, args):
     """ read 3 precip field and compute motion vectors at one time
 
-    re-reading precipt field is not the mot efficient but the time needed to do this
-    is negligible compared to to computing motion vectors
+    re-reading precip fields is not the most efficient but the time needed to do this
+    is negligible compared to computing motion vectors
     """
 
+    import os
     import domutils
     import domutils._py_tools as dpy
     import pysteps
     from domcmc import fst_tools
 
+    logger = setup_logging(args)
+
+    logger.info('motion_vector_at_one_time starting to process date: '+str(this_time))
+
+    # the file we want to write to
+    output_file = args.motion_vectors_dir + this_time.strftime('%Y%m%d%H%M_end_window.npy')
+
+    if (os.path.isfile(output_file) and args.complete_dataset):
+        logger.info(output_file+ ' exists and complete_dataset=True. Skipping to the next.')
+        return np.array([1], dtype=float)
+    elif os.path.isfile(output_file):
+        #file exists but we are not completing a dataset erase file before making a new one
+        os.remove(output_file)
+    else:
+        #we will create a new file; before that make sure directory exists
+        dpy.parallel_mkdir(args.motion_vectors_dir)
+
     # index in time array
     tt = args.input_date_list.index(this_time)
-    print('Computing movion vectors, end time: ', this_time)
+    logger.info(f'Computing motion vectors, end time: {this_time}')
 
     # number of timesteps for motion vectors
     nt = 3
@@ -337,14 +356,11 @@ def motion_vector_at_one_time(this_time, args):
     uv_motion = oflow_method(z_acc)
 
     #save output to file
-    dpy.parallel_mkdir(args.motion_vectors_dir)
-    out_file = args.motion_vectors_dir + this_time.strftime('%Y%m%d%H%M_end_window.npy')
-    np.save(out_file, uv_motion)
+    np.save(output_file, uv_motion)
     
     #           U               V
-    print('Motion vectors done', uv_motion.dtype)
-    return uv_motion
-    #return np.zeros((2, args.out_ny, args.out_nx), dtype=float)
+    logger.info('Motion vectors done', uv_motion.dtype)
+    return np.array([1], dtype=float)
 
 
 def make_motion_vectors(args):
@@ -375,15 +391,13 @@ def make_motion_vectors(args):
     if args.ncores == 1 :
         #serial execution
         logger.info('Launching SERIAL computation of motion vectors')
-        u_arr = np.zeros((nt,ny,nx))
-        v_arr = np.zeros((nt,ny,nx))
+        result_arr = np.zeros((nt,))
         for tt, this_time in enumerate(args.input_date_list[2:]):
 
-            uv = motion_vector_at_one_time(this_time, args)
+            this_result = motion_vector_at_one_time(this_time, args)
             
             #shift before next round
-            u_arr[tt,:,:] = uv[0,:,:]
-            v_arr[tt,:,:] = uv[1,:,:]
+            result_arr[tt] = this_result
 
     else:
         #parallel execution
@@ -393,18 +407,19 @@ def make_motion_vectors(args):
         delayed_args = dask.delayed(args)
 
         #delayed list of results
-        res_list = [dask.array.from_delayed(dask_motion_vector_at_one_time(this_date, delayed_args), (2,ny,nx), np.float64) for this_date in args.input_date_list[2:] ]
+        res_list = [dask.array.from_delayed(dask_motion_vector_at_one_time(this_date, delayed_args), (1,), float) for this_date in args.input_date_list[2:] ]
 
         #what output do we want
         res_stack = dask.array.stack(res_list)
                 
         # computation happens here
         tt1 = time.time()
-        big_arr = res_stack.compute()
+        result_arr = res_stack.compute()
         tt2 = time.time()
         print('  parallel execution took ', tt2-tt1, ' seconds')
-        print('')
-        print(big_arr.shape)
+
+    print('')
+    print(f'Sum result arr: {int(np.sum(result_arr))}, we expected: {len(args.input_date_list[2:])}')
 
 def scale_wind(uv, fact_before):
     """scale wind vector for mid timesteps
@@ -431,10 +446,26 @@ def t_interp_at_one_time(out_time, args):
     """nowcasting time interpolation using forward and backward advection
     """
 
+    import os
     from domcmc import fst_tools
+    import domutils._py_tools as dpy
     from pysteps import nowcasts
     import pysteps 
     import time
+
+    missing = -9999.
+
+    # logging
+    logger = setup_logging(args)
+
+    # Because outputs at multiple times can be found in the same output files
+    # time interpolated outputs are always regenerated and not compatible with 
+    # the --complete_dataset keywork.
+
+    fst_output_file = args.output_dir + out_time.strftime(args.tinterpolated_file_struc)
+    if not os.path.isfile(fst_output_file):
+        #we will create a new file; before that make sure directory exists
+        dpy.parallel_mkdir(args.output_dir)
 
     # find input time just after and just before
     found = False
@@ -475,6 +506,9 @@ def t_interp_at_one_time(out_time, args):
     # advect wind at appropriate time
     forward_precip   = np.transpose(extrapolate(precip_before,  uv_before, 1, outval=0.))
     forward_quality  = np.transpose(extrapolate(quality_before, uv_before, 1, outval=0.))
+    # adjust missing values that could have been modified during advection
+    forward_precip = np.where(forward_precip < 0., missing, forward_precip)
+
 
     if do_backward_advect: 
         # multiplicative factors for intermediate timesteps before and after
@@ -490,18 +524,28 @@ def t_interp_at_one_time(out_time, args):
         # advect wind at appropriate time
         backward_precip  = np.transpose(extrapolate(precip_after,   uv_after,  1, outval=0.))
         backward_quality = np.transpose(extrapolate(quality_after,  uv_after,  1, outval=0.))
+        # adjust missing values that could have been modified during advection
+        backward_precip = np.where(backward_precip < 0., missing, backward_precip)
 
         # average result weighted by separation time
-        precip_rate   = np.squeeze( (1. - fact_before)*forward_precip  + fact_before*backward_precip )
-        quality_index = np.squeeze( (1. - fact_before)*forward_quality + fact_before*backward_quality )
+        precip_rate   = (1. - fact_before)*forward_precip  + fact_before*backward_precip
+        quality_index = (1. - fact_before)*forward_quality + fact_before*backward_quality
+        # exclude nodata from average, pick only the alternative when available
+        if fact_before > 0.:
+            precip_rate   = np.where( forward_precip < 0.,  backward_precip,  precip_rate)
+            quality_index = np.where( forward_precip < 0., backward_quality,  quality_index)
+        if (1. - fact_before) > 0.:
+            precip_rate   = np.where(backward_precip < 0.,   forward_precip,  precip_rate)
+            quality_index = np.where(backward_precip < 0.,  forward_quality,  quality_index)
 
     else:
         # We only did forward advection
-        precip_rate   = np.squeeze(forward_precip )
-        quality_index = np.squeeze(forward_quality)
+        precip_rate   = forward_precip 
+        quality_index = forward_quality
 
     etiket = 'EXTRAPOL'
-    write_fst_file(out_time, precip_rate, quality_index, args, etiket=etiket)
+    write_fst_file(out_time, np.squeeze(precip_rate), np.squeeze(quality_index), args, etiket=etiket, 
+                   output_file=fst_output_file)
 
     return np.array([1], dtype=float)
 
@@ -549,9 +593,44 @@ def nowcast_t_interp(args):
         print(big_arr.shape)
 
 
+def aquire_lock(filename):
+    """ Acquire file lock
+    """
+    import time
+    import os
+
+    lock_file = filename+'.lock'
+
+    start_time = time.time()
+    timeout = 120.
+    delay   = .5
+    while True:
+        try:
+            # Attempt to create the lockfile.
+            # These flags cause os.open to raise an OSError if the file already exists.
+            fd = os.open(lock_file, os.O_CREAT | os.O_EXCL | os.O_RDWR)
+            with os.fdopen(fd, "a") as f:
+                f.write('You shall not pass!')
+            break
+        except FileExistsError:
+            if (time.time() - start_time) >= timeout:
+                raise RuntimeError("Timeout occurred getting file lock")
+            print(f'waiting lockfile: {lock_file}')
+            time.sleep(delay)
+
+    return True
 
 
-def write_fst_file(out_date, precip_rate, quality_index, args, etiket=''):
+def release_lock(filename):
+    import os
+    lock_file = filename+'.lock'
+    if os.path.isfile(lock_file):
+        os.unlink(lock_file)
+
+
+
+def write_fst_file(out_date, precip_rate, quality_index, args, etiket='', 
+                   output_file=None):
     """ write precip to a fst file
     """
     import os
@@ -565,22 +644,29 @@ def write_fst_file(out_date, precip_rate, quality_index, args, etiket=''):
     # read fst template
     fst_template = fst_tools.get_data(args.sample_pr_file, var_name='PR')
 
-
     #prepare std objects
     #cmc timestamp
     date_obj = RPNDate(out_date)
     cmc_timestamp = date_obj.datev
 
-    #open fst file
-    output_file = args.output_dir + out_date.strftime(args.fst_file_struc)
+    #fst file to write to
+    if output_file is None:
+        output_file = args.output_dir + out_date.strftime(args.processed_file_struc)
+
+    # aquire lock for this file
+    aquire_lock(output_file)
+
+    first_time_writing_to_outfile = True
     if os.path.isfile(output_file):
-        os.remove(output_file)
+        first_time_writing_to_outfile = False
+
     logger.info('writing ' + output_file)
     iunit = rmn.fstopenall(output_file,rmn.FST_RW)
 
     if 'combined_yy_grid' in fst_template.keys():
         #write ^> to output file
-        rmn.writeGrid(iunit, fst_template['combined_yy_grid'])
+        if first_time_writing_to_outfile:
+            rmn.writeGrid(iunit, fst_template['combined_yy_grid'])
 
         #put precip rate into combined YY array
         nx, ny = precip_rate.shape
@@ -593,7 +679,8 @@ def write_fst_file(out_date, precip_rate, quality_index, args, etiket=''):
 
     else:
         #write >> ^^ to output file
-        rmn.writeGrid(iunit, fst_template['grid'])
+        if first_time_writing_to_outfile:
+            rmn.writeGrid(iunit, fst_template['grid'])
 
     #make RDPR entry
     rdpr_entry = copy.deepcopy(fst_template['meta'])
@@ -621,11 +708,14 @@ def write_fst_file(out_date, precip_rate, quality_index, args, etiket=''):
     rdqi_entry['typvar']        = 'I'
     rdqi_entry['d']             = np.asfortranarray(quality_index, dtype='float32')
 
-    rmn.fstecr(iunit, rdpr_entry)
-    rmn.fstecr(iunit, rdqi_entry)
+    rmn.fstecr(iunit, rdpr_entry, rewrite=False)
+    rmn.fstecr(iunit, rdqi_entry, rewrite=False)
 
     #close file
     rmn.fstcloseall(iunit)
+
+    # release lock on file to allow other processes to write to it
+    release_lock(output_file)
 
     logger.info('Done writing ' + output_file)
 
@@ -704,7 +794,8 @@ def main():
              prefix_chars='-+', formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--radar_data_dir"   , type=str,   required=True,  help="path of source radar mosaics files")
     parser.add_argument("--output_dir"       , type=str,   required=True,  help="directory for output fst files")
-    parser.add_argument("--fst_file_struc"   , type=str,   required=True,  help="strftime syntax for constructing fst filenames")
+    parser.add_argument("--processed_file_struc", type=str,required=True,  help="strftime syntax for constructing fst filenames for output of obsprocess")
+    parser.add_argument("--tinterpolated_file_struc", type=str,required=False,  help="strftime syntax for constructing time interpolated filenames")
     parser.add_argument("--h5_file_struc"    , type=str,   required=True,  help="strftime syntax for constructing H5  filenames")
     parser.add_argument("--h5_latlon_file"   , type=str,   required=False, help="Pickle file containing the lat/lons of the Baltrad grid")
     parser.add_argument("--input_t0"         , type=str,   required=True,  help="yyyymmsshhmmss begining time; datestring")
@@ -781,7 +872,7 @@ def main():
     else:
         #otherwise get it from fcst len
         args.input_tf = args.input_t0 + datetime.timedelta(seconds=args.fcst_len*3600.)
-    args.input_dt = parse_num(args.input_dt) * 60. #convert input_dt to seconds
+    args.input_dt = parse_num(args.input_dt, dtype='float') * 60. #convert input_dt to seconds
 
     #output dates
     if args.output_t0 is None:
@@ -792,7 +883,7 @@ def main():
         args.output_tf = args.input_tf
     else:
         args.output_tf = to_datetime(args.output_tf)
-    args.output_dt = parse_num(args.output_dt) * 60. #convert input_dt to seconds
+    args.output_dt = parse_num(args.output_dt, dtype='float') * 60. #convert input_dt to seconds
 
 
     #make sure 'logs' directory exists and is empty
@@ -831,11 +922,18 @@ def main():
     elasped_seconds = t_len.days*3600.*24. + t_len.seconds
     args.output_date_list = [args.output_t0 + datetime.timedelta(seconds=x) for x in np.arange(0,elasped_seconds,args.output_dt)]
 
+    # If time interpolated outputs already exists for this period, 
+    # they are deleted here along with potentially dangling lock files
+    out_file_list = set( [args.output_dir + out_date.strftime(args.tinterpolated_file_struc) for out_date in args.output_date_list] )
+    for this_file in out_file_list:
+        if os.path.isfile(this_file):
+            os.remove(this_file)
+        if os.path.isfile(this_file+'.lock'):
+            os.remove(this_file+'.lock')
+
     # initialize dask client if needed
     if args.ncores > 1 :
         client = dask.distributed.Client(processes=True, threads_per_worker=1,n_workers=args.ncores, silence_logs=40)
-
-
 
     #compute motion vectors
     if args.t_interp_method == 'None':
@@ -848,17 +946,20 @@ def main():
 
     elif args.t_interp_method == 'nowcast':
 
-        # 1- process radar file and write output to fst files
+        # check that interpolation will be possible
+        if args.output_date_list[0] < args.input_date_list[0] + + datetime.timedelta(seconds=args.input_dt) :
+            raise ValueError('For nowcast interpolation the earliest output time must be at least two input delta_t after the earliest input time')
+
+        ## 1- process radar file and write output to fst files
         output_dir = args.output_dir 
-        # override output dir since in this context these outputs are only intermediate results
+        ## override output dir since in this context these outputs are only intermediate results
         args.output_dir    = output_dir + 'processed/'
         args.processed_dir = args.output_dir
-        obs_process(args)
-        exit()
+        #obs_process(args)
 
-        # 2- compute motion vectors associated with processed outputs
+        ## 2- compute motion vectors associated with processed outputs
         args.motion_vectors_dir = output_dir + 'motion_vectors/'
-        make_motion_vectors(args)
+        #make_motion_vectors(args)
 
         # 3- use nowcast for time interpolation
         args.output_dir    = output_dir 
