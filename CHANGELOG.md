@@ -8,6 +8,13 @@ Please use the following tags when editing this file:
 *Removed* for now removed features.
 *Fixed* for any bug fixes. 
 
+## [2.2.0] - 2023-11-03
+### Added
+- radar_tools  New obs_process method for batch processing and time interpolation
+### Changed
+- radar_tools  Support for ODIM H5 version 2.4
+- _py_tools    Removed cairosvg, a simpler method is to generate pngs with mpl and use convert for gifs
+
 ## [2.1.0] - 2023-06-06
 ### Added
 - radar_tools  Support for Yin-Yang grid in make_fst script. 

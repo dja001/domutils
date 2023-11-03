@@ -127,9 +127,9 @@ def read_h5_vol(odim_file:   str=None,
     #get number from byte string  e.g.  '2.3' from b'H5rad 2.3'
     file_version = file_what_dict['version'].decode('utf-8').split()[1]
 
-    supported_versions = ['2.2', '2.3']
+    supported_versions = ['2.2', '2.3', '2.4']
     if file_version not in supported_versions:
-        raise ValueError(f'Odim H5 file version {file_version} is not supported')
+        logger.warning(f'Odim H5 file version {file_version} is not fully tested and may not work')
 
 
     #radar info 
