@@ -1,11 +1,11 @@
 
 
 #to run a single test
-#  python test_radar_tools.py TestStringMethods.test_read_odim_vol
+#  python test_radar_tools.py Tests.test_read_odim_vol
 
 import unittest
 
-class TestStringMethods(unittest.TestCase):
+class Tests(unittest.TestCase):
 
     def test_make_radar_fst(self):
         ''' test funtion that make a fst file from odim h5 mosaic file
@@ -15,6 +15,7 @@ class TestStringMethods(unittest.TestCase):
         '''
 
         import os
+        import shutil
         import numpy as np
         import datetime
         import cartopy.crs as ccrs
@@ -35,13 +36,17 @@ class TestStringMethods(unittest.TestCase):
         test_results_dir = package_dir+'/test_results/make_radar_fst/'
         if not os.path.isdir(test_results_dir):
             os.makedirs(test_results_dir)
+        log_dir = './logs'
+        if not os.path.isdir(log_dir):
+            os.makedirs(log_dir)
 
         #a small class that mimics the output of argparse
         class FstArgs():
             radar_data_dir = package_dir+'/test_data/odimh5_radar_composites/'
             output_dir = test_results_dir
-            fst_file_struc = '%Y%m%d%H%M_mosaic.fst'
-            h5_file_struc = '%Y/%m/%d/qcomp_%Y%m%d%H%M.h5'
+            output_file_format = 'fst'
+            processed_file_struc = '%Y%m%d%H%M_mosaic.fst'
+            input_file_struc = '%Y/%m/%d/qcomp_%Y%m%d%H%M.h5'
             h5_latlon_file = test_data_dir+'radar_continental_2.5km_2882x2032.pickle'
             t0 = datetime.datetime(2019,10,31,16,0)
             tf = datetime.datetime(2019,10,31,16,0)
@@ -55,6 +60,7 @@ class TestStringMethods(unittest.TestCase):
             smooth_radius = None
             figure_dir = test_results_dir
             figure_format = 'svg'
+            log_level = 'INFO'
 
         args = FstArgs()
 
@@ -73,6 +79,10 @@ class TestStringMethods(unittest.TestCase):
         #compare image with saved reference
         #copy reference image to testdir
         images_are_similar = py_tools.render_similarly(new_figure, reference_image)
+
+
+        if images_are_similar:
+            shutil.rmtree(log_dir)
 
         #test fails if images are not similar
         self.assertEqual(images_are_similar, True)
