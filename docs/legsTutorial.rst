@@ -27,10 +27,10 @@ This tutorial demonstrates how to construct custom color mappings.
 Elements covered include:
 
 
-.. toctree::
-   :maxdepth: 3
-
-   legsTutorial
+.. contents:: Table of Contents
+   :depth: 2
+   :local:
+   :backlinks: none
 
 
 

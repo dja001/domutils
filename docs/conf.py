@@ -58,7 +58,9 @@ if not os.path.isdir('../test_data') :
 #extensions = ['sphinx.ext.autodoc', 'sphinx.ext.napoleon']
 extensions = ['sphinx.ext.napoleon',
               'sphinx.ext.doctest', 
+              'sphinx.ext.autosectionlabel',
               'sphinx_autodoc_typehints',
+              'sphinxarg.ext',
               'sphinx_gallery.gen_gallery']
 
 napoleon_include_private_with_doc = False

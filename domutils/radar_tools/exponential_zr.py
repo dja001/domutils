@@ -15,25 +15,34 @@ def exponential_zr(data:        Any,
 
     When no coefficients are provided, use WSR-88D Z-R 
     coefficients.
-             a=300, b=1.4
 
-    Use      a=200, b=1.6  for original Marshall-Palmer
-        
+        - a=300, b=1.4
 
+    Use      
+    
+        - a=200, b=1.6  
+
+    for the original Marshall-Palmer.
 
     To get dBZ from R we have:
 
-    dBZ = 10*log10(Z) = 10*log10(a) + 10*b*log10(R)
+    .. math::
+        :nowrap:
 
-    dBZ =                   U       + V   *log10(R)
-
-
+        \\begin{align*}
+            dBZ &= 10 \log_{10}(Z)                     \\\\
+                &= 10 \log_{10}(a) + 10 b \log_{10}(R) \\\\
+                &=          U      +   V  \log_{10}(R)
+        \\end{align*}
 
     To get R from dBZ:
 
-    R = 10^(dBZ/(10*b)) / 10^(log10(a)/b)
+    .. math::
+        :nowrap:
 
-    R = 10^(dBZ/W) / X
+        \\begin{equation*}
+            R = \\frac{10^{\\frac{dBZ}{(10 b)}} }{ 10^{\\frac{\log_{10}(a)}{b}}} = \\frac{10^{\\frac{dBZ}{W}} }{ X}
+        \\end{equation*}
             
     Args:
        data:     (array-Like) data to be converted

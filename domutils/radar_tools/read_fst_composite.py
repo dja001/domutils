@@ -1,6 +1,8 @@
 from typing import Callable, Iterator, Union, Optional, List, Iterable, MutableMapping
+import datetime
 
 def read_fst_composite(fst_file:   str=None,
+                       valid_date: Optional[datetime.datetime] = None,
                        latlon:     Optional[bool] = False,
                        no_data:    Optional[float]= -9999.,
                        undetect:   Optional[float]= -3333.,
@@ -17,16 +19,17 @@ def read_fst_composite(fst_file:   str=None,
 
     Args:
         fst_file:        /path/to/fst/composite.std .stnd .fst or no 'extention'
+        valid_date:      Datetime object for the time where observations are desired
         latlon:          When true, will output latitudes and longitudes
         no_data:         Value that will be assigned to missing values
         undetect:        Value that will be assigned to valid measurement of no precipitation
 
     Returns:
+
         None:            If no or invalid file present
 
-        or 
+        or a dictionary containing:
 
-        { 
             'reflectivity':       (ndarray) 2D reflectivity
 
             'total_quality_index':  (ndarray) 2D quality index
@@ -36,7 +39,6 @@ def read_fst_composite(fst_file:   str=None,
             'latitudes':          (ndarray) 2d latitudes  of data (conditional on latlon = True)
 
             'longitudes':         (ndarray) 2d longitudes of data (conditional on latlon = True)
-        }
 
     Example:
 
@@ -89,6 +91,7 @@ def read_fst_composite(fst_file:   str=None,
     for this_var in var_list:
         fst_dict = fst_tools.get_data(file_name=fst_file,
                                       var_name=this_var,
+                                      datev=valid_date,
                                       latlon=latlon)
         if fst_dict is not None:
             break
@@ -96,6 +99,7 @@ def read_fst_composite(fst_file:   str=None,
     if fst_dict is None:
         logger.warning('Did not find reflectivity or precipitation rates in file:')
         logger.warning(fst_file)
+        logger.warning(f'at date: {valid_date}')
         logger.warning('searched for: '+ str(var_list))
         logger.warning('returning None')
         return None
@@ -112,7 +116,8 @@ def read_fst_composite(fst_file:   str=None,
 
         #get quality index
         qi_dict = fst_tools.get_data(file_name=fst_file,
-                                     var_name='RDQI')
+                                     var_name='RDQI',
+                                     datev=valid_date)
         if qi_dict is not None:
             total_quality_index = qi_dict['values']
         else:

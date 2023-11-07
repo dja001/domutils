@@ -37,9 +37,10 @@ def read_h5_vol(odim_file:   str=None,
 
     Returns:
 
-        a dict::
+        None:             If no or invalid file present or desired elevation or quantities not found.
 
-            # a dictionary which roughly mimics the structure of odim h5 files::
+        or a dictionary which mimics the structure of odim h5 files::
+            
             # dict['elevation1']['quantity1'](2D numpy array, PPI) 
             #                   ['quantity2'](2D numpy array, PPI)
             #                      ...
@@ -54,9 +55,6 @@ def read_h5_vol(odim_file:   str=None,
             #                   [longitudes] (2D numpy array)
             # dict['elevation2']['quantity1'](2D numpy array)
             #                     ...
-        or
-
-        None:             If no or invalid file present, desires elevation or quantities not found.
 
     Example:
 

@@ -3,7 +3,7 @@ Command to create a development environment
 
 cartopy .20 has a bug and cartopy 0.21 is noticeably slower than previous versions.... 
 
-mamba create -n dev_env_v3 attrdict cartopy=0.19.0.post1 matplotlib=3.3.4 pysteps conda-pack dask h5py pygrib packaging scipy sphinx sphinx-gallery sphinx_rtd_theme cairosvg sphinx-autodoc-typehints twine pytz pysteps -c conda-forge
+mamba create -n dev_env_v3 attrdict cartopy=0.19.0.post1 matplotlib=3.3.4 pysteps conda-pack dask h5py pygrib packaging scipy sphinx sphinx-gallery sphinx_rtd_theme cairosvg sphinx-autodoc-typehints sphinx-argparse twine pytz pysteps -c conda-forge
 pip install -e ~/python/packages/domcmc_package
 pip install -e ~/python/packages/domutils_package
 

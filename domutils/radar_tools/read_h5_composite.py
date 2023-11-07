@@ -11,16 +11,18 @@ def read_h5_composite(odim_file:   str=None,
     """ Read reflectivity and quality index from OdimH5 composite
         
     Odim H5 files are a bit annoying in that datasets and quality index are just numbered
-    (data1, data2, ...) and not named following what thay contain. Also, one cannot expect that 
+    (data1, data2, ...) and not named following what they contain. Also, one cannot expect that 
     a dataset named 'quality3' will always contain the same quantity. 
     The result is that one has to loop over each item and check that the contents match what we 
     are looking for. 
+
     This routine does that as well as converting the Byte data found in H5 files to more tangible
     quantities such as reflectivity in dBZ and quality index between 0. and 1. 
     Special values are also assigned to no_data and undetect values.
     UTC time zone is assumed for datestamp in H5 file
 
     Args:
+
         odim_file:        /path/to/odim/composite.h5
         latlon:           When true, will output latitudes and longitudes of the odim grid
         qced:             When true (default), Quality Controlled reflectivity (DBZH) will be returned.
@@ -30,21 +32,20 @@ def read_h5_composite(odim_file:   str=None,
         latlon_file:      pickle file containing latlon of domain (only used if latlon=True)
 
     Returns:
+
         None:             If no or invalid file present
 
-        or 
+        or a dictionary containing:
 
-        { 
-            'reflectivity':        (ndarray) 2D reflectivity
+                'reflectivity':        (ndarray) 2D reflectivity
 
-            'total_quality_index': (ndarray) 2D quality index
+                'total_quality_index': (ndarray) 2D quality index
 
-            'valid_date':          (python datetime object) date of validity
+                'valid_date':          (python datetime object) date of validity
 
-            'latitudes':           (ndarray) 2d latitudes  of data (conditionnal on latlon = True)
+                'latitudes':           (ndarray) 2d latitudes  of data (conditional on latlon == True)
 
-            'longitudes':          (ndarray) 2d longitudes of data (conditionnal on latlon = True)
-        }
+                'longitudes':          (ndarray) 2d longitudes of data (conditional on latlon == True)
 
     Example:
 

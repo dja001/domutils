@@ -7,6 +7,9 @@ radar_tools API
 .. automodule:: domutils.radar_tools.get_accumulation
    :members: 
 
+.. automodule:: domutils.radar_tools.obs_process
+   :members: 
+
 .. automodule:: domutils.radar_tools.exponential_zr
    :members: 
 

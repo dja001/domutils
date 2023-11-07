@@ -74,8 +74,8 @@ data that we will be reading:
     ...     plt.close(fig)
 
 Let's also initialize some color mapping objects for the different 
-quantities that will be displayed.
-See :ref:`legsTutorial` for details.
+quantities that will be displayed (see :ref:`legs Tutorial` for details).
+
 
     >>> import domutils.legs as legs
     >>>

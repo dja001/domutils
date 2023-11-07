@@ -722,54 +722,48 @@ def write_fst_file(out_date, precip_rate, quality_index, args, etiket='',
 
 
 def obs_process(args=None):
-    """ module for making a CMC "standard" file containing radar data
+    """ Batch processing of precipitation observation
 
-    It is intended to be used as a script, for example:
+      This function provides time and space interpolation of precipitiaton data.
+      If desired, processing such as median filtering and boxcar-type filtering
+      can be applied at the same time. 
 
-    
+      See  for an example.
 
-      =====================================================
-      export XDG_RUNTIME_DIR=$TMPDIR
-      export OMP_NUM_THREADS=2
-      ulimit -s 128000
+      It is intended to be used as a command-line program, that would be called like:
+
+      .. code-block:: bash
+
+          python -m domutils.radar_tools.process_a_bunch_of_times                                                 
+                    --input_data_dir   /space/hall4/sitestore/eccc/mrd/rpndat/dja001/data/radar_h5_composites/v8/ 
+                    --output_dir       /home/dja001/python/process_a_bunch_of_times/outdir/                       
+                    --figure_dir       /home/dja001/python/process_a_bunch_of_times/figdir/                       
+                    --fst_file_struc   %Y/%m/%d/%Y%m%d%H%M_mosaic.fst                                             
+                    --input_file_struc %Y/%m/%d/qcomp_%Y%m%d%H%M.h5                                               
+                    --h5_latlon_file   /home/dja001/shared_stuff/files/radar_continental_2.5km_2882x2032.pickle   
+                    --t0               ${t_start}                                                                 
+                    --tf               ${t_stop}                                                                  
+                    --input_dt         10                                                                         
+                    --sample_pr_file   /space/hall4/sitestore/eccc/mrd/rpndat/dja001/domains/hrdps_5p1_prp0.fst   
+                    --ncores           40                                                                         
+                    --complete_dataset True                                                                       
+                    --median_filt      3                                                                          
+                    --smooth_radius    4                                                                          
+
+      Alternatively, is is possible to call this function directly from Python by defining a
+      simple object whose attributes are the arguments.
+      Such use is demonstrated in 
       
-      #make symlink to anaconda python interpreter
-      conda_python=$(which python)
-      rm -f conda_python
-      ln -s ${conda_python} conda_python
-      
-      #inclusively
-      t_start=$(r.date -V 2016070109)
-      t_stop=$(r.date -V  2016070115)
-      
-      #get info on options with 
-      # python -m domutils.radar_tools.process_a_bunch_of_times -h
-      
-      #path to operationnal baltrad outputs:
-      #  /space/hall4/sitestore/eccc/cmod/prod/hubs/radar/BALTRAD/Outcoming/Composites/ \
-      
-      #process data and make std file
-      python -m domutils.radar_tools.process_a_bunch_of_times                                                              \
-                --input_data_dir   /space/hall4/sitestore/eccc/mrd/rpndat/dja001/data/radar_h5_composites/v8/ \
-                --output_dir       /home/dja001/python/process_a_bunch_of_times/outdir/                                    \
-                --figure_dir       /home/dja001/python/process_a_bunch_of_times/figdir/                                    \
-                --fst_file_struc   %Y/%m/%d/%Y%m%d%H%M_mosaic.fst                                             \
-                --input_file_struc %Y/%m/%d/qcomp_%Y%m%d%H%M.h5                                               \
-                --h5_latlon_file   /home/dja001/shared_stuff/files/radar_continental_2.5km_2882x2032.pickle   \
-                --t0               ${t_start}                                                                 \
-                --tf               ${t_stop}                                                                  \
-                --input_dt         10                                                                         \
-                --sample_pr_file   /space/hall4/sitestore/eccc/mrd/rpndat/dja001/domains/hrdps_5p1_prp0.fst   \
-                --ncores           40                                                                         \
-                --complete_dataset True                                                                       \
-                --median_filt      3                                                                          \
-                --smooth_radius    4                                                                          \
-      
-      if [[ $? -ne 0 ]] ; then
-          echo 'A problem has occured; exiting'
-          exit 1
-      fi
-      =====================================================
+
+      Argument description:
+
+      .. argparse::
+          :module: domutils.radar_tools.obs_process
+          :func: define_parser
+          :prog: obs_process
+
+
+          
 
     """
 
@@ -778,7 +772,6 @@ def obs_process(args=None):
     import os
     from os import linesep as newline
     import sys
-    import argparse
     import time
     import datetime
     import domutils._py_tools as dpy
@@ -787,50 +780,19 @@ def obs_process(args=None):
     #keep track of runtime
     time_start = time.time()
 
-
-    non_mandatory_args = [
-          ('tinterpolated_file_struc', str,   'None',      "strftime syntax for constructing time interpolated filenames"),
-          ('h5_latlon_file'          , str,   'None',      "Pickle file containing the lat/lons of the Baltrad grid"),
-          ('input_tf'                , str,   'None',      "yyyymmsshhmmss end      time; datestring"),
-          ('fcst_len'                , float, 'None',      "duration of forecast (hours)"),
-          ('accum_len'               , str,   'None',      "duration of accumulation (minutes)"),
-          ('output_t0'               , str,   'None',      "yyyymmsshhmmss begining time; datestring"),
-          ('output_tf'               , str,   'None',      "yyyymmsshhmmss end      time; datestring"),
-          ('output_dt'               , str,   'None',      "interval (minutes) between output radar mosaics"),
-          ('t_interp_method'         , str,   'None',      "time interpolation method"),
-          ('sample_pr_file'          , str,   'None',      "File containing PR to establish the domain"),
-          ('output_file_format'      , str,   'npz',       "File format of processed files"),
-          ('ncores'                  , int,   1,           "number of cores for parallel execution"),
-          ('complete_dataset'        , str,   'False',     "Skip existing files, default is to clobber them"),
-          ('median_filt'             , str,   'None',      "box size (pixels) for median filter"),
-          ('smooth_radius'           , str,   'None',      "radius (km) where radar data be smoothed"),
-          ('figure_dir'              , str,   'no_figures',"If provided, a figure will be created for each std file created"),
-          ('cartopy_dir'             , str,   'None',      "Directory for cartopy shape files"),
-          ('figure_format'           , str,   'gif',       "File format of figure "),
-          ('log_level'               , str,   'INFO',      "minimum level of messages printed to stdout and in log files "),
-          ]
-
     if args is None:
-        # parse arguments fro the command line
 
-        desc="read radar H5 files, interpolate/smooth and write to FST"
-        parser = argparse.ArgumentParser(description=desc, 
-                 prefix_chars='-+', formatter_class=argparse.RawDescriptionHelpFormatter)
-        parser.add_argument("--input_data_dir"   , type=str,   required=True,  help="path of source radar mosaics files")
-        parser.add_argument("--output_dir"       , type=str,   required=True,  help="directory for output fst files")
-        parser.add_argument("--input_t0"         , type=str,   required=True,  help="yyyymmsshhmmss begining time; datestring")
-        parser.add_argument("--processed_file_struc", type=str,required=True,  help="strftime syntax for constructing fst filenames for output of obsprocess")
-        parser.add_argument("--input_file_struc" , type=str,   required=True,  help="strftime syntax for constructing H5  filenames")
-        parser.add_argument("--input_dt"         , type=str,   required=True,  help="interval (minutes) between input radar mosaics")
-
-        for (var_name, vtype, vdefault, vhelp) in non_mandatory_args:
-            parser.add_argument(var_name, type=vtype, default=vdefault, help=vhelp)
-
+        # we are processing command line arguments
+        parser = define_parser()
         args = parser.parse_args()
 
     else:
+        # arguments are passed through the attributes of an object, 
         # set all non mandatory arguments to default values when called with args
+        non_mandatory_args = define_parser(only_arg_list=True)
         for (var_name, vtype, vdefault, vhelp) in non_mandatory_args:
+            # remove the -- at the beginning  var_name
+            var_name = var_name[2:]
             if not hasattr(args, var_name):
                 setattr(args, var_name, vdefault)
 
@@ -993,6 +955,55 @@ def obs_process(args=None):
     logger.info('Python code completed, Runtime was : '+str(time_stop-time_start)+' seconds')
 
 
+def define_parser(only_arg_list=False):
+    '''return argument parser
+    '''
+    import argparse
+
+    non_mandatory_args = [
+          ('--tinterpolated_file_struc', str,   'None',      "strftime syntax for constructing time interpolated filenames"),
+          ('--h5_latlon_file'          , str,   'None',      "Pickle file containing the lat/lons of the Baltrad grid"),
+          ('--input_tf'                , str,   'None',      "yyyymmsshhmmss end      time; datestring"),
+          ('--fcst_len'                , float, 'None',      "duration of forecast (hours)"),
+          ('--accum_len'               , str,   'None',      "duration of accumulation (minutes)"),
+          ('--output_t0'               , str,   'None',      "yyyymmsshhmmss begining time; datestring"),
+          ('--output_tf'               , str,   'None',      "yyyymmsshhmmss end      time; datestring"),
+          ('--output_dt'               , str,   'None',      "interval (minutes) between output radar mosaics"),
+          ('--t_interp_method'         , str,   'None',      "time interpolation method"),
+          ('--sample_pr_file'          , str,   'None',      "File containing PR to establish the domain"),
+          ('--output_file_format'      , str,   'npz',       "File format of processed files"),
+          ('--ncores'                  , int,   1,           "number of cores for parallel execution"),
+          ('--complete_dataset'        , str,   'False',     "Skip existing files, default is to clobber them"),
+          ('--median_filt'             , str,   'None',      "box size (pixels) for median filter"),
+          ('--smooth_radius'           , str,   'None',      "radius (km) where radar data be smoothed"),
+          ('--figure_dir'              , str,   'no_figures',"If provided, a figure will be created for each std file created"),
+          ('--cartopy_dir'             , str,   'None',      "Directory for cartopy shape files"),
+          ('--figure_format'           , str,   'gif',       "File format of figure "),
+          ('--log_level'               , str,   'INFO',      "minimum level of messages printed to stdout and in log files "),
+          ]
+
+    if only_arg_list:
+        # we only want the list of mandatory arguments and their default values
+        return non_mandatory_args
+    else:
+        # we want a full fledged argument parser
+        desc="read radar H5 files, interpolate/smooth and write to FST"
+        parser = argparse.ArgumentParser(description=desc, 
+                 prefix_chars='-+', formatter_class=argparse.RawDescriptionHelpFormatter)
+        required_args = parser.add_argument_group('Required named arguments')
+        required_args.add_argument("--input_data_dir"   , type=str,   required=True,  help="path of source radar mosaics files")
+        required_args.add_argument("--output_dir"       , type=str,   required=True,  help="directory for output fst files")
+        required_args.add_argument("--input_t0"         , type=str,   required=True,  help="yyyymmsshhmmss begining time; datestring")
+        required_args.add_argument("--processed_file_struc", type=str,required=True,  help="strftime syntax for constructing fst filenames for output of obsprocess")
+        required_args.add_argument("--input_file_struc" , type=str,   required=True,  help="strftime syntax for constructing H5  filenames")
+        required_args.add_argument("--input_dt"         , type=str,   required=True,  help="interval (minutes) between input radar mosaics")
+
+        optional_args = parser.add_argument_group('Optional named arguments')
+        for (var_name, vtype, vdefault, vhelp) in non_mandatory_args:
+            optional_args.add_argument(var_name, type=vtype, default=vdefault, help=vhelp)
+
+        return parser
+
 if __name__ == '__main__':     
-    obs_process(*args, **kwargs)
+    obs_process()
 
