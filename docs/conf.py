@@ -12,6 +12,7 @@
 #
 import os
 import sys
+import subprocess
 sys.path.insert(0, os.path.abspath('..'))
 
 
@@ -43,8 +44,8 @@ if not os.path.isdir('../test_data') :
         shell_script = './download_test_data.sh'
         if not os.access(shell_script, os.X_OK):
             os.chmod(shell_script, 0o755)
-        #runt script to download data 
-        os.system(shell_script)
+        #runt script to download _static directory from zenodo archive
+        subprocess.run([shell_script, '_static_only'])
     except:
         raise RuntimeError('something went wrong downloading the test data')
 
@@ -98,7 +99,7 @@ html_static_path = ['_static']
 
 
 
-# No longer using LFD on github tu to paywall restrictions
+# No longer using LFD on github due to paywall restrictions
 # I am keeping this as a reference
 #
 ### Workaround to install and execute git-lfs on Read the Docs

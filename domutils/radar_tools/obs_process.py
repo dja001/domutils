@@ -5,7 +5,7 @@ import dask
 import dask.array 
 import dask.distributed
 
-def setup_logging(args, is_worker=False):
+def _setup_logging(args, is_worker=False):
     """setup logger and handlers
 
     Because of parallel execution, logging has to be setup for every forked processes
@@ -48,18 +48,18 @@ def setup_logging(args, is_worker=False):
     return logger
 
 @dask.delayed
-def dask_process_at_one_time(*args, **kwargs):
+def _dask_process_at_one_time(*args, **kwargs):
     import sys
     import multiprocessing
 
     #setup logger for dask worker if not already done
     command_line_args = args[2]
-    logger = setup_logging(command_line_args, is_worker=True)
+    logger = _setup_logging(command_line_args, is_worker=True)
 
-    return process_at_one_time(*args, **kwargs)
+    return _process_at_one_time(*args, **kwargs)
 
 
-def process_at_one_time(valid_date, fst_template, args):
+def _process_at_one_time(valid_date, fst_template, args):
     #output data to std file
 
     import os
@@ -70,9 +70,9 @@ def process_at_one_time(valid_date, fst_template, args):
     from domutils import radar_tools
     import domutils._py_tools as dpy
 
-    logger = setup_logging(args)
+    logger = _setup_logging(args)
 
-    logger.info('process_at_one_time starting to process date: '+str(valid_date))
+    logger.info('_process_at_one_time starting to process date: '+str(valid_date))
 
     #output filename and directory
     output_file = args.output_dir + valid_date.strftime(args.processed_file_struc)
@@ -159,21 +159,19 @@ def process_at_one_time(valid_date, fst_template, args):
         etiquette_smooth_radius = args.smooth_radius
     etiket = 'MED'+"{:1d}".format(etiquette_median_filt)+'SM'+"{:02d}".format(etiquette_smooth_radius)
 
-    write_fst_file(valid_date, precip_rate, quality_index, args, etiket=etiket)
+    _write_fst_file(valid_date, precip_rate, quality_index, args, etiket=etiket)
 
     #make a figure for this std file if the argument figure_dir was provided
     if args.figure_dir is not None:
         radar_tools.plot_rdpr_rdqi(fst_file=output_file, 
                                    this_date=valid_date,
-                                   fig_dir=args.figure_dir,
-                                   fig_format=args.figure_format,
                                    args=args)
 
-    return np.array([1.],dtype=float)
+    return np.array([1], dtype=float)
 
 
 
-def parse_num(arg, dtype='int'):
+def _parse_num(arg, dtype='int'):
     """
     change string to number
 
@@ -200,22 +198,22 @@ def parse_num(arg, dtype='int'):
     return out
 
 
-def to_datetime(time_str):
+def _to_datetime(time_str):
     """
     changes string yyyymmddhhmmss to python datetime object
     """
     import datetime
 
-    yyyy = parse_num(time_str[0:4])
-    mo   = parse_num(time_str[4:6])
-    dd   = parse_num(time_str[6:8])
-    hh   = parse_num(time_str[8:10])
-    mi   = parse_num(time_str[10:12])
+    yyyy = _parse_num(time_str[0:4])
+    mo   = _parse_num(time_str[4:6])
+    dd   = _parse_num(time_str[6:8])
+    hh   = _parse_num(time_str[8:10])
+    mi   = _parse_num(time_str[10:12])
     ss   = 0
     return datetime.datetime(yyyy,mo,dd,hh,mi,ss)
 
 
-def process_a_bunch_of_times(args):
+def _process_a_bunch_of_times(args):
     """ read odim H5, manipulate it, and write to fst
 
     depending on the number of cpus, serial execution or parallel execution with multiprocessing will be chosen 
@@ -230,7 +228,7 @@ def process_a_bunch_of_times(args):
 
 
     #logging
-    logger = setup_logging(args)
+    logger = _setup_logging(args)
 
     logger.info('getting output domain from: '+ args.sample_pr_file)
     fst_template = fst_tools.get_data(args.sample_pr_file, var_name='PR', latlon=True)
@@ -243,7 +241,7 @@ def process_a_bunch_of_times(args):
         #serial execution
         logger.info('Launching SERIAL execution of obs processing')
         for this_date in args.input_date_list:
-            process_at_one_time(this_date, fst_template, args)
+            _process_at_one_time(this_date, fst_template, args)
     else :
         #parallel conversion with nultiprocessing
         logger.info('Launching PARALLEL execution of of observation processing')
@@ -253,7 +251,7 @@ def process_a_bunch_of_times(args):
         delayed_fst_template = dask.delayed(fst_template)
 
         #delayed list of results
-        res_list = [dask.array.from_delayed(dask_process_at_one_time(this_date, delayed_fst_template, delayed_args), (1,), float) for this_date in args.input_date_list ]
+        res_list = [dask.array.from_delayed(_dask_process_at_one_time(this_date, delayed_fst_template, delayed_args), (1,), float) for this_date in args.input_date_list ]
 
         #what output do we want
         res_stack = dask.array.stack(res_list)
@@ -264,45 +262,15 @@ def process_a_bunch_of_times(args):
         tt2 = time.time()
         print('  parallel execution took ', tt2-tt1, ' seconds')
 
-        ##setup parallel submission
-        #original_sigint_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
-        #pool = multiprocessing.Pool(args.ncores)
-        #signal.signal(signal.SIGINT, original_sigint_handler)
-
-        ##function that gets called when something goes wrong in the pool
-        #def kill_pool(err_msg):
-        #    print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
-        #    print('Error message from failing task:')
-        #    print(err_msg)
-        #    print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
-        #    pool.terminate()
-        #
-        ##jobs are launched in parallel
-        #res_list = []
-        #for this_date in args.input_date_list:
-        #    res_list.append(
-        #            pool.apply_async( dask_process_at_one_time, 
-        #                              args=(this_date, fst_template, args), 
-        #                              error_callback=kill_pool,
-        #                            ) 
-        #        )
-
-        ##get results
-        #results = np.asarray([_res.get() for _res in res_list])
-
-        ## Normal termination
-        #pool.close()
-        #pool.join()
-
         # check that we received all correct termination
         if big_arr.sum() != len(args.input_date_list) :
             raise RuntimeError('did not receive correct termination from all processes')
 
 @dask.delayed
-def dask_motion_vector_at_one_time(*args, **kwargs):
-    return motion_vector_at_one_time(*args, **kwargs)
+def _dask_motion_vector_at_one_time(*args, **kwargs):
+    return _motion_vector_at_one_time(*args, **kwargs)
 
-def motion_vector_at_one_time(this_time, args):
+def _motion_vector_at_one_time(this_time, args):
     """ read 3 precip field and compute motion vectors at one time
 
     re-reading precip fields is not the most efficient but the time needed to do this
@@ -315,9 +283,9 @@ def motion_vector_at_one_time(this_time, args):
     import pysteps
     from domcmc import fst_tools
 
-    logger = setup_logging(args)
+    logger = _setup_logging(args)
 
-    logger.info('motion_vector_at_one_time starting to process date: '+str(this_time))
+    logger.info('_motion_vector_at_one_time starting to process date: '+str(this_time))
 
     # the file we want to write to
     output_file = args.motion_vectors_dir + this_time.strftime('%Y%m%d%H%M_end_window.npz')
@@ -364,7 +332,7 @@ def motion_vector_at_one_time(this_time, args):
     return np.array([1], dtype=float)
 
 
-def make_motion_vectors(args):
+def _make_motion_vectors(args):
     """ compute motion vectors for radar observations available at a evenly separated times
 
     depending on the number of cpus, serial execution or parallel execution with multiprocessing will be chosen 
@@ -377,7 +345,7 @@ def make_motion_vectors(args):
     from domcmc import fst_tools
 
     #logging
-    logger = setup_logging(args)
+    logger = _setup_logging(args)
 
     #read first entry to get dimensions
     z_v = fst_tools.get_data(var_name='RDPR', dir_name=args.processed_dir, datev=args.input_date_list[0])['values']
@@ -395,7 +363,7 @@ def make_motion_vectors(args):
         result_arr = np.zeros((nt,))
         for tt, this_time in enumerate(args.input_date_list[2:]):
 
-            this_result = motion_vector_at_one_time(this_time, args)
+            this_result = _motion_vector_at_one_time(this_time, args)
             
             #shift before next round
             result_arr[tt] = this_result
@@ -408,7 +376,7 @@ def make_motion_vectors(args):
         delayed_args = dask.delayed(args)
 
         #delayed list of results
-        res_list = [dask.array.from_delayed(dask_motion_vector_at_one_time(this_date, delayed_args), (1,), float) for this_date in args.input_date_list[2:] ]
+        res_list = [dask.array.from_delayed(_dask_motion_vector_at_one_time(this_date, delayed_args), (1,), float) for this_date in args.input_date_list[2:] ]
 
         #what output do we want
         res_stack = dask.array.stack(res_list)
@@ -422,7 +390,7 @@ def make_motion_vectors(args):
     if int(np.sum(result_arr)) != len(args.input_date_list[2:]):
         raise RuntimeError('Number of sucess run is not the the same as the number of output times')
 
-def scale_wind(uv, fact_before):
+def _scale_wind(uv, fact_before):
     """scale wind vector for mid timesteps
     """
 
@@ -440,24 +408,24 @@ def scale_wind(uv, fact_before):
 
 
 @dask.delayed
-def dask_t_interp_at_one_time(*args, **kwargs):
-    return t_interp_at_one_time(*args, **kwargs)
+def _dask_t_interp_at_one_time(*args, **kwargs):
+    return _t_interp_at_one_time(*args, **kwargs)
 
-def t_interp_at_one_time(out_time, args):
+def _t_interp_at_one_time(out_time, args):
     """nowcasting time interpolation using forward and backward advection
     """
 
     import os
     from domcmc import fst_tools
     import domutils._py_tools as dpy
-    from pysteps import nowcasts
+    from domutils import radar_tools
     import pysteps 
     import time
 
     missing = -9999.
 
     # logging
-    logger = setup_logging(args)
+    logger = _setup_logging(args)
 
     # Because outputs at multiple times can be found in the same output files
     # time interpolated outputs are always regenerated and not compatible with 
@@ -500,7 +468,7 @@ def t_interp_at_one_time(out_time, args):
     wind_file = args.motion_vectors_dir + args.input_date_list[t_before].strftime('%Y%m%d%H%M_end_window.npz')
     mv_before = np.load(wind_file)
     # scale wind 
-    uv_before = scale_wind(mv_before['uv_motion'], fact_before)
+    uv_before = _scale_wind(mv_before['uv_motion'], fact_before)
     # get precip before and after
     precip_before  = np.transpose(fst_tools.get_data(var_name='RDPR', dir_name=args.processed_dir, datev=args.input_date_list[t_before])['values'])
     quality_before = np.transpose(fst_tools.get_data(var_name='RDQI', dir_name=args.processed_dir, datev=args.input_date_list[t_before])['values'])
@@ -508,7 +476,8 @@ def t_interp_at_one_time(out_time, args):
     forward_precip   = np.transpose(extrapolate(precip_before,  uv_before, 1, outval=0.))
     forward_quality  = np.transpose(extrapolate(quality_before, uv_before, 1, outval=0.))
     # adjust missing values that could have been modified during advection
-    forward_precip = np.where(forward_precip < 0., missing, forward_precip)
+    forward_precip  = np.where(forward_precip  < 0., missing, forward_precip)
+    forward_quality = np.where(forward_quality < 0., missing, forward_quality)
 
 
     if do_backward_advect: 
@@ -518,7 +487,7 @@ def t_interp_at_one_time(out_time, args):
         wind_file = args.motion_vectors_dir + args.input_date_list[t_after ].strftime('%Y%m%d%H%M_end_window.npz')
         mv_after  = np.load(wind_file)
         # scale wind 
-        uv_after  = scale_wind(mv_after['uv_motion'],  fact_after)
+        uv_after  = _scale_wind(mv_after['uv_motion'],  fact_after)
         # get precip before and after
         precip_after   = np.transpose(fst_tools.get_data(var_name='RDPR', dir_name=args.processed_dir, datev=args.input_date_list[t_after] )['values'])
         quality_after  = np.transpose(fst_tools.get_data(var_name='RDQI', dir_name=args.processed_dir, datev=args.input_date_list[t_after] )['values'])
@@ -526,18 +495,19 @@ def t_interp_at_one_time(out_time, args):
         backward_precip  = np.transpose(extrapolate(precip_after,   uv_after,  1, outval=0.))
         backward_quality = np.transpose(extrapolate(quality_after,  uv_after,  1, outval=0.))
         # adjust missing values that could have been modified during advection
-        backward_precip = np.where(backward_precip < 0., missing, backward_precip)
+        backward_precip  = np.where(backward_precip  < 0., missing, backward_precip)
+        backward_quality = np.where(backward_quality < 0., missing, backward_quality)
 
         # average result weighted by separation time
         precip_rate   = (1. - fact_before)*forward_precip  + fact_before*backward_precip
         quality_index = (1. - fact_before)*forward_quality + fact_before*backward_quality
         # exclude nodata from average, pick only the alternative when available
         if fact_before > 0.:
-            precip_rate   = np.where( forward_precip < 0.,  backward_precip,  precip_rate)
-            quality_index = np.where( forward_precip < 0., backward_quality,  quality_index)
+            precip_rate   = np.where( forward_precip  < 0.,  backward_precip,  precip_rate)
+            quality_index = np.where( forward_quality < 0., backward_quality,  quality_index)
         if (1. - fact_before) > 0.:
-            precip_rate   = np.where(backward_precip < 0.,   forward_precip,  precip_rate)
-            quality_index = np.where(backward_precip < 0.,  forward_quality,  quality_index)
+            precip_rate   = np.where(backward_precip  < 0.,   forward_precip,  precip_rate)
+            quality_index = np.where(backward_quality < 0.,  forward_quality,  quality_index)
 
     else:
         # We only did forward advection
@@ -545,12 +515,18 @@ def t_interp_at_one_time(out_time, args):
         quality_index = forward_quality
 
     etiket = 'EXTRAPOL'
-    write_fst_file(out_time, np.squeeze(precip_rate), np.squeeze(quality_index), args, etiket=etiket, 
+    _write_fst_file(out_time, np.squeeze(precip_rate), np.squeeze(quality_index), args, etiket=etiket, 
                    output_file=fst_output_file)
+
+    #make a figure for this std file if the argument figure_dir was provided
+    if args.figure_dir is not None:
+        radar_tools.plot_rdpr_rdqi(fst_file=fst_output_file, 
+                                   this_date=out_time,
+                                   args=args)
 
     return np.array([1], dtype=float)
 
-def nowcast_t_interp(args):
+def _nowcast_t_interp(args):
     """ given precip estimates and motion vectors, do nowcasts as a mean of time interpolation
 
     """
@@ -563,7 +539,7 @@ def nowcast_t_interp(args):
     from domcmc import fst_tools
 
     #logging
-    logger = setup_logging(args)
+    logger = _setup_logging(args)
 
 
     if args.ncores == 1 :
@@ -571,7 +547,7 @@ def nowcast_t_interp(args):
         logger.info('Launching SERIAL computation of nowcast time interpolation')
 
         for out_time in args.output_date_list:
-            t_interp_at_one_time(out_time, args)
+            _t_interp_at_one_time(out_time, args)
     else:
         #parallel execution
         logger.info('Launching PARALLEL of nowcast time interpolation')
@@ -580,7 +556,7 @@ def nowcast_t_interp(args):
         delayed_args = dask.delayed(args)
 
         #delayed list of results
-        res_list = [dask.array.from_delayed(dask_t_interp_at_one_time(this_date, delayed_args), (1,), float) for this_date in args.output_date_list ]
+        res_list = [dask.array.from_delayed(_dask_t_interp_at_one_time(this_date, delayed_args), (1,), float) for this_date in args.output_date_list ]
 
         #what output do we want
         res_stack = dask.array.stack(res_list)
@@ -592,7 +568,7 @@ def nowcast_t_interp(args):
         print('  parallel execution took ', tt2-tt1, ' seconds')
 
 
-def aquire_lock(filename):
+def _aquire_lock(filename):
     """ Acquire file lock
     """
     import time
@@ -620,7 +596,7 @@ def aquire_lock(filename):
     return True
 
 
-def release_lock(filename):
+def _release_lock(filename):
     import os
     lock_file = filename+'.lock'
     if os.path.isfile(lock_file):
@@ -628,8 +604,8 @@ def release_lock(filename):
 
 
 
-def write_fst_file(out_date, precip_rate, quality_index, args, etiket='', 
-                   output_file=None):
+def _write_fst_file(out_date, precip_rate, quality_index, args, etiket='', 
+                    output_file=None):
     """ write precip to a fst file
     """
     import os
@@ -638,7 +614,7 @@ def write_fst_file(out_date, precip_rate, quality_index, args, etiket='',
     from rpnpy.rpndate import RPNDate
     from domcmc import fst_tools
 
-    logger = setup_logging(args)
+    logger = _setup_logging(args)
 
     # read fst template
     fst_template = fst_tools.get_data(args.sample_pr_file, var_name='PR')
@@ -653,7 +629,7 @@ def write_fst_file(out_date, precip_rate, quality_index, args, etiket='',
         output_file = args.output_dir + out_date.strftime(args.processed_file_struc)
 
     # aquire lock for this file
-    aquire_lock(output_file)
+    _aquire_lock(output_file)
 
     first_time_writing_to_outfile = True
     if os.path.isfile(output_file):
@@ -714,7 +690,7 @@ def write_fst_file(out_date, precip_rate, quality_index, args, etiket='',
     rmn.fstcloseall(iunit)
 
     # release lock on file to allow other processes to write to it
-    release_lock(output_file)
+    _release_lock(output_file)
 
     logger.info('Done writing ' + output_file)
 
@@ -734,10 +710,10 @@ def obs_process(args=None):
 
       .. code-block:: bash
 
-          python -m domutils.radar_tools.process_a_bunch_of_times                                                 
+          python -m domutils.radar_tools.obs_process
                     --input_data_dir   /space/hall4/sitestore/eccc/mrd/rpndat/dja001/data/radar_h5_composites/v8/ 
-                    --output_dir       /home/dja001/python/process_a_bunch_of_times/outdir/                       
-                    --figure_dir       /home/dja001/python/process_a_bunch_of_times/figdir/                       
+                    --output_dir       /home/dja001/python/obs_process/outdir/                       
+                    --figure_dir       /home/dja001/python/obs_process/figdir/                       
                     --fst_file_struc   %Y/%m/%d/%Y%m%d%H%M_mosaic.fst                                             
                     --input_file_struc %Y/%m/%d/qcomp_%Y%m%d%H%M.h5                                               
                     --h5_latlon_file   /home/dja001/shared_stuff/files/radar_continental_2.5km_2882x2032.pickle   
@@ -752,14 +728,14 @@ def obs_process(args=None):
 
       Alternatively, is is possible to call this function directly from Python by defining a
       simple object whose attributes are the arguments.
-      Such use is demonstrated in 
+      Such use is demonstrated in :ref:`Interpolate a batch of observations`.
       
 
       Argument description:
 
       .. argparse::
           :module: domutils.radar_tools.obs_process
-          :func: define_parser
+          :func: _define_parser
           :prog: obs_process
 
 
@@ -783,13 +759,13 @@ def obs_process(args=None):
     if args is None:
 
         # we are processing command line arguments
-        parser = define_parser()
+        parser = _define_parser()
         args = parser.parse_args()
 
     else:
         # arguments are passed through the attributes of an object, 
         # set all non mandatory arguments to default values when called with args
-        non_mandatory_args = define_parser(only_arg_list=True)
+        non_mandatory_args = _define_parser(only_arg_list=True)
         for (var_name, vtype, vdefault, vhelp) in non_mandatory_args:
             # remove the -- at the beginning  var_name
             var_name = var_name[2:]
@@ -810,19 +786,19 @@ def obs_process(args=None):
         if args.accum_len == 'None' :
             args.accum_len = None
         else:
-            args.accum_len = parse_num(args.accum_len)
+            args.accum_len = _parse_num(args.accum_len)
 
     if args.median_filt is not None :
         if args.median_filt == 'None' :
             args.median_filt = None
         else:
-            args.median_filt = parse_num(args.median_filt)
+            args.median_filt = _parse_num(args.median_filt)
 
     if args.smooth_radius is not None :
         if args.smooth_radius == 'None' :
             args.smooth_radius = None
         else:
-            args.smooth_radius = parse_num(args.smooth_radius)
+            args.smooth_radius = _parse_num(args.smooth_radius)
 
     if args.cartopy_dir == 'None':
         #if argument is not provided do nothing
@@ -844,29 +820,39 @@ def obs_process(args=None):
         raise ValueError('Argument --complete_dataset can only be set to True or False')
 
     #change date from string to datetime object
-    args.input_t0 = to_datetime(args.input_t0)
+    args.input_t0 = _to_datetime(args.input_t0)
     if args.input_tf is not None:
         #if input_tf provided use it
-        args.input_tf = to_datetime(args.input_tf)
+        args.input_tf = _to_datetime(args.input_tf)
     else:
         #otherwise get it from fcst len
         args.input_tf = args.input_t0 + datetime.timedelta(seconds=args.fcst_len*3600.)
-    args.input_dt = parse_num(args.input_dt, dtype='float') * 60. #convert input_dt to seconds
+    args.input_dt = _parse_num(args.input_dt, dtype='float') * 60. #convert input_dt to seconds
 
     #output dates
     if args.output_t0 is None:
         args.output_t0 = args.input_t0
+    elif args.output_t0 == 'None':
+        args.output_t0 = args.input_t0
     else:
-        args.output_t0 = to_datetime(args.output_t0)
+        args.output_t0 = _to_datetime(args.output_t0)
     if args.output_tf is None:
         args.output_tf = args.input_tf
+    elif args.output_tf == 'None':
+        args.output_tf = args.input_tf
     else:
-        args.output_tf = to_datetime(args.output_tf)
+        args.output_tf = _to_datetime(args.output_tf)
     if args.output_dt is None:
         args.output_dt = args.input_dt
+    elif args.output_dt == 'None':
+        args.output_dt = args.input_dt
     else: 
-        args.output_dt = parse_num(args.output_dt, dtype='float') * 60. #convert input_dt to seconds
+        args.output_dt = _parse_num(args.output_dt, dtype='float') * 60. #convert input_dt to seconds
 
+    if args.tinterpolated_file_struc is None:
+        args.tinterpolated_file_struc = args.processed_file_struc
+    elif args.tinterpolated_file_struc == 'None':
+        args.tinterpolated_file_struc = args.processed_file_struc
 
     #make sure 'logs' directory exists and is empty
     if os.path.isdir('logs'):
@@ -878,12 +864,12 @@ def obs_process(args=None):
 
     
     # initialize logging
-    logger = setup_logging(args)
+    logger = _setup_logging(args)
 
     #log header
     logger.info('')
     logger.info('')
-    logger.info('executing python script:  domutils.radar_tools.process_a_bunch_of_times.py')
+    logger.info('executing python script:  domutils.radar_tools.obs_process.py')
     logger.info('All logs printed to stdout can also be found in ./logs/')
     logger.info('')
     logger.info('')
@@ -924,28 +910,33 @@ def obs_process(args=None):
             raise ValueError('Select a time interpolation method if output is desired at times different from input')
         else:
             # 1- process radar file and write output to new files
-            process_a_bunch_of_times(args)
+            _process_a_bunch_of_times(args)
 
     elif args.t_interp_method == 'nowcast':
 
-        # check that interpolation will be possible
-        if args.output_date_list[0] < args.input_date_list[0] + + datetime.timedelta(seconds=args.input_dt) :
+        # three precip maps are needed for computation of wind vectors, input data must then be available 
+        # before the earliers output time
+        if args.output_date_list[0] < args.input_date_list[2] :
             raise ValueError('For nowcast interpolation the earliest output time must be at least two input delta_t after the earliest input time')
 
         # 1- Process input data and write output to files
         output_dir = args.output_dir 
-        # override output dir since in this context these outputs are only intermediate results
-        args.output_dir    = output_dir + 'processed/'
+        figure_dir = args.figure_dir 
+        # override output and figure dir since in this context these outputs are only intermediate results
+        args.output_dir = output_dir + 'processed/'
+        if figure_dir is not None:
+            args.figure_dir = figure_dir + 'processed/'
         args.processed_dir = args.output_dir
-        process_a_bunch_of_times(args)
+        _process_a_bunch_of_times(args)
 
         # 2- compute motion vectors associated with processed outputs computed at the step above
         args.motion_vectors_dir = output_dir + 'motion_vectors/'
-        make_motion_vectors(args)
+        _make_motion_vectors(args)
 
         # 3- use nowcast for time interpolation
         args.output_dir    = output_dir 
-        nowcast_t_interp(args)
+        args.figure_dir    = figure_dir 
+        _nowcast_t_interp(args)
 
     else:
         raise ValueError('type of time interpolation not supported.')
@@ -955,7 +946,7 @@ def obs_process(args=None):
     logger.info('Python code completed, Runtime was : '+str(time_stop-time_start)+' seconds')
 
 
-def define_parser(only_arg_list=False):
+def _define_parser(only_arg_list=False):
     '''return argument parser
     '''
     import argparse

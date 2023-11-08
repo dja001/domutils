@@ -30,6 +30,7 @@ Lets start with the required imports and directory setup:
     >>> import datetime
     >>> import subprocess
     >>> import glob
+    >>> import shutil
     >>> import numpy as np
     >>> import matplotlib as mpl
     >>> import matplotlib.pyplot as plt
@@ -46,7 +47,7 @@ Lets start with the required imports and directory setup:
     >>> package_dir  = os.path.dirname(domutils_dir)
     >>> test_data_dir = package_dir+'/test_data/'
     >>> test_results_dir = package_dir+'/test_results/'
-    >>> figure_dir = test_data_dir+'_static/t_interp_demo/'
+    >>> figure_dir = test_results_dir+'/t_interp_demo/'
     >>> if not os.path.isdir(test_results_dir):
     ...     os.makedirs(test_results_dir)
     >>> if not os.path.isdir(figure_dir):
@@ -153,6 +154,7 @@ each individual panels.
     ...  
     
 We now setup the general characteristics of the figure being generated.
+See :ref:`Legs Tutorial` for information on the definition of color mapping objects. 
 
     >>> #pixel density of each panel
     >>> ratio = 1.
@@ -161,21 +163,34 @@ We now setup the general characteristics of the figure being generated.
     >>> img_res = (int(hpix),int(vpix))
     >>>
     >>> #size of image to plot
-    >>> fig_w = 17.5                   #size of figure
+    >>> fig_w = 19.                    #size of figure
     >>> fig_h = 15.7                   #size of figure
     >>> rec_w = 7./fig_w               #size of axes
     >>> rec_h = ratio*(rec_w*fig_w)/fig_h #size of axes
-    >>> sp_w = .5/fig_w                #space between panels
+    >>> sp_w = .5/fig_w                #space between panel and border
+    >>> sp_m = 2.2/fig_w               #space between panels
     >>> sp_h = .5/fig_h                #space between panels
     >>>
     >>> # color mapping object
     >>> range_arr = [.1,1.,5.,10.,25.,50.,100.]
     >>> missing = -9999.
-    >>> colormap = legs.PalObj(range_arr=range_arr,
-    ...                        n_col=6,
-    ...                        over_high='extend', under_low='white',
-    ...                        excep_val=missing, 
-    ...                        excep_col='grey_200')
+    >>> # colormap object for precip rates
+    >>> pr_colormap = legs.PalObj(range_arr=range_arr,
+    ...                           n_col=6,
+    ...                           over_high='extend', under_low='white',
+    ...                           excep_val=missing, 
+    ...                           excep_col='grey_200')
+    >>> # colormap for QI index
+    >>> pastel = [ [[255,190,187],[230,104, 96]],  #pale/dark red
+    ...            [[255,185,255],[147, 78,172]],  #pale/dark purple
+    ...            [[255,227,215],[205,144, 73]],  #pale/dark brown
+    ...            [[210,235,255],[ 58,134,237]],  #pale/dark blue
+    ...            [[223,255,232],[ 61,189, 63]] ] #pale/dark green
+    >>> qi_colormap = legs.PalObj(range_arr=[0., 1.],
+    ...                           dark_pos='high',
+    ...                           color_arr=pastel,
+    ...                           excep_val=[missing,0.],
+    ...                           excep_col=['grey_220','white'])
     >>>
     >>> #setup cartopy projection
     >>> ##250km around Blainville radar
@@ -229,14 +244,14 @@ We now setup the general characteristics of the figure being generated.
     ...                                                  valid_date=source_valid_time,
     ...                                                  data_path=args.input_data_dir,
     ...                                                  data_recipe=args.input_file_struc)
-    ...         x0 = 2.*sp_w + rec_w
+    ...         x0 = sp_w + rec_w + sp_m
     ...         y0 = 2.*sp_h + rec_h
     ...         ax_pos = [x0, y0, rec_w, rec_h]
     ...         title = f'Source data \n @ t0+{src_dt}minutes'
     ...         plot_panel(dat_dict['precip_rate'],
     ...                    fig, ax_pos, title, 
     ...                    proj_aea, map_extent,
-    ...                    input_proj_obj, colormap,
+    ...                    input_proj_obj, pr_colormap,
     ...                    plot_palette='right',
     ...                    pal_units='mm/h')
     ...
@@ -245,19 +260,18 @@ We now setup the general characteristics of the figure being generated.
     ...                                                  valid_date=source_valid_time,
     ...                                                  data_path=args.output_dir+'processed/',
     ...                                                  data_recipe=args.processed_file_struc)
-    ...         x0 = 2.*sp_w + rec_w
+    ...         x0 = sp_w + rec_w + sp_m
     ...         y0 = sp_h
     ...         ax_pos = [x0, y0, rec_w, rec_h]
     ...         title = f'Processed data \n @ t0+{src_dt}minutes'
     ...         plot_panel(dat_dict['precip_rate'],
     ...                    fig, ax_pos, title, 
     ...                    proj_aea, map_extent,
-    ...                    output_proj_obj, colormap,
+    ...                    output_proj_obj, pr_colormap,
     ...                    plot_palette='right',
     ...                    pal_units='mm/h')
     ...
     ...         # Time interpolated data
-    ...         print(interpolated_valid_time)
     ...         dat_dict = radar_tools.get_instantaneous(desired_quantity='precip_rate',
     ...                                                  valid_date=interpolated_valid_time,
     ...                                                  data_path=args.output_dir,
@@ -269,7 +283,19 @@ We now setup the general characteristics of the figure being generated.
     ...         plot_panel(dat_dict['precip_rate'],
     ...                    fig, ax_pos, title, 
     ...                    proj_aea, map_extent,
-    ...                    output_proj_obj, colormap)
+    ...                    output_proj_obj, pr_colormap)
+    ...
+    ...         # quality index is also interpolated using nowcasting
+    ...         x0 = sp_w 
+    ...         y0 = 2.*sp_h + rec_h
+    ...         ax_pos = [x0, y0, rec_w, rec_h]
+    ...         title = f'Quality Ind Interpolated \n @ t0+{src_dt+interpolated_dt}minutes'
+    ...         plot_panel(dat_dict['total_quality_index'],
+    ...                    fig, ax_pos, title, 
+    ...                    proj_aea, map_extent,
+    ...                    output_proj_obj, qi_colormap,
+    ...                    plot_palette='right',
+    ...                    pal_units='[unitless]')
     ...
     ...         # save output
     ...         fig_name = figure_dir+f'{this_frame:02}_time_interpol_demo_plain.png'
@@ -327,7 +353,7 @@ to accumulations obtained from the time interpolated data.
     >>> plot_panel(dat_dict['accumulation'],
     ...            fig, ax_pos, title, 
     ...            proj_aea, map_extent,
-    ...            input_proj_obj, colormap,
+    ...            input_proj_obj, pr_colormap,
     ...            plot_palette='right',
     ...            pal_units='mm',
     ...            show_artefacts=True)
@@ -345,7 +371,7 @@ to accumulations obtained from the time interpolated data.
     >>> plot_panel(dat_dict['accumulation'],
     ...            fig, ax_pos, title, 
     ...            proj_aea, map_extent,
-    ...            output_proj_obj, colormap,
+    ...            output_proj_obj, pr_colormap,
     ...            plot_palette='right',
     ...            pal_units='mm',
     ...            show_artefacts=True)
@@ -363,12 +389,16 @@ to accumulations obtained from the time interpolated data.
     >>> plot_panel(dat_dict['accumulation'],
     ...            fig, ax_pos, title, 
     ...            proj_aea, map_extent,
-    ...            output_proj_obj, colormap)
+    ...            output_proj_obj, pr_colormap)
     >>>
     >>> # save output
     >>> fig_name = '_static/time_interpol_demo_accum_plain.svg'
     >>> plt.savefig(fig_name,dpi=400)
     >>> plt.close(fig)
+    >>>
+    >>> # we are done, remove log s
+    >>> if os.path.isdir(log_dir):
+    ...     shutil.rmtree(log_dir)
 
  The figure below shows 30 minutes precipitation accumulation computed from:
      

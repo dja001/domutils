@@ -15,6 +15,8 @@ Please use the following tags when editing this file:
 - radar_tools  Support for ODIM H5 version 2.4
 - radar_tools  Possibility to specify input delta t in get_accumulation
 - _py_tools    Removed cairosvg, a simpler method is to generate pngs with mpl and use convert for gifs
+- docs         Fixed readthedocs build with new os paramater
+- docs         By default, only the _static directory is now loaded
 
 ## [2.1.0] - 2023-06-06
 ### Added
