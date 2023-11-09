@@ -115,12 +115,16 @@ Notes for me to remember steps involved in publishing this package
         twine upload --repository-url https://test.pypi.org/legacy/ dist/*
 
 - upload to official pypi repo
+    pypi API is specified in ~/.pypirc
 twine upload dist/*
 
 - from the root of the repo from somewhere with internet connexion
     To load in environment if not already done:
-        conda install anaconda-client conda-build
-conda build --py 3.7 --py 3.8 --py 3.9 --py 3.10 --py 3.11 conda_build/domutils 
+        mamba activate base
+        mamba install anaconda-client conda-build conda-verify
+
+mamba activate base
+conda build conda_build/domutils 
 
 and upload it to anaconda cloud
 

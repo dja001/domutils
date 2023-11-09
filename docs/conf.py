@@ -44,7 +44,7 @@ if not os.path.isdir('../test_data') :
         shell_script = './download_test_data.sh'
         if not os.access(shell_script, os.X_OK):
             os.chmod(shell_script, 0o755)
-        #runt script to download _static directory from zenodo archive
+        #run script to download _static directory from zenodo archive
         subprocess.run([shell_script, '_static_only'])
     except:
         raise RuntimeError('something went wrong downloading the test data')

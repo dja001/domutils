@@ -10,13 +10,15 @@ Please use the following tags when editing this file:
 
 ## [2.2.0] - 2023-11-03
 ### Added
-- radar_tools  New obs_process method for batch processing and time interpolation
+- radar_tools  New obs_process method for batch processing 
+- radar_tools  New algorithm for nowcast-based time interpolation 
 ### Changed
 - radar_tools  Support for ODIM H5 version 2.4
 - radar_tools  Possibility to specify input delta t in get_accumulation
+- radar_tools  Better logging that works for serial and parallel execution
 - _py_tools    Removed cairosvg, a simpler method is to generate pngs with mpl and use convert for gifs
-- docs         Fixed readthedocs build with new os paramater
-- docs         By default, only the _static directory is now loaded
+- docs         Fixed readthedocs build with new os parameter
+- docs         By default, only the _static directory is now loaded when building docs
 
 ## [2.1.0] - 2023-06-06
 ### Added

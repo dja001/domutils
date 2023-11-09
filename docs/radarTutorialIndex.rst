@@ -22,7 +22,8 @@ This tutorial demonstrates the different operations that can be performed.
 
    radarTutorial
 
-This tutorial demonstrates the different operations that can be performed.
+This tutorial demonstrates how to process batches of observations and perform
+nowcasting-based time interpolation. 
 
 .. toctree::
    :maxdepth: 3
