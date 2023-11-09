@@ -37,9 +37,10 @@ def read_h5_vol(odim_file:   str=None,
 
     Returns:
 
-        a dict::
+        None:             If no or invalid file present or desired elevation or quantities not found.
 
-            # a dictionary which roughly mimics the structure of odim h5 files::
+        or a dictionary which mimics the structure of odim h5 files::
+            
             # dict['elevation1']['quantity1'](2D numpy array, PPI) 
             #                   ['quantity2'](2D numpy array, PPI)
             #                      ...
@@ -54,9 +55,6 @@ def read_h5_vol(odim_file:   str=None,
             #                   [longitudes] (2D numpy array)
             # dict['elevation2']['quantity1'](2D numpy array)
             #                     ...
-        or
-
-        None:             If no or invalid file present, desires elevation or quantities not found.
 
     Example:
 
@@ -93,7 +91,7 @@ def read_h5_vol(odim_file:   str=None,
     import domutils.geo_tools   as geo_tools
 
     #logging
-    logger = logging.getLogger()
+    logger = logging.getLogger(__name__)
 
     #checks that filename was provided and is valid
     if odim_file is None :
@@ -127,9 +125,9 @@ def read_h5_vol(odim_file:   str=None,
     #get number from byte string  e.g.  '2.3' from b'H5rad 2.3'
     file_version = file_what_dict['version'].decode('utf-8').split()[1]
 
-    supported_versions = ['2.2', '2.3']
+    supported_versions = ['2.2', '2.3', '2.4']
     if file_version not in supported_versions:
-        raise ValueError(f'Odim H5 file version {file_version} is not supported')
+        logger.warning(f'Odim H5 file version {file_version} is not fully tested and may not work')
 
 
     #radar info 

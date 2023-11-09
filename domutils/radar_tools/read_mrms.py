@@ -64,7 +64,7 @@ def read_mrms(mrms_file:  str=None,
     import numpy as np
 
     #logging
-    logger = logging.getLogger()
+    logger = logging.getLogger(__name__)
 
     #checks that filename was provided and is valid
     if mrms_file is None :

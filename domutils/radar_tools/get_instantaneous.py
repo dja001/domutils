@@ -19,15 +19,22 @@ def get_instantaneous(valid_date:       Optional[Any]   = None,
                       verbose:          Optional[int]   = 0):
     """ Get instantaneous precipitation from various sources
 
-    Provides one interface 
-    for:
-        - support of :
-            o Odim h5 composites 
-            o URP composites in the standard format
-            o Stage IV files
+    Provides one interface for:
+
+        - reading the following input formats:
+
+            - Odim h5 composites 
+            - Stage IV files
+            - MRMS data
+            - CMC "standard files"
+
         - output to an arbitrary output grid
-        - Consistent median filter on precip observations and the accompanying quality index
+
+        - Consistent filtering (median and/or circular boxcar) on precip observations and the 
+          accompanying quality index
+
         - Various types of averaging 
+
         - Find the nearest time where observations are available
 
 
@@ -42,26 +49,26 @@ def get_instantaneous(valid_date:       Optional[Any]   = None,
                           the filename will be obtained with  data_path + valid_date.strftime(data_recipe)
         desired_quantity: What quantity is desired in output dictionary
                           *precip_rate* in [mm/h] and *reflectivity* in [dBZ]
-                           are supported
-        median_filt:       If specified, a median filter will be applied on the data being read and the associated
-                           quality index.
-                           eg. *medialFilter=3* will apply a median filter over a 3x3 boxcar
-                           If unspecified, no filtering is applied
-        coef_a:            Coefficient *a* in Z = aR^b
-        coef_b:            Coefficient *b* in Z = aR^b
-        qced:              Only for Odim H5 composites
-                           When True (default), Quality Controlled reflectivity (DBZH) will be returned.
-                           When False, raw reflectivity (TH) will be returned.
-        missing:           Value that will be assigned to missing data
-        latlon:            Return *latitudes* and *longitudes* grid of the data
-        dest_lon:          Longitudes of destination grid. If not provided data is returned on its original grid
-        dest_lat:          Latitudes  of destination grid. If not provided data is returned on its original grid
-        average:           Use the averaging method to interpolate data (see geo_tools documentation), this can be slow
-        nearest_time:      If set, rewind time until a match is found to an integer number of *nearestTime*
-                           For example, with nearestTime=10, time will be rewinded to the nearest integer of 10 minutes
-        smooth_radius:     Use the smoothing radius method to interpolate data, faster (see geo_tools documentation)
-        odim_latlon_file:  file containing the latitude and longitudes of Baltrad mosaics in Odim H5 format
-        verbose:           -- Deprecated -- Set >=1 to print info on execution steps
+                          are supported
+        median_filt:      If specified, a median filter will be applied on the data being read and the associated
+                          quality index.
+                          eg. *medialFilter=3* will apply a median filter over a 3x3 boxcar
+                          If unspecified, no filtering is applied
+        coef_a:           Coefficient *a* in Z = aR^b
+        coef_b:           Coefficient *b* in Z = aR^b
+        qced:             Only for Odim H5 composites
+                          When True (default), Quality Controlled reflectivity (DBZH) will be returned.
+                          When False, raw reflectivity (TH) will be returned.
+        missing:          Value that will be assigned to missing data
+        latlon:           Return *latitudes* and *longitudes* grid of the data
+        dest_lon:         Longitudes of destination grid. If not provided data is returned on its original grid
+        dest_lat:         Latitudes  of destination grid. If not provided data is returned on its original grid
+        average:          Use the averaging method to interpolate data (see geo_tools documentation), this can be slow
+        nearest_time:     If set, rewind time until a match is found to an integer number of *nearestTime*
+                          For example, with nearestTime=10, time will be rewinded to the nearest integer of 10 minutes
+        smooth_radius:    Use the smoothing radius method to interpolate data, faster (see geo_tools documentation)
+        odim_latlon_file: file containing the latitude and longitudes of Baltrad mosaics in Odim H5 format
+        verbose:          -- Deprecated -- Set >=1 to print info on execution steps
 
     Returns:
 
@@ -108,7 +115,7 @@ def get_instantaneous(valid_date:       Optional[Any]   = None,
     import domutils.geo_tools as geo_tools
 
     #logging
-    logger = logging.getLogger()
+    logger = logging.getLogger(__name__)
 
     if verbose > 0:
         logger.warning('verbose keyword is deprecated, please set logging level in calling handler')
@@ -204,6 +211,7 @@ def get_instantaneous(valid_date:       Optional[Any]   = None,
         #
         #CMC *standard* format
         out_dict = read_fst_composite(data_file,
+                                      valid_date=this_time,
                                       latlon=latlon)
     elif (ext == '.01h'  or 
           ext == '.06h'  or

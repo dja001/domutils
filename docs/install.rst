@@ -9,6 +9,12 @@ Installation
   
      conda install -c dja001 domutils 
 
+  Recent versions of cartopy have got super slow, I recommend the following combination
+  for decent speed. 
+
+    * cartopy=0.19.0.post1 
+    * matplotlib=3.3.4
+
 - Pip installation should also work
 
   .. code-block:: bash

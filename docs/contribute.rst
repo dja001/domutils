@@ -49,8 +49,8 @@ on github.
 
    #. If applicable, describe the new functionality in the documentation.
 
-   #. Modify the 
-      files:
+   #. Modify the files:
+
         .. code-block:: bash
 
            VERSION

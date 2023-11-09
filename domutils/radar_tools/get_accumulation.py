@@ -2,6 +2,7 @@ from typing import Callable, Iterator, Union, Optional, List, Iterable, MutableM
 
 def get_accumulation(end_date:         Optional[Any]   = None,
                      duration:         Optional[Any]   = None,
+                     input_dt:         Optional[int]   = None,
                      desired_quantity: Optional[str]   = None,
                      data_path:        Optional[str]   = None,
                      data_recipe:      Optional[str]   = None,
@@ -33,22 +34,29 @@ def get_accumulation(end_date:         Optional[Any]   = None,
 
     With an endTime set to 16:00h and duration to 60 (minutes), 
     data from:
+
         - 15:10h, 15:20h, 15:30h, 15:40h, 15:50h and 16:00h
+
     will be accumulated 
 
     Args:
 
         end_date:         datetime object representing the time (inclusively) at the end of the accumulation period
         duration:         amount of time (minutes) during which precipitation should be accumulated
+        input_dt:         time separation (minutes) of input data used for constructing accumulations
                             
         data_path:        path to directory where data is expected
         data_recipe:      datetime code for constructing the file name  eg: /%Y/%m/%d/qcomp_%Y%m%d%H%M.h5'
                           the filename will be obtained with  data_path + valid_date.strftime(data_recipe)
         desired_quantity: What quantity is desired in output dictionary.
                           Supported values are:
+
                             - *accumulation*  Default option, the amount of water (in mm) 
+
                             - *avg_precip_rate* For average precipitation rate (in mm/h) during the accumulation period
+
                             - *reflectivity*  For the reflectivity (in dBZ) associated with the average precipitation rate
+
         median_filt:      If specified, a median filter will be applied on the data being read and the associated
                           quality index.
                           eg. *medialFilter=3* will apply a median filter over a 3x3 boxcar
@@ -114,7 +122,7 @@ def get_accumulation(end_date:         Optional[Any]   = None,
     import domutils.geo_tools as geo_tools
 
     #logging
-    logger = logging.getLogger()
+    logger = logging.getLogger(__name__)
 
     if verbose > 0:
         logger.warning('verbose keyword is deprecated, please set logging level in calling handler')
@@ -161,32 +169,38 @@ def get_accumulation(end_date:         Optional[Any]   = None,
     #time interval between radar or stage IV observations
     name, ext = os.path.splitext(data_recipe)
     if ext == '.h5':
-        radar_dt = 10.
+        if input_dt is None:
+            input_dt = 10.
+        logger.info(f'Using Odim H5 composites files, assuming precip rates are available every {input_dt} minutes')
     elif (ext == '.01h'  or 
           ext == '.06h'  or
           ext == '.24h') :
         # accumulation length in minutes
-        radar_dt = float(ext[1:3]) * 60.
+        if input_dt is None:
+            input_dt = float(ext[1:3]) * 60.
+        logger.info(f'Using stage4 files assuming precip rates are available every {input_dt} minutes')
     elif ext == '.fst':
-        radar_dt = 10.
-        warnings.warn('Using fst files assuming precip rates are available every 10 minutes')
+        if input_dt is None:
+            input_dt = 10.
+        logger.info(f'Using fst files assuming precip rates are available every {input_dt} minutes')
     elif ext == '.grib2':
-        radar_dt = 2.
-        warnings.warn('Using MRMS files assuming that they are available every 2 minutes')
+        if input_dt is None:
+            input_dt = 2.
+        logger.info(f'Using MRMS files assuming that they are available every 2 minutes')
     else:
         raise ValueError('Filetype: '+ext+' not yet supported')
     
     # raise an error if  radar dt > duration : important for stage IV 
     # eg.: cannot create 1h accumulation from grib files containing 24h or 6h accumulation
-    if radar_dt > duration:
+    if input_dt > duration:
         raise ValueError('Accumulation length in observation file \
                            ({:d}h) is longer than requested accumulation\
-                           duration ({:d}h)'.format(int(radar_dt/60), int(duration/60)))
+                           duration ({:d}h)'.format(int(input_dt/60), int(duration/60)))
 
     #
     #
     #get list of times during which observations should be accumulated
-    m_list = np.arange(0, duration, radar_dt)
+    m_list = np.arange(0, duration, input_dt)
     date_list = [end_date - datetime.timedelta(minutes=this_min) for this_min in m_list]
 
 

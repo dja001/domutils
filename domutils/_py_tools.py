@@ -77,13 +77,18 @@ def convert(pic_name, img_type, del_orig=False, density=300, geometry='100%', de
                 #ignore del_eps when desired fig type is eps
                 os.remove(eps_name)
     else:
-        try:
-            import cairosvg
-        except ImportError:
-            warnings.warn('Both Inkscape and cairosvg not available on system, no conversion performed, you will have to live with matplotlibs conversions')
-        
-        # cairosvg is available use it for conversion
-        cairosvg.svg2png(url=source_file, write_to=file_name +'.png', dpi=density)
+        #try:
+        #    import cairosvg
+        #except ImportError:
+        #    warnings.warn('Both Inkscape and cairosvg not available on system, no conversion performed, you will have to live with matplotlibs conversions')
+        #
+        ## cairosvg is available use it for conversion
+        #cairosvg.svg2png(url=source_file, write_to=file_name +'.png', dpi=density)
+
+        #convert to gif using convert
+        cmd = ['convert', '-density', str(density), '-geometry', geometry, source_file, file_name +'.' + img_type]
+        process = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+        output, error = process.communicate()
 
 
 

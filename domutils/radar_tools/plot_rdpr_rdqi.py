@@ -2,9 +2,7 @@ from typing import Callable, Iterator, Union, Optional, List, Iterable, MutableM
 
 def plot_rdpr_rdqi(fst_file:   str=None, 
                    this_date:  Any=None,
-                   fig_dir:    Optional[str]=None, 
-                   fig_format: Optional[str]='gif',
-                   args=None                        ):
+                   args=None            ):
     """ plot RDPR and RDQI from a rpn "standard" file 
 
     Data needs to be at correct valid time
@@ -15,7 +13,7 @@ def plot_rdpr_rdqi(fst_file:   str=None,
 
         fst_file:   full path of standard file to read
         this_date:  validity time of data to plot
-        fig_dir:    directory where figures will be written
+        args:       object whose attributes represent the argukents to obs_process
 
     
     Returns:
@@ -49,7 +47,7 @@ def plot_rdpr_rdqi(fst_file:   str=None,
     import domutils._py_tools as dpy
 
     #logging
-    logger = logging.getLogger()
+    logger = logging.getLogger(__name__)
 
     #use provided data path for cartiopy shapefiles
     #TODO there has got to be a better way to do this!
@@ -57,6 +55,11 @@ def plot_rdpr_rdqi(fst_file:   str=None,
         if hasattr(args, 'cartopy_dir'):
             if args.cartopy_dir is not None:
                 cartopy.config['pre_existing_data_dir'] = args.cartopy_dir
+    else:
+        raise ValueError('the "args" object must be passed to this routine')
+
+    fig_dir = args.figure_dir
+    fig_format = args.figure_format
 
     #Read data
     logger.info('Reading RDPR and RDQI from: '+fst_file)
@@ -253,6 +256,7 @@ def plot_rdpr_rdqi(fst_file:   str=None,
         logger.info('Inkscape not available, will use matplotlibs conversion tools')
         file_name, file_extension = os.path.splitext(svg_name)
         plt.savefig(f'{file_name}.{fig_format}', format=fig_format, dpi=300)
+    logger.info(f'plot_rdpr_rdqi made figure: {svg_name}')
 
     #not sure what is accumulating but adding this garbage collection step 
     #prevents jobs from aborting when a large number of files are made 

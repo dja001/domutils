@@ -8,6 +8,7 @@ interpolation and filtering options are provided.
 
 The radar mosaics are accessed via two
 functions:
+
     * *get_instantaneous* for instantaneous reflectivity or precipitation rates
     * *get_accumulations* for precipitation accumulations 
 
@@ -21,3 +22,10 @@ This tutorial demonstrates the different operations that can be performed.
 
    radarTutorial
 
+This tutorial demonstrates how to process batches of observations and perform
+nowcasting-based time interpolation. 
+
+.. toctree::
+   :maxdepth: 3
+
+   radarTimeInterp

@@ -83,7 +83,7 @@ def read_sqlite_vol(sqlite_file:      str=None,
     import domutils.geo_tools   as geo_tools
 
     #logging
-    logger = logging.getLogger()
+    logger = logging.getLogger(__name__)
 
     #checks that filename was provided and is valid
     if sqlite_file is None :
