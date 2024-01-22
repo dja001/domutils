@@ -201,7 +201,7 @@ def get_accumulation(end_date:         Optional[Any]   = None,
     #
     #get list of times during which observations should be accumulated
     m_list = np.arange(0, duration, input_dt)
-    date_list = [end_date - datetime.timedelta(minutes=this_min) for this_min in m_list]
+    date_list = [end_date - datetime.timedelta(minutes=int(this_min)) for this_min in m_list]
 
 
     #
@@ -229,11 +229,16 @@ def get_accumulation(end_date:         Optional[Any]   = None,
         orig_lat = dat_dict['latitudes']
         orig_lon = dat_dict['longitudes']
     #init accumulation arrays
-    accum_dat = np.full( (data_shape[0], data_shape[1], len(date_list)), missing)
-    accum_qi  = np.zeros((data_shape[0], data_shape[1], len(date_list)))
-    #save data
-    accum_dat[:,:,kk] = dat_dict['precip_rate']
-    accum_qi[:,:,kk]  = dat_dict['total_quality_index']
+    accum_dat = np.zeros(data_shape)
+    accum_qi  = np.zeros(data_shape)
+    accum_w   = np.zeros(data_shape)
+    #build accumulation
+    good_pts = np.asarray(dat_dict['total_quality_index'] > 0.).nonzero()
+    if good_pts[0].size > 0:
+        accum_dat[good_pts] = accum_dat[good_pts] + dat_dict['total_quality_index'][good_pts] * dat_dict['precip_rate'][good_pts]
+        accum_qi[good_pts]  = accum_qi[good_pts]  + dat_dict['total_quality_index'][good_pts] * dat_dict['total_quality_index'][good_pts]
+        accum_w[good_pts]   = accum_w[good_pts]   + dat_dict['total_quality_index'][good_pts] 
+
     #
     #read rest of data
     for kk, this_date in enumerate(date_list):
@@ -250,30 +255,29 @@ def get_accumulation(end_date:         Optional[Any]   = None,
                                      median_filt=median_filt,
                                      coef_a=coef_a,
                                      coef_b=coef_b)
-        if dat_dict is not None:
-            accum_dat[:,:,kk] = dat_dict['precip_rate']
-            accum_qi[:,:,kk]  = dat_dict['total_quality_index']
+        #build accumulation
+        good_pts = np.asarray(dat_dict['total_quality_index'] > 0.).nonzero()
+        if good_pts[0].size > 0:
+            accum_dat[good_pts] = accum_dat[good_pts] + dat_dict['total_quality_index'][good_pts] * dat_dict['precip_rate'][good_pts]
+            accum_qi[good_pts]  = accum_qi[good_pts]  + dat_dict['total_quality_index'][good_pts] * dat_dict['total_quality_index'][good_pts]
+            accum_w[good_pts]   = accum_w[good_pts]   + dat_dict['total_quality_index'][good_pts] 
 
 
     #
     #
     #average of precip_rate is weighted by quality index
     logger.info('Computing average precip rate in accumulation period')
-    sum_w  = np.sum(accum_qi, axis=2)
-    good_pts = np.asarray(sum_w > 0.).nonzero()
     #
     #average precip_rate
-    weighted_sum = np.sum(accum_dat*accum_qi, axis=2)
-    avg_pr = np.full_like(sum_w, missing)
+    avg_pr = np.full_like(accum_w, missing)
+    good_pts = np.asarray(accum_w > 0.).nonzero()
     if good_pts[0].size > 0:
-        avg_pr[good_pts] = weighted_sum[good_pts]/sum_w[good_pts]
+        avg_pr[good_pts] = accum_dat[good_pts]/accum_w[good_pts]
     #
     #compute average quality index
-    weighted_sum = np.sum(accum_qi*accum_qi, axis=2)
-    avg_qi = np.full_like(sum_w, missing)
+    avg_qi = np.full_like(accum_qi, missing)
     if good_pts[0].size > 0:
-        avg_qi[good_pts] = weighted_sum[good_pts]/sum_w[good_pts]
-
+        avg_qi[good_pts] = accum_qi[good_pts] /accum_w[good_pts]
 
     #
     #
