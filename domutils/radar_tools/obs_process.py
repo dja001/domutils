@@ -5,7 +5,7 @@ import dask
 import dask.array 
 import dask.distributed
 
-def _setup_logging(args, is_worker=False):
+def _setup_logging(args, is_worker=False, sub_dir=''):
     """setup logger and handlers
 
     Because of parallel execution, logging has to be setup for every forked processes
@@ -14,6 +14,7 @@ def _setup_logging(args, is_worker=False):
 
     import sys 
     import logging
+    import domutils._py_tools as dpy
 
     # logging is configured to write everything to stdout in addition to a log file
     # in a 'logs' directory
@@ -21,13 +22,17 @@ def _setup_logging(args, is_worker=False):
     logger = logging.getLogger(logging_basename)
     # if this is a newly created logger, it will have no handlers
     if not len(logger.handlers):
+        #make sure 'logs' directory exists and is empty
+        dpy.parallel_mkdir('logs')
+
         logging.captureWarnings(True)
         logger.setLevel(args.log_level)
         #handlers
         stream_handler = logging.StreamHandler(sys.stdout)
         if is_worker:
+            dpy.parallel_mkdir('logs/'+sub_dir)
             worker_id = str(dask.distributed.get_worker().id)
-            file_handler = logging.FileHandler('logs/'+worker_id, 'w')
+            file_handler = logging.FileHandler('logs/'+sub_dir+'/'+worker_id, 'w')
         else:
             file_handler = logging.FileHandler('logs/obs_process.log', 'w')
         #levels
@@ -49,12 +54,10 @@ def _setup_logging(args, is_worker=False):
 
 @dask.delayed
 def _dask_process_at_one_time(*args, **kwargs):
-    import sys
-    import multiprocessing
 
     #setup logger for dask worker if not already done
     command_line_args = args[2]
-    logger = _setup_logging(command_line_args, is_worker=True)
+    logger = _setup_logging(command_line_args, is_worker=True, sub_dir='process_at_one_time')
 
     return _process_at_one_time(*args, **kwargs)
 
@@ -72,13 +75,13 @@ def _process_at_one_time(valid_date, fst_template, args):
 
     logger = _setup_logging(args)
 
-    logger.info('_process_at_one_time starting to process date: '+str(valid_date))
+    logger.info(f'_process_at_one_time starting to process date: {valid_date}')
 
     #output filename and directory
     output_file = args.output_dir + valid_date.strftime(args.processed_file_struc)
     #if in complete mode and file exists, return and test next one
     if (os.path.isfile(output_file) and args.complete_dataset):
-        logger.info(output_file+ ' exists and complete_dataset=True. Skipping to the next.')
+        logger.info(f'{output_file} exists and complete_dataset=True. Skipping to the next.')
         return np.array([1], dtype=float)
     elif os.path.isfile(output_file):
         #file exists but we are not completing a dataset erase file before making a new one
@@ -230,7 +233,7 @@ def _process_a_bunch_of_times(args):
     #logging
     logger = _setup_logging(args)
 
-    logger.info('getting output domain from: '+ args.sample_pr_file)
+    logger.info(f'getting output domain from: {args.sample_pr_file}')
     fst_template = fst_tools.get_data(args.sample_pr_file, var_name='PR', latlon=True)
     if fst_template is None:
         raise ValueError('Problem getting PR from: ',args.sample_pr_file )
@@ -244,23 +247,32 @@ def _process_a_bunch_of_times(args):
             _process_at_one_time(this_date, fst_template, args)
     else :
         #parallel conversion with nultiprocessing
-        logger.info('Launching PARALLEL execution of of observation processing')
+        logger.info('Launching PARALLEL execution of observation processing')
 
-        #delay input data 
-        delayed_args         = dask.delayed(args)
-        delayed_fst_template = dask.delayed(fst_template)
-
-        #delayed list of results
-        res_list = [dask.array.from_delayed(_dask_process_at_one_time(this_date, delayed_fst_template, delayed_args), (1,), float) for this_date in args.input_date_list ]
-
-        #what output do we want
-        res_stack = dask.array.stack(res_list)
-                
-        # computation happens here
         tt1 = time.time()
-        big_arr = res_stack.compute()
+        cluster = dask.distributed.LocalCluster( n_workers=args.ncores,
+                                                 processes=True,
+                                                 threads_per_worker=1,
+                                                 silence_logs=40
+                                               )
+        with dask.distributed.Client(cluster) as client:
+            #delay input data 
+            delayed_args         = dask.delayed(args)
+            delayed_fst_template = dask.delayed(fst_template)
+
+            #delayed list of results
+            res_list = [dask.array.from_delayed(_dask_process_at_one_time(this_date, 
+                                                                          delayed_fst_template, 
+                                                                          delayed_args), (1,), float) for this_date in args.input_date_list ]
+
+            #what output do we want
+            res_stack = dask.array.stack(res_list)
+                    
+            # computation happens here
+            big_arr = res_stack.compute()
+
         tt2 = time.time()
-        print('  parallel execution took ', tt2-tt1, ' seconds')
+        logger.info(f'Parallel execution done; walltime: {tt2-tt1} seconds')
 
         # check that we received all correct termination
         if big_arr.sum() != len(args.input_date_list) :
@@ -268,6 +280,11 @@ def _process_a_bunch_of_times(args):
 
 @dask.delayed
 def _dask_motion_vector_at_one_time(*args, **kwargs):
+
+    #setup logger for dask worker if not already done
+    command_line_args = args[1]
+    logger = _setup_logging(command_line_args, is_worker=True, sub_dir='motion_vector_at_one_time')
+
     return _motion_vector_at_one_time(*args, **kwargs)
 
 def _motion_vector_at_one_time(this_time, args):
@@ -285,13 +302,13 @@ def _motion_vector_at_one_time(this_time, args):
 
     logger = _setup_logging(args)
 
-    logger.info('_motion_vector_at_one_time starting to process date: '+str(this_time))
+    logger.info(f'_motion_vector_at_one_time starting; end_time:{this_time}')
 
     # the file we want to write to
     output_file = args.motion_vectors_dir + this_time.strftime('%Y%m%d%H%M_end_window.npz')
 
     if (os.path.isfile(output_file) and args.complete_dataset):
-        logger.info(output_file+ ' exists and complete_dataset=True. Skipping to the next.')
+        logger.info(f'{output_file} exists and complete_dataset=True. Skipping to the next.')
         return np.array([1], dtype=float)
     elif os.path.isfile(output_file):
         #file exists but we are not completing a dataset erase file before making a new one
@@ -302,18 +319,32 @@ def _motion_vector_at_one_time(this_time, args):
 
     # index in time array
     tt = args.input_date_list.index(this_time)
-    logger.info(f'Computing motion vectors, end time: {this_time}')
 
     # number of timesteps for motion vectors
     nt = 3
     z_acc = np.zeros((nt, args.out_ny, args.out_nx))
 
     # read precip, convert to reflectivity and reshape to make pysteps happy
-    z_v = fst_tools.get_data(var_name='RDPR', dir_name=args.output_dir, datev=args.input_date_list[tt-2])['values']
+    # t0 - 2dt
+    fst_file = args.output_dir+args.input_date_list[tt-2].strftime(args.processed_file_struc)
+    z_v = fst_tools.get_data(var_name='RDPR', file_name=fst_file, datev=args.input_date_list[tt-2])['values']
+    if args.median_filt_before_mv is not None:
+        median_inds = domutils.radar_tools.median_filter.get_inds(z_v, window=args.median_filt_before_mv)
+        z_v = domutils.radar_tools.median_filter.apply_inds(z_v, median_inds)
     z_acc[0,:,:] = np.transpose(domutils.radar_tools.exponential_zr(z_v, r_to_dbz=True))
-    z_v = fst_tools.get_data(var_name='RDPR', dir_name=args.output_dir, datev=args.input_date_list[tt-1])['values']
+    # t0 - 1dt
+    fst_file = args.output_dir+args.input_date_list[tt-1].strftime(args.processed_file_struc)
+    z_v = fst_tools.get_data(var_name='RDPR', file_name=fst_file, datev=args.input_date_list[tt-1])['values']
+    if args.median_filt_before_mv is not None:
+        median_inds = domutils.radar_tools.median_filter.get_inds(z_v, window=args.median_filt_before_mv)
+        z_v = domutils.radar_tools.median_filter.apply_inds(z_v, median_inds)
     z_acc[1,:,:] = np.transpose(domutils.radar_tools.exponential_zr(z_v, r_to_dbz=True))
-    z_v = fst_tools.get_data(var_name='RDPR', dir_name=args.output_dir, datev=args.input_date_list[tt  ])['values']
+    # t0 - 1dt
+    fst_file = args.output_dir+args.input_date_list[tt].strftime(args.processed_file_struc)
+    z_v = fst_tools.get_data(var_name='RDPR', file_name=fst_file, datev=args.input_date_list[tt  ])['values']
+    if args.median_filt_before_mv is not None:
+        median_inds = domutils.radar_tools.median_filter.get_inds(z_v, window=args.median_filt_before_mv)
+        z_v = domutils.radar_tools.median_filter.apply_inds(z_v, median_inds)
     z_acc[2,:,:] = np.transpose(domutils.radar_tools.exponential_zr(z_v, r_to_dbz=True))
 
     # remove small values
@@ -325,10 +356,14 @@ def _motion_vector_at_one_time(this_time, args):
     uv_motion = oflow_method(z_acc)
 
     #save output to file
-    np.savez_compressed(output_file, uv_motion=uv_motion)
+    try:
+        np.savez_compressed(output_file, uv_motion=uv_motion)
+    except:
+        raise RuntimeError(f'problem writing: {output_file}')
     
-    #           U               V
-    logger.info('Motion vectors done')
+   
+    logger.info(f'_motion_vector_at_one_time done; end_time:{this_time}')
+    
     return np.array([1], dtype=float)
 
 
@@ -348,7 +383,8 @@ def _make_motion_vectors(args):
     logger = _setup_logging(args)
 
     #read first entry to get dimensions
-    z_v = fst_tools.get_data(var_name='RDPR', dir_name=args.processed_dir, datev=args.input_date_list[0])['values']
+    fst_file = args.processed_dir+args.input_date_list[0].strftime(args.processed_file_struc)
+    z_v = fst_tools.get_data(var_name='RDPR', file_name=fst_file, datev=args.input_date_list[0])['values']
     nx, ny = z_v.shape
     args.out_nx = nx
     args.out_ny = ny
@@ -360,34 +396,41 @@ def _make_motion_vectors(args):
     if args.ncores == 1 :
         #serial execution
         logger.info('Launching SERIAL computation of motion vectors')
-        result_arr = np.zeros((nt,))
+        big_arr = np.zeros((nt,))
         for tt, this_time in enumerate(args.input_date_list[2:]):
 
             this_result = _motion_vector_at_one_time(this_time, args)
             
             #shift before next round
-            result_arr[tt] = this_result
+            big_arr[tt] = this_result
 
     else:
         #parallel execution
         logger.info('Launching PARALLEL computation of motion vectors')
 
-        #delay input data 
-        delayed_args = dask.delayed(args)
-
-        #delayed list of results
-        res_list = [dask.array.from_delayed(_dask_motion_vector_at_one_time(this_date, delayed_args), (1,), float) for this_date in args.input_date_list[2:] ]
-
-        #what output do we want
-        res_stack = dask.array.stack(res_list)
-                
-        # computation happens here
         tt1 = time.time()
-        result_arr = res_stack.compute()
-        tt2 = time.time()
-        print('  parallel execution took ', tt2-tt1, ' seconds')
+        cluster = dask.distributed.LocalCluster( n_workers=int(args.ncores/2),
+                                                 processes=True,
+                                                 threads_per_worker=1,
+                                                 silence_logs=40
+                                               )
+        with dask.distributed.Client(cluster) as client:
+            #delay input data 
+            delayed_args = dask.delayed(args)
 
-    if int(np.sum(result_arr)) != len(args.input_date_list[2:]):
+            #delayed list of results
+            res_list = [dask.array.from_delayed(_dask_motion_vector_at_one_time(this_date, delayed_args), (1,), float) for this_date in args.input_date_list[2:] ]
+
+            #what output do we want
+            res_stack = dask.array.stack(res_list)
+                    
+            # computation happens here
+            big_arr = res_stack.compute()
+
+        tt2 = time.time()
+        logger.info(f'Parallel execution done; walltime: {tt2-tt1} seconds')
+
+    if int(np.sum(big_arr)) != len(args.input_date_list[2:]):
         raise RuntimeError('Number of sucess run is not the the same as the number of output times')
 
 def _scale_wind(uv, fact_before):
@@ -409,6 +452,11 @@ def _scale_wind(uv, fact_before):
 
 @dask.delayed
 def _dask_t_interp_at_one_time(*args, **kwargs):
+
+    #setup logger for dask worker if not already done
+    command_line_args = args[1]
+    logger = _setup_logging(command_line_args, is_worker=True, sub_dir='t_interp_at_one_time')
+
     return _t_interp_at_one_time(*args, **kwargs)
 
 def _t_interp_at_one_time(out_time, args):
@@ -466,12 +514,16 @@ def _t_interp_at_one_time(out_time, args):
     fact_before = (out_time - args.input_date_list[t_before]).seconds / args.input_dt
     # get wind before and after
     wind_file = args.motion_vectors_dir + args.input_date_list[t_before].strftime('%Y%m%d%H%M_end_window.npz')
-    mv_before = np.load(wind_file)
+    try:
+        mv_before = np.load(wind_file)
+    except:
+        raise RuntimeError(f'Problem loading file: {wind_file}')
     # scale wind 
     uv_before = _scale_wind(mv_before['uv_motion'], fact_before)
     # get precip before and after
-    precip_before  = np.transpose(fst_tools.get_data(var_name='RDPR', dir_name=args.processed_dir, datev=args.input_date_list[t_before])['values'])
-    quality_before = np.transpose(fst_tools.get_data(var_name='RDQI', dir_name=args.processed_dir, datev=args.input_date_list[t_before])['values'])
+    fst_file_before = args.processed_dir+args.input_date_list[t_before].strftime(args.processed_file_struc)
+    precip_before  = np.transpose(fst_tools.get_data(var_name='RDPR', file_name=fst_file_before, datev=args.input_date_list[t_before])['values'])
+    quality_before = np.transpose(fst_tools.get_data(var_name='RDQI', file_name=fst_file_before, datev=args.input_date_list[t_before])['values'])
     # advect wind at appropriate time
     forward_precip   = np.transpose(extrapolate(precip_before,  uv_before, 1, outval=0.))
     forward_quality  = np.transpose(extrapolate(quality_before, uv_before, 1, outval=0.))
@@ -479,18 +531,21 @@ def _t_interp_at_one_time(out_time, args):
     forward_precip  = np.where(forward_precip  < 0., missing, forward_precip)
     forward_quality = np.where(forward_quality < 0., missing, forward_quality)
 
-
     if do_backward_advect: 
         # multiplicative factors for intermediate timesteps before and after
         fact_after  = -1. * (args.input_date_list[t_after] - out_time ).seconds / args.input_dt
         # get wind before and after
         wind_file = args.motion_vectors_dir + args.input_date_list[t_after ].strftime('%Y%m%d%H%M_end_window.npz')
-        mv_after  = np.load(wind_file)
+        try:
+            mv_after  = np.load(wind_file)
+        except:
+            raise RuntimeError(f'Problem loading file: {wind_file}')
         # scale wind 
         uv_after  = _scale_wind(mv_after['uv_motion'],  fact_after)
         # get precip before and after
-        precip_after   = np.transpose(fst_tools.get_data(var_name='RDPR', dir_name=args.processed_dir, datev=args.input_date_list[t_after] )['values'])
-        quality_after  = np.transpose(fst_tools.get_data(var_name='RDQI', dir_name=args.processed_dir, datev=args.input_date_list[t_after] )['values'])
+        fst_file_after  = args.processed_dir+args.input_date_list[t_after].strftime(args.processed_file_struc)
+        precip_after   = np.transpose(fst_tools.get_data(var_name='RDPR', file_name=fst_file_after, datev=args.input_date_list[t_after] )['values'])
+        quality_after  = np.transpose(fst_tools.get_data(var_name='RDQI', file_name=fst_file_after, datev=args.input_date_list[t_after] )['values'])
         # advect wind at appropriate time
         backward_precip  = np.transpose(extrapolate(precip_after,   uv_after,  1, outval=0.))
         backward_quality = np.transpose(extrapolate(quality_after,  uv_after,  1, outval=0.))
@@ -514,6 +569,9 @@ def _t_interp_at_one_time(out_time, args):
         precip_rate   = forward_precip 
         quality_index = forward_quality
 
+    #advection is messy, sometimes nodata leaks in places with non-zero quality index
+    quality_index = np.where( ((precip_rate < 0.) & (quality_index > 0.)), 0., quality_index)
+
     etiket = 'EXTRAPOL'
     _write_fst_file(out_time, np.squeeze(precip_rate), np.squeeze(quality_index), args, etiket=etiket, 
                    output_file=fst_output_file)
@@ -524,6 +582,7 @@ def _t_interp_at_one_time(out_time, args):
                                    this_date=out_time,
                                    args=args)
 
+    logger.info(f'Done interpolating to: {out_time}')
     return np.array([1], dtype=float)
 
 def _nowcast_t_interp(args):
@@ -552,20 +611,28 @@ def _nowcast_t_interp(args):
         #parallel execution
         logger.info('Launching PARALLEL of nowcast time interpolation')
 
-        #delay input data 
-        delayed_args = dask.delayed(args)
-
-        #delayed list of results
-        res_list = [dask.array.from_delayed(_dask_t_interp_at_one_time(this_date, delayed_args), (1,), float) for this_date in args.output_date_list ]
-
-        #what output do we want
-        res_stack = dask.array.stack(res_list)
-                
-        # computation happens here
         tt1 = time.time()
-        big_arr = res_stack.compute()
+        cluster = dask.distributed.LocalCluster( n_workers=args.ncores,
+                                                 processes=True,
+                                                 threads_per_worker=1,
+                                                 silence_logs=40
+                                               )
+        with dask.distributed.Client(cluster) as client:
+            #delay input data 
+            delayed_args = dask.delayed(args)
+
+            #delayed list of results
+            res_list = [dask.array.from_delayed(_dask_t_interp_at_one_time(this_date, delayed_args), (1,), float) for this_date in args.output_date_list ]
+
+            #what output do we want
+            res_stack = dask.array.stack(res_list)
+                    
+            # computation happens here
+            big_arr = res_stack.compute()
+
+
         tt2 = time.time()
-        print('  parallel execution took ', tt2-tt1, ' seconds')
+        logger.info(f'Parallel execution done; walltime: {tt2-tt1} seconds')
 
 
 def _aquire_lock(filename):
@@ -635,7 +702,7 @@ def _write_fst_file(out_date, precip_rate, quality_index, args, etiket='',
     if os.path.isfile(output_file):
         first_time_writing_to_outfile = False
 
-    logger.info('writing ' + output_file)
+    logger.info(f'writing {output_file}')
     iunit = rmn.fstopenall(output_file,rmn.FST_RW)
 
     if 'combined_yy_grid' in fst_template.keys():
@@ -692,7 +759,7 @@ def _write_fst_file(out_date, precip_rate, quality_index, args, etiket='',
     # release lock on file to allow other processes to write to it
     _release_lock(output_file)
 
-    logger.info('Done writing ' + output_file)
+    logger.info(f'Done writing {output_file}')
 
 
 
@@ -794,6 +861,12 @@ def obs_process(args=None):
         else:
             args.median_filt = _parse_num(args.median_filt)
 
+    if args.median_filt_before_mv is not None :
+        if args.median_filt_before_mv == 'None' :
+            args.median_filt_before_mv = None
+        else:
+            args.median_filt_before_mv = _parse_num(args.median_filt_before_mv)
+
     if args.smooth_radius is not None :
         if args.smooth_radius == 'None' :
             args.smooth_radius = None
@@ -826,6 +899,7 @@ def obs_process(args=None):
         args.input_tf = _to_datetime(args.input_tf)
     else:
         #otherwise get it from fcst len
+        args.fcst_len = _parse_num(args.fcst_len)
         args.input_tf = args.input_t0 + datetime.timedelta(seconds=args.fcst_len*3600.)
     args.input_dt = _parse_num(args.input_dt, dtype='float') * 60. #convert input_dt to seconds
 
@@ -854,14 +928,9 @@ def obs_process(args=None):
     elif args.tinterpolated_file_struc == 'None':
         args.tinterpolated_file_struc = args.processed_file_struc
 
-    #make sure 'logs' directory exists and is empty
+    # flush logs directory if it exists
     if os.path.isdir('logs'):
-        os.system('rm -f ./logs/obs_process.log')
-        os.system('rm -f ./logs/Worker*')
-    else:
-        #no need for parallel stuff here but the function already exists and will get the job done.
-        dpy.parallel_mkdir('logs')
-
+        os.system('rm -rf logs')
     
     # initialize logging
     logger = _setup_logging(args)
@@ -898,10 +967,6 @@ def obs_process(args=None):
             os.remove(this_file)
         if os.path.isfile(this_file+'.lock'):
             os.remove(this_file+'.lock')
-
-    # initialize dask client if needed
-    if args.ncores > 1 :
-        client = dask.distributed.Client(processes=True, threads_per_worker=1,n_workers=args.ncores, silence_logs=40)
 
     # time interpolation 
     if args.t_interp_method == 'None':
@@ -943,7 +1008,7 @@ def obs_process(args=None):
 
     #we are done
     time_stop = time.time()
-    logger.info('Python code completed, Runtime was : '+str(time_stop-time_start)+' seconds')
+    logger.info(f'Python code completed, Runtime was : {time_stop-time_start} seconds')
 
 
 def _define_parser(only_arg_list=False):
@@ -955,7 +1020,7 @@ def _define_parser(only_arg_list=False):
           ('--tinterpolated_file_struc', str,   'None',      "strftime syntax for constructing time interpolated filenames"),
           ('--h5_latlon_file'          , str,   'None',      "Pickle file containing the lat/lons of the Baltrad grid"),
           ('--input_tf'                , str,   'None',      "yyyymmsshhmmss end      time; datestring"),
-          ('--fcst_len'                , float, 'None',      "duration of forecast (hours)"),
+          ('--fcst_len'                , str,   'None',      "duration of forecast (hours)"),
           ('--accum_len'               , str,   'None',      "duration of accumulation (minutes)"),
           ('--output_t0'               , str,   'None',      "yyyymmsshhmmss begining time; datestring"),
           ('--output_tf'               , str,   'None',      "yyyymmsshhmmss end      time; datestring"),
@@ -966,6 +1031,7 @@ def _define_parser(only_arg_list=False):
           ('--ncores'                  , int,   1,           "number of cores for parallel execution"),
           ('--complete_dataset'        , str,   'False',     "Skip existing files, default is to clobber them"),
           ('--median_filt'             , str,   'None',      "box size (pixels) for median filter"),
+          ('--median_filt_before_mv'   , str,   'None',      "Apply median filter on reflectivity before computing motion vectors"),
           ('--smooth_radius'           , str,   'None',      "radius (km) where radar data be smoothed"),
           ('--figure_dir'              , str,   'no_figures',"If provided, a figure will be created for each std file created"),
           ('--cartopy_dir'             , str,   'None',      "Directory for cartopy shape files"),

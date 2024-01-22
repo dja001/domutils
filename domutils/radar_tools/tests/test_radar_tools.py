@@ -145,7 +145,8 @@ class Tests(unittest.TestCase):
         images_are_similar = py_tools.render_similarly(new_figure, reference_image)
 
         if images_are_similar:
-            shutil.rmtree(log_dir)
+            if os.path.isdir(log_dir):
+                shutil.rmtree(log_dir)
 
         #test fails if images are not similar
         self.assertEqual(images_are_similar, True)

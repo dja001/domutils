@@ -119,7 +119,7 @@ def _find_nearest(source_lon:  Any,
                                              dest_yy.flatten())
 
     #indices for nearest neighbor of each pt in image grid to data grid
-    kdtree = scipy.spatial.cKDTree(source_xyz, balanced_tree=False)
+    kdtree = scipy.spatial.cKDTree(source_xyz, balanced_tree=True)
 
 
     if smooth_radius is not None :
