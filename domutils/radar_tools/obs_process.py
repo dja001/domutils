@@ -71,6 +71,7 @@ def _process_at_one_time(valid_date, fst_template, args):
     import rpnpy.librmn.all as rmn
     from rpnpy.rpndate import RPNDate
     from domutils import radar_tools
+    from domcmc import fst_tools
     import domutils._py_tools as dpy
 
     logger = _setup_logging(args)
@@ -79,13 +80,17 @@ def _process_at_one_time(valid_date, fst_template, args):
 
     #output filename and directory
     output_file = args.output_dir + valid_date.strftime(args.processed_file_struc)
-    #if in complete mode and file exists, return and test next one
-    if (os.path.isfile(output_file) and args.complete_dataset):
-        logger.info(f'{output_file} exists and complete_dataset=True. Skipping to the next.')
-        return np.array([1], dtype=float)
-    elif os.path.isfile(output_file):
-        #file exists but we are not completing a dataset erase file before making a new one
-        os.remove(output_file)
+    # check if we need to process this date
+    if os.path.isfile(output_file):
+        # output file is there, check if data is there at this time. 
+        pr = fst_tools.get_data(var_name='RDPR', file_name=output_file, datev=valid_date)
+        qi = fst_tools.get_data(var_name='RDQI', file_name=output_file, datev=valid_date)
+        if (pr is not None) and (qi is not None):
+            if args.complete_dataset:
+                logger.info(f'{output_file} exists, desired data is there and complete_dataset=True. Skipping to the next.')
+                return np.array([1], dtype=float)
+            else:
+                raise RuntimeError(f'{output_file} exists, desired data is there and complete_dataset=False. Remove output file before retrying')
     else:
         #we will create or overwrite the file; before that make sure directory exists
         this_fst_dir = os.path.dirname(output_file)
@@ -475,12 +480,23 @@ def _t_interp_at_one_time(out_time, args):
     # logging
     logger = _setup_logging(args)
 
-    # Because outputs at multiple times can be found in the same output files
-    # time interpolated outputs are always regenerated and not compatible with 
-    # the --complete_dataset keywork.
-
     fst_output_file = args.output_dir + out_time.strftime(args.tinterpolated_file_struc)
-    if not os.path.isfile(fst_output_file):
+    logger.info(fst_output_file)
+    if os.path.isfile(fst_output_file):
+        # output file is there, check if data is there at this time. 
+        # it is necessary to obtain a lock on file since other processes may be trying to write to it 
+        # and cause crashes
+        _aquire_lock(fst_output_file)
+        pr = fst_tools.get_data(var_name='RDPR', file_name=fst_output_file, datev=out_time)
+        qi = fst_tools.get_data(var_name='RDQI', file_name=fst_output_file, datev=out_time)
+        _release_lock(fst_output_file)
+        if (pr is not None) and (qi is not None):
+            if args.complete_dataset:
+                logger.info(f'{fst_output_file} exists, desired data is there and complete_dataset=True. Skipping to the next.')
+                return np.array([1], dtype=float)
+            else:
+                raise RuntimeError(f'{fst_output_file} exists, desired data is there and complete_dataset=False. Remove output file before retrying')
+    else:
         #we will create a new file; before that make sure directory exists
         dpy.parallel_mkdir(args.output_dir)
 
@@ -959,14 +975,21 @@ def obs_process(args=None):
     elasped_seconds = t_len.days*3600.*24. + t_len.seconds
     args.output_date_list = [args.output_t0 + datetime.timedelta(seconds=x) for x in np.arange(0,elasped_seconds,args.output_dt)]
 
-    # If time interpolated outputs already exists for this period, 
-    # they are deleted here along with potentially dangling lock files
-    out_file_list = set( [args.output_dir + out_date.strftime(args.tinterpolated_file_struc) for out_date in args.output_date_list] )
-    for this_file in out_file_list:
-        if os.path.isfile(this_file):
-            os.remove(this_file)
-        if os.path.isfile(this_file+'.lock'):
-            os.remove(this_file+'.lock')
+
+    if args.complete_dataset:
+        logger.info('With the complete_dataset=True option, no cleanup of directories is performed. ')
+        logger.info('Dangling lock files from a previously aborted run could be an issue.')
+    else:
+        # if complete dataset is set, we leave everything to be completed
+
+        # If time interpolated outputs already exists for this period, 
+        # they are deleted here along with potentially dangling lock files
+        out_file_list = set( [args.output_dir + out_date.strftime(args.tinterpolated_file_struc) for out_date in args.output_date_list] )
+        for this_file in out_file_list:
+            if os.path.isfile(this_file):
+                os.remove(this_file)
+            if os.path.isfile(this_file+'.lock'):
+                os.remove(this_file+'.lock')
 
     # time interpolation 
     if args.t_interp_method == 'None':

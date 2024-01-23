@@ -18,6 +18,7 @@ def get_accumulation(end_date:         Optional[Any]   = None,
                      nearest:          Optional[float] = None,
                      smooth_radius:    Optional[float] = None,
                      odim_latlon_file: Optional[str]   = None,
+                     allow_missing_inputs: Optional[bool]  = False,
                      verbose:          Optional[int]   = 0):
 
     """Get accumulated precipitation from instantaneous observations
@@ -208,43 +209,9 @@ def get_accumulation(end_date:         Optional[Any]   = None,
     #
     #read data
     logger.info('Reading in data')
-    #for 1st time
-    kk = 0
-    this_date = date_list[kk]
-    dat_dict = get_instantaneous(desired_quantity='precip_rate',
-                                 valid_date=this_date,
-                                 data_path=data_path,
-                                 odim_latlon_file=odim_latlon_file,
-                                 data_recipe=data_recipe,
-                                 median_filt=median_filt,
-                                 coef_a=coef_a,
-                                 coef_b=coef_b,
-                                 latlon=latlon)
-    if dat_dict is None:
-        warnings.warn('Unable to get first file in accumulation, returning None')
-        return None
 
-    data_shape = dat_dict['precip_rate'].shape
-    if latlon:
-        orig_lat = dat_dict['latitudes']
-        orig_lon = dat_dict['longitudes']
-    #init accumulation arrays
-    accum_dat = np.zeros(data_shape)
-    accum_qi  = np.zeros(data_shape)
-    accum_w   = np.zeros(data_shape)
-    #build accumulation
-    good_pts = np.asarray(dat_dict['total_quality_index'] > 0.).nonzero()
-    if good_pts[0].size > 0:
-        accum_dat[good_pts] = accum_dat[good_pts] + dat_dict['total_quality_index'][good_pts] * dat_dict['precip_rate'][good_pts]
-        accum_qi[good_pts]  = accum_qi[good_pts]  + dat_dict['total_quality_index'][good_pts] * dat_dict['total_quality_index'][good_pts]
-        accum_w[good_pts]   = accum_w[good_pts]   + dat_dict['total_quality_index'][good_pts] 
-
-    #
-    #read rest of data
+    initialize_arrays = True
     for kk, this_date in enumerate(date_list):
-        #we already did the 1st one, skip it
-        if kk == 0 :
-            continue
 
         #fill accumulation arrays with data for this time
         dat_dict = get_instantaneous(desired_quantity='precip_rate',
@@ -255,6 +222,27 @@ def get_accumulation(end_date:         Optional[Any]   = None,
                                      median_filt=median_filt,
                                      coef_a=coef_a,
                                      coef_b=coef_b)
+
+        if dat_dict is None:
+            warnings.warn(f'Unable to get instantaneous data at: {this_date}')
+
+            if allow_missing_inputs:
+                continue
+            else:
+                return None
+
+        if initialize_arrays:
+            # on first occurence of a valid dat_dict
+            data_shape = dat_dict['precip_rate'].shape
+            if latlon:
+                orig_lat = dat_dict['latitudes']
+                orig_lon = dat_dict['longitudes']
+            #init accumulation arrays
+            accum_dat = np.zeros(data_shape)
+            accum_qi  = np.zeros(data_shape)
+            accum_w   = np.zeros(data_shape)
+            initialize_arrays = False
+
         #build accumulation
         good_pts = np.asarray(dat_dict['total_quality_index'] > 0.).nonzero()
         if good_pts[0].size > 0:

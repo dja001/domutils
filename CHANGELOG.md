@@ -8,6 +8,10 @@ Please use the following tags when editing this file:
 *Removed* for now removed features.
 *Fixed* for any bug fixes. 
 
+## [2.2.1] - 2024-01-23
+### Added
+- radar_tools  new option to allow missing source data in accumulations
+
 ## [2.2.0] - 2023-11-03
 ### Added
 - radar_tools  New obs_process method for batch processing 
