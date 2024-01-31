@@ -221,7 +221,8 @@ def get_accumulation(end_date:         Optional[Any]   = None,
                                      data_recipe=data_recipe,
                                      median_filt=median_filt,
                                      coef_a=coef_a,
-                                     coef_b=coef_b)
+                                     coef_b=coef_b,
+                                     latlon=True)
 
         if dat_dict is None:
             warnings.warn(f'Unable to get instantaneous data at: {this_date}')
@@ -250,6 +251,9 @@ def get_accumulation(end_date:         Optional[Any]   = None,
             accum_qi[good_pts]  = accum_qi[good_pts]  + dat_dict['total_quality_index'][good_pts] * dat_dict['total_quality_index'][good_pts]
             accum_w[good_pts]   = accum_w[good_pts]   + dat_dict['total_quality_index'][good_pts] 
 
+    # handle case where no data was found at all
+    if initialize_arrays:
+        return None
 
     #
     #
