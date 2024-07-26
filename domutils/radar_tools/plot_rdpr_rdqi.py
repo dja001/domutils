@@ -74,7 +74,7 @@ def plot_rdpr_rdqi(fst_file:   str=None,
 
     #setup figure properties
     ratio = 0.5
-    fig_name_recipe = '%Y%m%d_%H%M.svg'
+    fig_name_recipe = '%Y%m%d_%H%M%S.svg'
     # all sizes are inches for consistency with matplotlib
     rec_w = 6.            # Horizontal size of a panel  /2.54 for dimensions in cm
     rec_h = ratio * rec_w # Vertical size of a panel
