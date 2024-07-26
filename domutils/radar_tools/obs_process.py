@@ -179,20 +179,35 @@ def _process_at_one_time(valid_date, fst_template, args):
 
 
 
-def _parse_num(arg, dtype='int'):
+def _parse_num(arg, dtype='int', deltat_seconds=False):
     """
     change string to number
 
     parses m1p4 to -1.4
     removes preceding zeros
 
+    with deltat_seconds=True output will always be in seconds
+    S = seconds; M = minutes; if nothing minutes are assumed
+    2S -> 2
+    2M -> 120
+    2  -> 120
+
     return desired type
     """
 
     if isinstance(arg, str):
-        num_str = arg.lstrip('0').replace('p','.').replace('m','-')
-        if num_str == '':
-            num_str = 0
+        if deltat_seconds:
+            if   arg[-1] == 'S':
+                num_str = arg[:-1]
+            elif arg[-1] == 'M':
+                num_str = float(arg[:-1]) * 60.
+            else:
+                # mabe later I will require a time specification
+                num_str = float(arg[:-1]) * 60.
+        else:
+            num_str = arg.lstrip('0').replace('p','.').replace('m','-')
+            if num_str == '':
+                num_str = 0
     else:
         num_str = arg
 
@@ -469,6 +484,7 @@ def _t_interp_at_one_time(out_time, args):
     """
 
     import os
+    import datetime
     from domcmc import fst_tools
     import domutils._py_tools as dpy
     from domutils import radar_tools
@@ -500,6 +516,71 @@ def _t_interp_at_one_time(out_time, args):
         #we will create a new file; before that make sure directory exists
         dpy.parallel_mkdir(args.output_dir)
 
+    # all inputs within range to participate in average
+    t_max = out_time + datetime.timedelta(seconds=args.interp_max_dt)
+    t_min = out_time - datetime.timedelta(seconds=args.interp_max_dt)
+    participating_list = []
+    total_weight = 0.
+    for input_time in args.input_date_list:
+        if (input_time >= t_min) and (input_time <= t_max):
+            dt = (out_time - input_time).total_seconds()
+            weight = 1./(np.abs(dt)+100.)
+            total_weight += weight
+            participating_list.append({'vtime'  : input_time,
+                                       'dt'     : dt,
+                                       'weight' : weight
+                                      })
+    # if we are extrapolating, the last output data should always be part of the list
+    last_input_time = args.input_date_list[-1]
+    if out_time > last_input_time:
+        last_input_is_in_list = False
+        for item in participating_list:
+            if item['vtime'] == last_input_time:
+                last_input_is_in_list = True
+                break
+        if not last_input_is_in_list:
+            dt = (out_time - last_input_time).total_seconds()
+            weight = 1./(np.abs(dt)+100.)
+            total_weight += weight
+            participating_list.append({'vtime'  : input_time,
+                                       'dt'     : dt,
+                                       'weight' : weight
+                                      })
+            
+    if len(participating_list) == 0:
+        raise RuntimeError(f'No input available for output at: {out_time}')
+
+    #initialize advection code
+    extrapolate = pysteps.extrapolation.interface.get_method("semilagrangian")
+
+    for item in participating_list:
+
+        # get wind
+        wind_file = args.motion_vectors_dir + item['vtime'].strftime('%Y%m%d%H%M_end_window.npz')
+        try:
+            raw_mv = np.load(wind_file)
+        except:
+            raise RuntimeError(f'Problem loading file: {wind_file}')
+        # scale wind 
+        uv_before = _scale_wind(mv_before['uv_motion'], fact_before)
+        # get precip before and after
+        fst_file_before = args.processed_dir+args.input_date_list[t_before].strftime(args.processed_file_struc)
+        precip_before  = np.transpose(fst_tools.get_data(var_name='RDPR', file_name=fst_file_before, datev=args.input_date_list[t_before])['values'])
+        quality_before = np.transpose(fst_tools.get_data(var_name='RDQI', file_name=fst_file_before, datev=args.input_date_list[t_before])['values'])
+        # advect wind at appropriate time
+        forward_precip   = np.transpose(extrapolate(precip_before,  uv_before, 1, outval=0.))
+        forward_quality  = np.transpose(extrapolate(quality_before, uv_before, 1, outval=0.))
+        # adjust missing values that could have been modified during advection
+        forward_precip  = np.where(forward_precip  < 0., missing, forward_precip)
+        forward_quality = np.where(forward_quality < 0., missing, forward_quality)
+        print(item)
+
+
+
+
+    exit()
+            
+
     # find input time just after and just before
     found = False
     do_backward_advect = True
@@ -523,8 +604,6 @@ def _t_interp_at_one_time(out_time, args):
         else:
             raise RuntimeError('Something weird going on, stopping')
 
-    #initialize advection code
-    extrapolate = pysteps.extrapolation.interface.get_method("semilagrangian")
 
     # multiplicative factors for intermediate timesteps before and after
     fact_before = (out_time - args.input_date_list[t_before]).seconds / args.input_dt
@@ -917,7 +996,15 @@ def obs_process(args=None):
         #otherwise get it from fcst len
         args.fcst_len = _parse_num(args.fcst_len)
         args.input_tf = args.input_t0 + datetime.timedelta(seconds=args.fcst_len*3600.)
-    args.input_dt = _parse_num(args.input_dt, dtype='float') * 60. #convert input_dt to seconds
+
+    args.input_dt       = _parse_num(args.input_dt,       dtype='float', deltat_seconds=True)
+
+    if args.interp_max_dt is None:
+        args.interp_max_dt = args.input_dt 
+    elif args.interp_max_dt == 'None':
+        args.interp_max_dt = args.input_dt 
+    else:
+        args.interp_max_dt = _parse_num(args.interp_max_dt, dtype='float', deltat_seconds=True)
 
     #output dates
     if args.output_t0 is None:
@@ -937,7 +1024,7 @@ def obs_process(args=None):
     elif args.output_dt == 'None':
         args.output_dt = args.input_dt
     else: 
-        args.output_dt = _parse_num(args.output_dt, dtype='float') * 60. #convert input_dt to seconds
+        args.output_dt = _parse_num(args.output_dt, dtype='float', deltat_seconds=True)
 
     if args.tinterpolated_file_struc is None:
         args.tinterpolated_file_struc = args.processed_file_struc
@@ -1007,19 +1094,22 @@ def obs_process(args=None):
         if args.output_date_list[0] < args.input_date_list[2] :
             raise ValueError('For nowcast interpolation the earliest output time must be at least two input delta_t after the earliest input time')
 
-        # 1- Process input data and write output to files
+        # don't comment these two
         output_dir = args.output_dir 
         figure_dir = args.figure_dir 
-        # override output and figure dir since in this context these outputs are only intermediate results
-        args.output_dir = output_dir + 'processed/'
-        if figure_dir is not None:
-            args.figure_dir = figure_dir + 'processed/'
-        args.processed_dir = args.output_dir
-        _process_a_bunch_of_times(args)
 
-        # 2- compute motion vectors associated with processed outputs computed at the step above
-        args.motion_vectors_dir = output_dir + 'motion_vectors/'
-        _make_motion_vectors(args)
+        ### override output and figure dir since in this context these outputs are only intermediate results
+        #args.output_dir = output_dir + 'processed/'
+        #if figure_dir is not None:
+        #    args.figure_dir = figure_dir + 'processed/'
+        #args.processed_dir = args.output_dir
+
+        ### 1- Process input data and write output to files
+        #_process_a_bunch_of_times(args)
+
+        ## 2- compute motion vectors associated with processed outputs computed at the step above
+        #args.motion_vectors_dir = output_dir + 'motion_vectors/'
+        #_make_motion_vectors(args)
 
         # 3- use nowcast for time interpolation
         args.output_dir    = output_dir 
@@ -1047,8 +1137,9 @@ def _define_parser(only_arg_list=False):
           ('--accum_len'               , str,   'None',      "duration of accumulation (minutes)"),
           ('--output_t0'               , str,   'None',      "yyyymmsshhmmss begining time; datestring"),
           ('--output_tf'               , str,   'None',      "yyyymmsshhmmss end      time; datestring"),
-          ('--output_dt'               , str,   'None',      "interval (minutes) between output radar mosaics"),
+          ('--output_dt'               , str,   'None',      "interval (minutes M or seconds S) between output radar mosaics"),
           ('--t_interp_method'         , str,   'None',      "time interpolation method"),
+          ('--interp_max_dt'           , str,   'None',      "max interval (minutes M or seconds S) where data will contribute to nowcast interpolation"),
           ('--sample_pr_file'          , str,   'None',      "File containing PR to establish the domain"),
           ('--output_file_format'      , str,   'npz',       "File format of processed files"),
           ('--ncores'                  , int,   1,           "number of cores for parallel execution"),
@@ -1076,7 +1167,7 @@ def _define_parser(only_arg_list=False):
         required_args.add_argument("--input_t0"         , type=str,   required=True,  help="yyyymmsshhmmss begining time; datestring")
         required_args.add_argument("--processed_file_struc", type=str,required=True,  help="strftime syntax for constructing fst filenames for output of obsprocess")
         required_args.add_argument("--input_file_struc" , type=str,   required=True,  help="strftime syntax for constructing H5  filenames")
-        required_args.add_argument("--input_dt"         , type=str,   required=True,  help="interval (minutes) between input radar mosaics")
+        required_args.add_argument("--input_dt"         , type=str,   required=True,  help="interval (minutes M or seconds S) between input radar mosaics")
 
         optional_args = parser.add_argument_group('Optional named arguments')
         for (var_name, vtype, vdefault, vhelp) in non_mandatory_args:
