@@ -270,26 +270,20 @@ def _process_a_bunch_of_times(args):
         logger.info('Launching PARALLEL execution of observation processing')
 
         tt1 = time.time()
-        cluster = dask.distributed.LocalCluster( n_workers=args.ncores,
-                                                 processes=True,
-                                                 threads_per_worker=1,
-                                                 silence_logs=40
-                                               )
-        with dask.distributed.Client(cluster) as client:
-            #delay input data 
-            delayed_args         = dask.delayed(args)
-            delayed_fst_template = dask.delayed(fst_template)
+        #delay input data 
+        delayed_args         = dask.delayed(args)
+        delayed_fst_template = dask.delayed(fst_template)
 
-            #delayed list of results
-            res_list = [dask.array.from_delayed(_dask_process_at_one_time(this_date, 
-                                                                          delayed_fst_template, 
-                                                                          delayed_args), (1,), float) for this_date in args.input_date_list ]
+        #delayed list of results
+        res_list = [dask.array.from_delayed(_dask_process_at_one_time(this_date, 
+                                                                      delayed_fst_template, 
+                                                                      delayed_args), (1,), float) for this_date in args.input_date_list ]
 
-            #what output do we want
-            res_stack = dask.array.stack(res_list)
-                    
-            # computation happens here
-            big_arr = res_stack.compute()
+        #what output do we want
+        res_stack = dask.array.stack(res_list)
+                
+        # computation happens here
+        big_arr = res_stack.compute()
 
         tt2 = time.time()
         logger.info(f'Parallel execution done; walltime: {tt2-tt1} seconds')
@@ -359,7 +353,7 @@ def _motion_vector_at_one_time(this_time, args):
         median_inds = domutils.radar_tools.median_filter.get_inds(z_v, window=args.median_filt_before_mv)
         z_v = domutils.radar_tools.median_filter.apply_inds(z_v, median_inds)
     z_acc[1,:,:] = np.transpose(domutils.radar_tools.exponential_zr(z_v, r_to_dbz=True))
-    # t0 - 1dt
+    # t0 
     fst_file = args.output_dir+args.input_date_list[tt].strftime(args.processed_file_struc)
     z_v = fst_tools.get_data(var_name='RDPR', file_name=fst_file, datev=args.input_date_list[tt  ])['values']
     if args.median_filt_before_mv is not None:
@@ -429,23 +423,18 @@ def _make_motion_vectors(args):
         logger.info('Launching PARALLEL computation of motion vectors')
 
         tt1 = time.time()
-        cluster = dask.distributed.LocalCluster( n_workers=int(args.ncores/2),
-                                                 processes=True,
-                                                 threads_per_worker=1,
-                                                 silence_logs=40
-                                               )
-        with dask.distributed.Client(cluster) as client:
-            #delay input data 
-            delayed_args = dask.delayed(args)
 
-            #delayed list of results
-            res_list = [dask.array.from_delayed(_dask_motion_vector_at_one_time(this_date, delayed_args), (1,), float) for this_date in args.input_date_list[2:] ]
+        #delay input data 
+        delayed_args = dask.delayed(args)
 
-            #what output do we want
-            res_stack = dask.array.stack(res_list)
-                    
-            # computation happens here
-            big_arr = res_stack.compute()
+        #delayed list of results
+        res_list = [dask.array.from_delayed(_dask_motion_vector_at_one_time(this_date, delayed_args), (1,), float) for this_date in args.input_date_list[2:] ]
+
+        #what output do we want
+        res_stack = dask.array.stack(res_list)
+                
+        # computation happens here
+        big_arr = res_stack.compute()
 
         tt2 = time.time()
         logger.info(f'Parallel execution done; walltime: {tt2-tt1} seconds')
@@ -651,23 +640,18 @@ def _nowcast_t_interp(args):
         logger.info('Launching PARALLEL of nowcast time interpolation')
 
         tt1 = time.time()
-        cluster = dask.distributed.LocalCluster( n_workers=args.ncores,
-                                                 processes=True,
-                                                 threads_per_worker=1,
-                                                 silence_logs=40
-                                               )
-        with dask.distributed.Client(cluster) as client:
-            #delay input data 
-            delayed_args = dask.delayed(args)
 
-            #delayed list of results
-            res_list = [dask.array.from_delayed(_dask_t_interp_at_one_time(this_date, delayed_args), (1,), float) for this_date in args.output_date_list ]
+        #delay input data 
+        delayed_args = dask.delayed(args)
 
-            #what output do we want
-            res_stack = dask.array.stack(res_list)
-                    
-            # computation happens here
-            big_arr = res_stack.compute()
+        #delayed list of results
+        res_list = [dask.array.from_delayed(_dask_t_interp_at_one_time(this_date, delayed_args), (1,), float) for this_date in args.output_date_list ]
+
+        #what output do we want
+        res_stack = dask.array.stack(res_list)
+                
+        # computation happens here
+        big_arr = res_stack.compute()
 
 
         tt2 = time.time()
@@ -1022,6 +1006,19 @@ def obs_process(args=None):
             if os.path.isfile(this_file+'.lock'):
                 os.remove(this_file+'.lock')
 
+
+    if args.ncores > 1:
+        logger.info(f'Starting local dask cluster with {args.ncores} workers.')
+
+        tmp_dir = os.environ['BIG_TMPDIR']
+        dask_client = dask.distributed.Client(processes=True, threads_per_worker=1, 
+                                              n_workers=args.ncores, 
+                                              local_directory=tmp_dir, 
+                                              silence_logs=40) 
+        logger.info('Done')
+    else:
+        dask_client=None
+
     # time interpolation 
     if args.t_interp_method == 'None':
         # No temporal interpolation, only observation processing
@@ -1062,6 +1059,8 @@ def obs_process(args=None):
 
     else:
         raise ValueError('type of time interpolation not supported.')
+
+    dask_client.close()
 
     #we are done
     time_stop = time.time()
