@@ -188,9 +188,9 @@ def _parse_num(arg, dtype='int', deltat_seconds=False):
 
     with deltat_seconds=True output will always be in seconds
     S = seconds; M = minutes; if nothing minutes are assumed
-    2S -> 2
-    2M -> 120
-    2  -> 120
+    2S -> 2     (seconds)
+    2M -> 120   (seconds)
+    2  -> 120   (seconds)
 
     return desired type
     """
@@ -520,12 +520,11 @@ def _t_interp_at_one_time(out_time, args):
     t_max = out_time + datetime.timedelta(seconds=args.interp_max_dt)
     t_min = out_time - datetime.timedelta(seconds=args.interp_max_dt)
     participating_list = []
-    total_weight = 0.
     for input_time in args.input_date_list:
         if (input_time >= t_min) and (input_time <= t_max):
             dt = (out_time - input_time).total_seconds()
+            # TODO determine a better weighting function for this
             weight = 1./(np.abs(dt)+100.)
-            total_weight += weight
             participating_list.append({'vtime'  : input_time,
                                        'dt'     : dt,
                                        'weight' : weight
@@ -541,19 +540,19 @@ def _t_interp_at_one_time(out_time, args):
         if not last_input_is_in_list:
             dt = (out_time - last_input_time).total_seconds()
             weight = 1./(np.abs(dt)+100.)
-            total_weight += weight
-            participating_list.append({'vtime'  : input_time,
+            participating_list.append({'vtime'  : last_input_time,
                                        'dt'     : dt,
                                        'weight' : weight
                                       })
             
-    if len(participating_list) == 0:
+    num_participants = len(participating_list)
+    if num_participants == 0:
         raise RuntimeError(f'No input available for output at: {out_time}')
 
     #initialize advection code
     extrapolate = pysteps.extrapolation.interface.get_method("semilagrangian")
 
-    for item in participating_list:
+    for pp, item in enumerate(participating_list):
 
         # get wind
         wind_file = args.motion_vectors_dir + item['vtime'].strftime('%Y%m%d%H%M_end_window.npz')
@@ -561,114 +560,59 @@ def _t_interp_at_one_time(out_time, args):
             raw_mv = np.load(wind_file)
         except:
             raise RuntimeError(f'Problem loading file: {wind_file}')
-        # scale wind 
-        uv_before = _scale_wind(mv_before['uv_motion'], fact_before)
-        # get precip before and after
-        fst_file_before = args.processed_dir+args.input_date_list[t_before].strftime(args.processed_file_struc)
-        precip_before  = np.transpose(fst_tools.get_data(var_name='RDPR', file_name=fst_file_before, datev=args.input_date_list[t_before])['values'])
-        quality_before = np.transpose(fst_tools.get_data(var_name='RDQI', file_name=fst_file_before, datev=args.input_date_list[t_before])['values'])
-        # advect wind at appropriate time
-        forward_precip   = np.transpose(extrapolate(precip_before,  uv_before, 1, outval=0.))
-        forward_quality  = np.transpose(extrapolate(quality_before, uv_before, 1, outval=0.))
-        # adjust missing values that could have been modified during advection
-        forward_precip  = np.where(forward_precip  < 0., missing, forward_precip)
-        forward_quality = np.where(forward_quality < 0., missing, forward_quality)
-        print(item)
 
+        # first time around, init output matrices
+        if pp == 0:
+            ny, nx = raw_mv['uv_motion'][0,:,:].shape   # note ny,nx order ; mv data is already transposed
+            rr_arr      = np.full((nx, ny, num_participants), np.nan)
+            qi_arr      = np.full((nx, ny, num_participants), np.nan)
+            weights_arr = np.full((nx, ny, num_participants), np.nan)
 
+        # scale motion vectors
+        scaling_factor = item['dt'] / args.input_dt
+        uv_scaled = _scale_wind(raw_mv['uv_motion'], scaling_factor)
 
-
-    exit()
-            
-
-    # find input time just after and just before
-    found = False
-    do_backward_advect = True
-    for t_after, this_time in enumerate(args.input_date_list):
-        if this_time > out_time:
-            found = True
-            break
-
-    if (t_after == 0) :
-        raise RuntimeError('desired out_time is before the first available input')
-
-    if found :
-        # found interval that brackets out time, all is well
-        t_before = t_after -1
-    else:
-        if out_time >= args.input_date_list[-1]:
-            # out_time is equal or larger than last input time
-            # only forward advection will be used to generate nowcast
-            do_backward_advect = False
-            t_before = -1
+        # get precip and qi to extrapolate
+        fst_file = args.processed_dir+item['vtime'].strftime(args.processed_file_struc)
+         
+        fst_entry = fst_tools.get_data(file_name=fst_file, var_name='RDPR', datev=item['vtime'])
+        if fst_entry is None:
+            raise ValueError(f"Unable to get source precip in {fst_file}, at {item['vtime']}")
         else:
-            raise RuntimeError('Something weird going on, stopping')
+            precip_rate = np.transpose(fst_entry['values'])
+            np.where(precip_rate < 0., 0., precip_rate) #change -9999. to 0. for less problems when advecting
+         
+        fst_entry = fst_tools.get_data(file_name=fst_file, var_name='RDQI', datev=item['vtime'])
+        if fst_entry is None:
+            raise ValueError(f"Unable to get source quality index in {fst_file}, at {item['vtime']}")
+        else:
+            quality_index = np.transpose(fst_entry['values'])
 
-
-    # multiplicative factors for intermediate timesteps before and after
-    fact_before = (out_time - args.input_date_list[t_before]).seconds / args.input_dt
-    # get wind before and after
-    wind_file = args.motion_vectors_dir + args.input_date_list[t_before].strftime('%Y%m%d%H%M_end_window.npz')
-    try:
-        mv_before = np.load(wind_file)
-    except:
-        raise RuntimeError(f'Problem loading file: {wind_file}')
-    # scale wind 
-    uv_before = _scale_wind(mv_before['uv_motion'], fact_before)
-    # get precip before and after
-    fst_file_before = args.processed_dir+args.input_date_list[t_before].strftime(args.processed_file_struc)
-    precip_before  = np.transpose(fst_tools.get_data(var_name='RDPR', file_name=fst_file_before, datev=args.input_date_list[t_before])['values'])
-    quality_before = np.transpose(fst_tools.get_data(var_name='RDQI', file_name=fst_file_before, datev=args.input_date_list[t_before])['values'])
-    # advect wind at appropriate time
-    forward_precip   = np.transpose(extrapolate(precip_before,  uv_before, 1, outval=0.))
-    forward_quality  = np.transpose(extrapolate(quality_before, uv_before, 1, outval=0.))
-    # adjust missing values that could have been modified during advection
-    forward_precip  = np.where(forward_precip  < 0., missing, forward_precip)
-    forward_quality = np.where(forward_quality < 0., missing, forward_quality)
-
-    if do_backward_advect: 
-        # multiplicative factors for intermediate timesteps before and after
-        fact_after  = -1. * (args.input_date_list[t_after] - out_time ).seconds / args.input_dt
-        # get wind before and after
-        wind_file = args.motion_vectors_dir + args.input_date_list[t_after ].strftime('%Y%m%d%H%M_end_window.npz')
-        try:
-            mv_after  = np.load(wind_file)
-        except:
-            raise RuntimeError(f'Problem loading file: {wind_file}')
-        # scale wind 
-        uv_after  = _scale_wind(mv_after['uv_motion'],  fact_after)
-        # get precip before and after
-        fst_file_after  = args.processed_dir+args.input_date_list[t_after].strftime(args.processed_file_struc)
-        precip_after   = np.transpose(fst_tools.get_data(var_name='RDPR', file_name=fst_file_after, datev=args.input_date_list[t_after] )['values'])
-        quality_after  = np.transpose(fst_tools.get_data(var_name='RDQI', file_name=fst_file_after, datev=args.input_date_list[t_after] )['values'])
         # advect wind at appropriate time
-        backward_precip  = np.transpose(extrapolate(precip_after,   uv_after,  1, outval=0.))
-        backward_quality = np.transpose(extrapolate(quality_after,  uv_after,  1, outval=0.))
+        advected_precip  = np.squeeze(np.transpose(extrapolate(precip_rate,   uv_scaled, 1, outval=np.nan)))
+        advected_quality = np.squeeze(np.transpose(extrapolate(quality_index, uv_scaled, 1, outval=np.nan)))
+         
+        # save in output array and 
         # adjust missing values that could have been modified during advection
-        backward_precip  = np.where(backward_precip  < 0., missing, backward_precip)
-        backward_quality = np.where(backward_quality < 0., missing, backward_quality)
+        rr_arr[:,:,pp] = np.where(advected_precip  < 0., np.nan, advected_precip)
+        qi_arr[:,:,pp] = np.where(advected_quality < 0., np.nan, advected_quality)
+        weights_arr[:,:,pp] = item['weight']*qi_arr[:,:,pp]
 
-        # average result weighted by separation time
-        precip_rate   = (1. - fact_before)*forward_precip  + fact_before*backward_precip
-        quality_index = (1. - fact_before)*forward_quality + fact_before*backward_quality
-        # exclude nodata from average, pick only the alternative when available
-        if fact_before > 0.:
-            precip_rate   = np.where( forward_precip  < 0.,  backward_precip,  precip_rate)
-            quality_index = np.where( forward_quality < 0., backward_quality,  quality_index)
-        if (1. - fact_before) > 0.:
-            precip_rate   = np.where(backward_precip  < 0.,   forward_precip,  precip_rate)
-            quality_index = np.where(backward_quality < 0.,  forward_quality,  quality_index)
 
-    else:
-        # We only did forward advection
-        precip_rate   = forward_precip 
-        quality_index = forward_quality
+    #normalize weight so that column sum is one everywhere
+    norm_factor = np.nansum(weights_arr, axis=2).reshape((nx,ny,1))
+    weights_arr /= norm_factor
 
-    #advection is messy, sometimes nodata leaks in places with non-zero quality index
-    quality_index = np.where( ((precip_rate < 0.) & (quality_index > 0.)), 0., quality_index)
+    interpolated_precip  = np.nansum(weights_arr * rr_arr, axis=2)
+    interpolated_quality = np.nansum(weights_arr * qi_arr, axis=2)
+    
+    # change nans into missing values
+    interpolated_precip  = np.where(np.isfinite(interpolated_quality), interpolated_precip,  missing)
+    interpolated_quality = np.where(np.isfinite(interpolated_quality), interpolated_quality, 0.)
+
 
     etiket = 'EXTRAPOL'
-    _write_fst_file(out_time, np.squeeze(precip_rate), np.squeeze(quality_index), args, etiket=etiket, 
+    _write_fst_file(out_time, interpolated_precip, interpolated_quality, args, etiket=etiket, 
                    output_file=fst_output_file)
 
     #make a figure for this std file if the argument figure_dir was provided
@@ -997,7 +941,7 @@ def obs_process(args=None):
         args.fcst_len = _parse_num(args.fcst_len)
         args.input_tf = args.input_t0 + datetime.timedelta(seconds=args.fcst_len*3600.)
 
-    args.input_dt       = _parse_num(args.input_dt,       dtype='float', deltat_seconds=True)
+    args.input_dt = _parse_num(args.input_dt, dtype='float', deltat_seconds=True)
 
     if args.interp_max_dt is None:
         args.interp_max_dt = args.input_dt 
@@ -1094,22 +1038,22 @@ def obs_process(args=None):
         if args.output_date_list[0] < args.input_date_list[2] :
             raise ValueError('For nowcast interpolation the earliest output time must be at least two input delta_t after the earliest input time')
 
-        # don't comment these two
+        # don't comment these
         output_dir = args.output_dir 
         figure_dir = args.figure_dir 
+        args.motion_vectors_dir = output_dir + 'motion_vectors/'
+        args.processed_dir      = output_dir + 'processed/'
 
-        ### override output and figure dir since in this context these outputs are only intermediate results
-        #args.output_dir = output_dir + 'processed/'
-        #if figure_dir is not None:
-        #    args.figure_dir = figure_dir + 'processed/'
-        #args.processed_dir = args.output_dir
+        ## override output and figure dir since in this context these outputs are only intermediate results
+        args.output_dir = output_dir + 'processed/'
+        if figure_dir is not None:
+            args.figure_dir = figure_dir + 'processed/'
 
-        ### 1- Process input data and write output to files
-        #_process_a_bunch_of_times(args)
+        ## 1- Process input data and write output to files
+        _process_a_bunch_of_times(args)
 
-        ## 2- compute motion vectors associated with processed outputs computed at the step above
-        #args.motion_vectors_dir = output_dir + 'motion_vectors/'
-        #_make_motion_vectors(args)
+        # 2- compute motion vectors associated with processed outputs computed at the step above
+        _make_motion_vectors(args)
 
         # 3- use nowcast for time interpolation
         args.output_dir    = output_dir 
@@ -1163,11 +1107,11 @@ def _define_parser(only_arg_list=False):
                  prefix_chars='-+', formatter_class=argparse.RawDescriptionHelpFormatter)
         required_args = parser.add_argument_group('Required named arguments')
         required_args.add_argument("--input_data_dir"   , type=str,   required=True,  help="path of source radar mosaics files")
-        required_args.add_argument("--output_dir"       , type=str,   required=True,  help="directory for output fst files")
         required_args.add_argument("--input_t0"         , type=str,   required=True,  help="yyyymmsshhmmss begining time; datestring")
+        required_args.add_argument("--input_dt"         , type=str,   required=True,  help="interval (minutes M or seconds S) between input radar mosaics")
+        required_args.add_argument("--output_dir"       , type=str,   required=True,  help="directory for output fst files")
         required_args.add_argument("--processed_file_struc", type=str,required=True,  help="strftime syntax for constructing fst filenames for output of obsprocess")
         required_args.add_argument("--input_file_struc" , type=str,   required=True,  help="strftime syntax for constructing H5  filenames")
-        required_args.add_argument("--input_dt"         , type=str,   required=True,  help="interval (minutes M or seconds S) between input radar mosaics")
 
         optional_args = parser.add_argument_group('Optional named arguments')
         for (var_name, vtype, vdefault, vhelp) in non_mandatory_args:
