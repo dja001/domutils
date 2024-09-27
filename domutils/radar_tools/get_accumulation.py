@@ -19,7 +19,8 @@ def get_accumulation(end_date:         Optional[Any]   = None,
                      smooth_radius:    Optional[float] = None,
                      odim_latlon_file: Optional[str]   = None,
                      allow_missing_inputs: Optional[bool]  = False,
-                     verbose:          Optional[int]   = 0):
+                     verbose:          Optional[int]   = 0,
+                     logger:           Optional[Any]   = None):
 
     """Get accumulated precipitation from instantaneous observations
 
@@ -123,7 +124,8 @@ def get_accumulation(end_date:         Optional[Any]   = None,
     import domutils.geo_tools as geo_tools
 
     #logging
-    logger = logging.getLogger(__name__)
+    if logger is None:
+        logger = logging.getLogger(__name__)
 
     if verbose > 0:
         logger.warning('verbose keyword is deprecated, please set logging level in calling handler')
@@ -201,11 +203,9 @@ def get_accumulation(end_date:         Optional[Any]   = None,
     #
     #
     #get list of times during which observations should be accumulated
-    m_list = np.arange(0, duration, input_dt)
-    date_list = [end_date - datetime.timedelta(minutes=int(this_min)) for this_min in m_list]
+    m_list_seconds = np.arange(0, duration, input_dt) * 60.
+    date_list = [end_date - datetime.timedelta(seconds=int(this_delta)) for this_delta in m_list_seconds]
 
-
-    #
     #
     #read data
     logger.info('Reading in data')
@@ -222,7 +222,8 @@ def get_accumulation(end_date:         Optional[Any]   = None,
                                      median_filt=median_filt,
                                      coef_a=coef_a,
                                      coef_b=coef_b,
-                                     latlon=True)
+                                     latlon=True,
+                                     logger=logger)
 
         if dat_dict is None:
             warnings.warn(f'Unable to get instantaneous data at: {this_date}')

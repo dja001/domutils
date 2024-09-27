@@ -16,7 +16,8 @@ def get_instantaneous(valid_date:       Optional[Any]   = None,
                       nearest_time:     Optional[float] = None,
                       smooth_radius:    Optional[float] = None,
                       odim_latlon_file: Optional[str]   = None,
-                      verbose:          Optional[int]   = 0):
+                      verbose:          Optional[int]   = 0,
+                      logger:           Optional[Any]   = None):
     """ Get instantaneous precipitation from various sources
 
     Provides one interface for:
@@ -115,7 +116,8 @@ def get_instantaneous(valid_date:       Optional[Any]   = None,
     import domutils.geo_tools as geo_tools
 
     #logging
-    logger = logging.getLogger(__name__)
+    if logger is None:
+        logger = logging.getLogger(__name__)
 
     if verbose > 0:
         logger.warning('verbose keyword is deprecated, please set logging level in calling handler')
