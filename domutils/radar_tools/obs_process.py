@@ -79,7 +79,7 @@ def _process_at_one_time(valid_date, fst_template, args):
     logger.info(f'_process_at_one_time starting to process date: {valid_date}')
 
     #output filename and directory
-    output_file = args.output_dir + valid_date.strftime(args.processed_file_struc)
+    output_file = args.output_dir + valid_date.strftime(args.output_file_struc)
     # check if we need to process this date
     if os.path.isfile(output_file):
         # output file is there, check if data is there at this time. 
@@ -340,21 +340,21 @@ def _motion_vector_at_one_time(this_time, args):
 
     # read precip, convert to reflectivity and reshape to make pysteps happy
     # t0 - 2dt
-    fst_file = args.output_dir+args.input_date_list[tt-2].strftime(args.processed_file_struc)
+    fst_file = args.output_dir+args.input_date_list[tt-2].strftime(args.output_file_struc)
     z_v = fst_tools.get_data(var_name='RDPR', file_name=fst_file, datev=args.input_date_list[tt-2])['values']
     if args.median_filt_before_mv is not None:
         median_inds = domutils.radar_tools.median_filter.get_inds(z_v, window=args.median_filt_before_mv)
         z_v = domutils.radar_tools.median_filter.apply_inds(z_v, median_inds)
     z_acc[0,:,:] = np.transpose(domutils.radar_tools.exponential_zr(z_v, r_to_dbz=True))
     # t0 - 1dt
-    fst_file = args.output_dir+args.input_date_list[tt-1].strftime(args.processed_file_struc)
+    fst_file = args.output_dir+args.input_date_list[tt-1].strftime(args.output_file_struc)
     z_v = fst_tools.get_data(var_name='RDPR', file_name=fst_file, datev=args.input_date_list[tt-1])['values']
     if args.median_filt_before_mv is not None:
         median_inds = domutils.radar_tools.median_filter.get_inds(z_v, window=args.median_filt_before_mv)
         z_v = domutils.radar_tools.median_filter.apply_inds(z_v, median_inds)
     z_acc[1,:,:] = np.transpose(domutils.radar_tools.exponential_zr(z_v, r_to_dbz=True))
     # t0 
-    fst_file = args.output_dir+args.input_date_list[tt].strftime(args.processed_file_struc)
+    fst_file = args.output_dir+args.input_date_list[tt].strftime(args.output_file_struc)
     z_v = fst_tools.get_data(var_name='RDPR', file_name=fst_file, datev=args.input_date_list[tt  ])['values']
     if args.median_filt_before_mv is not None:
         median_inds = domutils.radar_tools.median_filter.get_inds(z_v, window=args.median_filt_before_mv)
@@ -397,7 +397,7 @@ def _make_motion_vectors(args):
     logger = _setup_logging(args)
 
     #read first entry to get dimensions
-    fst_file = args.processed_dir+args.input_date_list[0].strftime(args.processed_file_struc)
+    fst_file = args.processed_dir+args.input_date_list[0].strftime(args.output_file_struc)
     z_v = fst_tools.get_data(var_name='RDPR', file_name=fst_file, datev=args.input_date_list[0])['values']
     nx, ny = z_v.shape
     args.out_nx = nx
@@ -486,7 +486,7 @@ def _t_interp_at_one_time(out_time, args):
     logger = _setup_logging(args)
 
     fst_output_file = args.output_dir + out_time.strftime(args.tinterpolated_file_struc)
-    logger.info(fst_output_file)
+    logger.info(f'Working on: {os.path.basename(fst_output_file)}')
     if os.path.isfile(fst_output_file):
         # output file is there, check if data is there at this time. 
         # it is necessary to obtain a lock on file since other processes may be trying to write to it 
@@ -562,7 +562,7 @@ def _t_interp_at_one_time(out_time, args):
         uv_scaled = _scale_wind(raw_mv['uv_motion'], scaling_factor)
 
         # get precip and qi to extrapolate
-        fst_file = args.processed_dir+item['vtime'].strftime(args.processed_file_struc)
+        fst_file = args.processed_dir+item['vtime'].strftime(args.output_file_struc)
          
         fst_entry = fst_tools.get_data(file_name=fst_file, var_name='RDPR', datev=item['vtime'])
         if fst_entry is None:
@@ -589,15 +589,16 @@ def _t_interp_at_one_time(out_time, args):
 
 
     #normalize weight so that column sum is one everywhere
-    norm_factor = np.nansum(weights_arr, axis=2).reshape((nx,ny,1))
+    norm_factor = np.nansum(weights_arr, axis=2, keepdims=True)
     weights_arr /= norm_factor
+    norm_factor = np.squeeze(norm_factor)   # we don't need the 3rd dim of size 1 anymore
 
     interpolated_precip  = np.nansum(weights_arr * rr_arr, axis=2)
     interpolated_quality = np.nansum(weights_arr * qi_arr, axis=2)
     
-    # change nans into missing values
-    interpolated_precip  = np.where(np.isfinite(interpolated_quality), interpolated_precip,  missing)
-    interpolated_quality = np.where(np.isfinite(interpolated_quality), interpolated_quality, 0.)
+    # replace missing values where no data was availablet st
+    interpolated_precip  = np.where(np.isclose(norm_factor, 0.), missing, interpolated_precip)
+    interpolated_quality = np.where(np.isclose(norm_factor, 0.), 0.,      interpolated_quality)
 
 
     etiket = 'EXTRAPOL'
@@ -716,7 +717,7 @@ def _write_fst_file(out_date, precip_rate, quality_index, args, etiket='',
 
     #fst file to write to
     if output_file is None:
-        output_file = args.output_dir + out_date.strftime(args.processed_file_struc)
+        output_file = args.output_dir + out_date.strftime(args.output_file_struc)
 
     # aquire lock for this file
     _aquire_lock(output_file)
@@ -801,20 +802,20 @@ def obs_process(args=None):
       .. code-block:: bash
 
           python -m domutils.radar_tools.obs_process
-                    --input_data_dir   /space/hall4/sitestore/eccc/mrd/rpndat/dja001/data/radar_h5_composites/v8/ 
-                    --output_dir       /home/dja001/python/obs_process/outdir/                       
-                    --figure_dir       /home/dja001/python/obs_process/figdir/                       
-                    --fst_file_struc   %Y/%m/%d/%Y%m%d%H%M_mosaic.fst                                             
-                    --input_file_struc %Y/%m/%d/qcomp_%Y%m%d%H%M.h5                                               
-                    --h5_latlon_file   /home/dja001/shared_stuff/files/radar_continental_2.5km_2882x2032.pickle   
-                    --t0               ${t_start}                                                                 
-                    --tf               ${t_stop}                                                                  
-                    --input_dt         10                                                                         
-                    --sample_pr_file   /space/hall4/sitestore/eccc/mrd/rpndat/dja001/domains/hrdps_5p1_prp0.fst   
-                    --ncores           40                                                                         
-                    --complete_dataset True                                                                       
-                    --median_filt      3                                                                          
-                    --smooth_radius    4                                                                          
+                    --input_data_dir    /space/hall4/sitestore/eccc/mrd/rpndat/dja001/data/radar_h5_composites/v8/ 
+                    --output_dir        /home/dja001/python/obs_process/outdir/                       
+                    --output_figure_dir /home/dja001/python/obs_process/figdir/                       
+                    --fst_file_struc    %Y/%m/%d/%Y%m%d%H%M_mosaic.fst                                             
+                    --input_file_struc  %Y/%m/%d/qcomp_%Y%m%d%H%M.h5                                               
+                    --h5_latlon_file    /home/dja001/shared_stuff/files/radar_continental_2.5km_2882x2032.pickle   
+                    --t0                ${t_start}                                                                 
+                    --tf                ${t_stop}                                                                  
+                    --input_dt          10                                                                         
+                    --sample_pr_file    /space/hall4/sitestore/eccc/mrd/rpndat/dja001/domains/hrdps_5p1_prp0.fst   
+                    --ncores            40                                                                         
+                    --complete_dataset  True                                                                       
+                    --median_filt       3                                                                          
+                    --smooth_radius     4                                                                          
 
       Alternatively, is is possible to call this function directly from Python by defining a
       simple object whose attributes are the arguments.
@@ -836,7 +837,6 @@ def obs_process(args=None):
 
 
     import os
-    from os import linesep as newline
     import sys
     import time
     import datetime
@@ -866,12 +866,23 @@ def obs_process(args=None):
     #add trailling / to all directories
     args.input_data_dir += '/'
     args.output_dir += '/'
-    if args.figure_dir == 'no_figures' or args.figure_dir == 'None':
-        args.figure_dir = None
-    else:
-        args.figure_dir += '/'
 
-    # parse inputs
+    if args.output_figure_dir == 'no_figures' or args.output_figure_dir == 'None':
+        args.output_figure_dir = None
+    else:
+        args.output_figure_dir += '/'
+
+    if args.processed_figure_dir == 'no_figures' or args.processed_figure_dir == 'None':
+        args.processed_figure_dir = None
+    else:
+        args.processed_figure_dir += '/'
+
+    if args.intermediate_files_dir == 'None':
+        args.intermediate_files_dir = None
+    else:
+        args.intermediate_files_dir += '/'
+
+    # parse numeric inputs
     if args.accum_len is not None :
         if args.accum_len == 'None' :
             args.accum_len = None
@@ -955,9 +966,9 @@ def obs_process(args=None):
         args.output_dt = _parse_num(args.output_dt, dtype='float', deltat_seconds=True)
 
     if args.tinterpolated_file_struc is None:
-        args.tinterpolated_file_struc = args.processed_file_struc
+        args.tinterpolated_file_struc = args.output_file_struc
     elif args.tinterpolated_file_struc == 'None':
-        args.tinterpolated_file_struc = args.processed_file_struc
+        args.tinterpolated_file_struc = args.output_file_struc
 
     # flush logs directory if it exists
     if os.path.isdir('logs'):
@@ -1000,7 +1011,7 @@ def obs_process(args=None):
         # If time interpolated outputs already exists for this period, 
         # they are deleted here along with potentially dangling lock files
         out_file_list = set( [args.output_dir + out_date.strftime(args.tinterpolated_file_struc) for out_date in args.output_date_list] )
-        for this_file in out_file_list:
+        for this_file in sorted(out_file_list):
             if os.path.isfile(this_file):
                 os.remove(this_file)
             if os.path.isfile(this_file+'.lock'):
@@ -1026,6 +1037,7 @@ def obs_process(args=None):
             raise ValueError('Select a time interpolation method if output is desired at times different from input')
         else:
             # 1- process radar file and write output to new files
+            args.figure_dir = args.output_figure_dir 
             _process_a_bunch_of_times(args)
 
     elif args.t_interp_method == 'nowcast':
@@ -1036,25 +1048,31 @@ def obs_process(args=None):
             raise ValueError('For nowcast interpolation the earliest output time must be at least two input delta_t after the earliest input time')
 
         # don't comment these
-        output_dir = args.output_dir 
-        figure_dir = args.figure_dir 
-        args.motion_vectors_dir = output_dir + 'motion_vectors/'
-        args.processed_dir      = output_dir + 'processed/'
+        #
+        # save final output destination for use after override
+        final_output_dir = args.output_dir 
+        # set tmp files dir is specified
+        if args.intermediate_files_dir is not None:
+            intermediate_files_dir  = args.intermediate_files_dir
+        else:
+            intermediate_files_dir  = final_output_dir
+        # directories for temporary files
+        args.processed_dir      = os.path.join(intermediate_files_dir, 'processed/')
+        args.motion_vectors_dir = os.path.join(intermediate_files_dir, 'motion_vectors/')
 
-        ## override output and figure dir since in this context these outputs are only intermediate results
-        args.output_dir = output_dir + 'processed/'
-        if figure_dir is not None:
-            args.figure_dir = figure_dir + 'processed/'
 
-        ## 1- Process input data and write output to files
+        # 1- Process input data and write output to files
+        #    override output dir since in this context these outputs are only intermediate results
+        args.output_dir = args.processed_dir
+        args.figure_dir = args.processed_figure_dir 
         _process_a_bunch_of_times(args)
 
         # 2- compute motion vectors associated with processed outputs computed at the step above
         _make_motion_vectors(args)
 
         # 3- use nowcast for time interpolation
-        args.output_dir    = output_dir 
-        args.figure_dir    = figure_dir 
+        args.output_dir = final_output_dir 
+        args.figure_dir = args.output_figure_dir 
         _nowcast_t_interp(args)
 
     else:
@@ -1090,7 +1108,9 @@ def _define_parser(only_arg_list=False):
           ('--median_filt'             , str,   'None',      "box size (pixels) for median filter"),
           ('--median_filt_before_mv'   , str,   'None',      "Apply median filter on reflectivity before computing motion vectors"),
           ('--smooth_radius'           , str,   'None',      "radius (km) where radar data be smoothed"),
-          ('--figure_dir'              , str,   'no_figures',"If provided, a figure will be created for each std file created"),
+          ('--intermediate_files_dir'  , str,   'None',      "Where to store processed and motion vector files when doing nowcast interpolation"),
+          ('--processed_figure_dir'    , str,   'no_figures',"If a path is provided, a figure will be created for each std file created"),
+          ('--output_figure_dir'       , str,   'no_figures',"If a path is provided, a figure will be created for each std file created"),
           ('--cartopy_dir'             , str,   'None',      "Directory for cartopy shape files"),
           ('--figure_format'           , str,   'gif',       "File format of figure "),
           ('--log_level'               , str,   'INFO',      "minimum level of messages printed to stdout and in log files "),
@@ -1109,7 +1129,7 @@ def _define_parser(only_arg_list=False):
         required_args.add_argument("--input_t0"         , type=str,   required=True,  help="yyyymmsshhmmss begining time; datestring")
         required_args.add_argument("--input_dt"         , type=str,   required=True,  help="interval (minutes M or seconds S) between input radar mosaics")
         required_args.add_argument("--output_dir"       , type=str,   required=True,  help="directory for output fst files")
-        required_args.add_argument("--processed_file_struc", type=str,required=True,  help="strftime syntax for constructing fst filenames for output of obsprocess")
+        required_args.add_argument("--output_file_struc", type=str,   required=True,  help="strftime syntax for constructing fst filenames for output of obsprocess")
         required_args.add_argument("--input_file_struc" , type=str,   required=True,  help="strftime syntax for constructing H5  filenames")
 
         optional_args = parser.add_argument_group('Optional named arguments')
