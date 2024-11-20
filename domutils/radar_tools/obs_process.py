@@ -361,6 +361,11 @@ def _motion_vector_at_one_time(this_time, args):
         z_v = domutils.radar_tools.median_filter.apply_inds(z_v, median_inds)
     z_acc[2,:,:] = np.transpose(domutils.radar_tools.exponential_zr(z_v, r_to_dbz=True))
 
+    # if data is missing in onf frame, make it missing in all frames
+    bad = np.any(np.where(z_acc < -100., 1, 0), axis=0)
+    for zz in [0,1,2]:
+        z_acc[zz,:,:] = np.where(bad, 0., z_acc[zz,:,:])
+
     # remove small values
     min_dbz = 0.
     z_acc = np.where(z_acc < min_dbz, 0., z_acc)
@@ -543,12 +548,25 @@ def _t_interp_at_one_time(out_time, args):
 
     for pp, item in enumerate(participating_list):
 
-        # get wind
-        wind_file = args.motion_vectors_dir + item['vtime'].strftime('%Y%m%d%H%M_end_window.npz')
-        try:
+        ## get wind
+        #wind_file = args.motion_vectors_dir + item['vtime'].strftime('%Y%m%d%H%M_end_window.npz')
+        #try:
+        #    raw_mv = np.load(wind_file)
+        #except:
+        #    raise RuntimeError(f'Problem loading file: {wind_file}')
+
+        # average mv at 3 timesteps for better temporal continuity
+        for ii, offset in enumerate([0,-1, -2]):
+            wind_file = args.motion_vectors_dir + (item['vtime'] + datetime.timedelta(seconds=(offset*args.input_dt))).strftime('%Y%m%d%H%M_end_window.npz')
             raw_mv = np.load(wind_file)
-        except:
-            raise RuntimeError(f'Problem loading file: {wind_file}')
+            if ii == 0:
+                mv_acc = raw_mv['uv_motion']
+            else:
+                mv_acc += raw_mv['uv_motion']
+        mv_acc /=3.
+
+
+
 
         # first time around, init output matrices
         if pp == 0:
@@ -841,7 +859,6 @@ def obs_process(args=None):
     import time
     import datetime
     import domutils._py_tools as dpy
-
 
     #keep track of runtime
     time_start = time.time()
