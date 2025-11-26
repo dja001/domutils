@@ -105,10 +105,10 @@ Notes for me to remember steps involved in publishing this package
 - describe changes in CHANGELOG
 
 - make bundle by running:
+
     - You probably want to cleanup
-    python setup.py clean --all
     rm -rf dist
-    python setup.py sdist bdist_wheel
+    python -m build
 
         Optionnal
         - upload to TEST pypi
