@@ -130,15 +130,16 @@ def _find_nearest(source_lon:  Any,
 
     #When smooth_radius is not used, find nearest neighbors to destination grid.
 
-    #search neighbors using the tree
-    _, indices = kdtree.query(dest_xyz, k=1)
+    # Boolean mask: True where all 3 columns are finite
+    inds_all_finite = np.isfinite(dest_xyz).all(axis=1)
+    dest_xyz_on_earth = dest_xyz[inds_all_finite]
 
-    #flag pts that are inside domain
-    #   -> dest_xyz=infty cause kdtree to return size of input data
-    in_bool = np.where(indices!=source_xx.size, True, False)
+    #search neighbors using the tree
+    _, indices_on_earth = kdtree.query(dest_xyz_on_earth, k=1)
 
     #set all missing values to 0, they will not be used but unravel_index will be much happier
-    indices = np.where(in_bool == False, 0, indices)
+    indices = np.zeros((dest_xyz.shape[0],), dtype=int)
+    indices[inds_all_finite] = indices_on_earth
 
     #from flat indices to 2D indices
     row_aug, col_aug = np.unravel_index(indices, (nx,ny) )
@@ -148,16 +149,16 @@ def _find_nearest(source_lon:  Any,
         top    = (row_aug != 0)
         bottom = (row_aug != nx-1)
         top_bottom = np.logical_and(top, bottom)
-        in_bool=np.logical_and(in_bool, top_bottom)
+        inds_all_finite = np.logical_and(inds_all_finite, top_bottom)
     
     if extend_y:
         left   = (col_aug != 0)
         right  = (col_aug != ny-1)
         left_right = np.logical_and(left, right)
-        in_bool=np.logical_and(in_bool, left_right)
+        inds_all_finite = np.logical_and(inds_all_finite, left_right)
     
     #indexes of pts inside domain
-    is_inside = np.asarray( in_bool ).nonzero()
+    is_inside = np.asarray( inds_all_finite ).nonzero()
     
     #adjust indexes so that they represent non-extended   ie same shape as data lat/lon grid
     if extend_x: row_aug -= 1
