@@ -22,7 +22,7 @@ def range_arr(range_arr=None, n_col=None):
                 range_lh = np.linspace(0., 1, n_col+1)
     else:
         try:
-            range_lh = np.asfarray(range_arr)
+            range_lh = np.asarray(range_arr, dtype=float)
         except:
             err_mess = ( newline+' '                             + newline
                         +'Problem with the keyword "range_arr"'  + newline

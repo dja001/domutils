@@ -68,7 +68,7 @@ def lat_lon_range_az( lon1_in:      Any,
            >>> lon2, lat2 = geo_tools.lat_lon_range_az(lon1,lat1,range_km,azimuth_deg)
            >>> #   print(lon2, lat2) should give approximately
            >>> #   0.0 45.192099833854435
-           >>> print(np.allclose((lon2, lat2), (0.0, 45.192099833854435)))
+           >>> print(np.allclose((lon2, lat2), (0.0, 45.)))
            True
            >>>  #Also works for inputs arrays
            >>> lat1        = [[0.,     0],
@@ -97,27 +97,31 @@ def lat_lon_range_az( lon1_in:      Any,
            >>> azimuths  = np.arange(0, 360, 10, dtype='float')
            >>> circle_lons, circle_lats = geo_tools.lat_lon_range_az(lat0, lon0, ranges, azimuths)
            >>> print(circle_lons)
-           [37.         38.82129197 40.61352908 42.34696182 43.99045278 45.51079424
-            46.8720648  48.03508603 48.9570966  49.59184727 49.89044518 49.80343238
-            49.28472885 48.29808711 46.82635859 44.88285245 42.52223827 39.8463912
-            37.         34.1536088  31.47776173 29.11714755 27.17364141 25.70191289
-            24.71527115 24.19656762 24.10955482 24.40815273 25.0429034  25.96491397
-            27.1279352  28.48920576 30.00954722 31.65303818 33.38647092 35.17870803]
+           [37.         38.83132026 40.63355249 42.37690625 44.03018684 45.56010269
+            46.93060903 48.10234846 49.03230506 49.67387639 49.97769473 49.89369016
+            49.37504076 48.38468097 46.9046979  44.94791385 42.56907866 39.87096244
+            37.         34.12903756 31.43092134 29.05208615 27.0953021  25.61531903
+            24.62495924 24.10630984 24.02230527 24.32612361 24.96769494 25.89765154
+            27.06939097 28.43989731 29.96981316 31.62309375 33.36644751 35.16867974]
+
            >>> print(circle_lats)
-           [-87.55334031 -87.55889412 -87.57546173 -87.60276046 -87.64031502
-            -87.68745105 -87.74328587 -87.80671606 -87.87640222 -87.95075157
-            -88.02790057 -88.10570197 -88.18172472 -88.25328003 -88.31749246
-            -88.37143711 -88.4123562  -88.43794478 -88.44665642 -88.43794478
-            -88.4123562  -88.37143711 -88.31749246 -88.25328003 -88.18172472
-            -88.10570197 -88.02790057 -87.95075157 -87.87640222 -87.80671606
-            -87.74328587 -87.68745105 -87.64031502 -87.60276046 -87.57546173
-            -87.55889412]
+           [-87.5503392  -87.55592346 -87.57258224 -87.60003229 -87.63779731
+            -87.68520148 -87.74135996 -87.8051664  -87.87527736 -87.95009446
+            -88.02774645 -88.10607547 -88.18263607 -88.25472035 -88.31942859
+            -88.37380702 -88.41506673 -88.44087378 -88.4496608  -88.44087378
+            -88.41506673 -88.37380702 -88.31942859 -88.25472035 -88.18263607
+            -88.10607547 -88.02774645 -87.95009446 -87.87527736 -87.8051664
+            -87.74135996 -87.68520148 -87.63779731 -87.60003229 -87.57258224
+            -87.55592346]
+
 
     """
 
     import numpy as np
     import cartopy.crs as ccrs
     from .rotation_matrix  import rotation_matrix_components
+    from .latlon_to_unit_sphere_xyz import latlon_to_unit_sphere_xyz
+    from .latlon_to_unit_sphere_xyz import unit_sphere_xyz_to_latlon
 
     #ensure numpy type; copy to avoid modifying inputs
     lon1       = np.array(lon1_in,    copy=True)
@@ -138,13 +142,10 @@ def lat_lon_range_az( lon1_in:      Any,
     azimuth  = -1.*np.deg2rad(azimuth.ravel()) # -1 since rotation matrix does counterclockwise rotation
 
     #convert lat_lon to xyz
-    if crs is None:
-        crs = ccrs.Geodetic()
-    geo_cent = crs.as_geocentric()
-    xyz_pt1 = geo_cent.transform_points(crs, lon1, lat1)
+    xyz_pt1 = latlon_to_unit_sphere_xyz(lon1, lat1, combined=True)
 
     #xyz of north pole
-    [xyz_hohoho] = geo_cent.transform_points(crs, np.array([0.]), np.array([90.]))
+    [xyz_hohoho] = latlon_to_unit_sphere_xyz(np.array([0.]), np.array([90.]))
 
     #radius of the earth
     if earth_radius is None:
@@ -183,9 +184,9 @@ def lat_lon_range_az( lon1_in:      Any,
     z_arr = m3g*xyz_pt1[:,0] + m3h*xyz_pt1[:,1] + m3i*xyz_pt1[:,2]
 
     #output in lat/lon
-    lonlat = crs.transform_points(geo_cent, x_arr, y_arr, z_arr)
-    lon2 = np.reshape(lonlat[:,0], output_shape)
-    lat2 = np.reshape(lonlat[:,1], output_shape)
+    lon2, lat2 = unit_sphere_xyz_to_latlon(x_arr, y_arr, z_arr, combined=False)
+    lon2 = np.reshape(lon2, output_shape)
+    lat2 = np.reshape(lat2, output_shape)
 
     return lon2, lat2
 

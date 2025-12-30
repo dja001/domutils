@@ -18,6 +18,15 @@ It is assumed that the first index (rows) represents x-y direction (longitudes):
 
 from typing import Callable, Iterator, Union, Optional, List, Iterable, MutableMapping, Any
 
+def normalize_longitudes(lons):
+    """
+    Normalizes an array of longitudes to the range [-180, 180).
+    """
+    import numpy as np
+
+    return np.mod(lons + 180, 360) - 180
+
+
 class ProjInds():
     """ A class for making, keeping record of, and applying projection indices.
 
@@ -52,7 +61,7 @@ class ProjInds():
                            data to a coarser grid.
                            Weighted averages can be obtained by providing weights to the *project_data*
                            method.
-            smooth_radius: Boxcar averaging with a circular area of a given radius.
+            smooth_radius: Boxcar averaging with a circular area of a given radius given in kilometer.
                            This option allows to perform smoothing at the same time as interpolation.
                            For each point in the destination grid, all source data points within
                            a radius given by *smooth_radius* will be averaged together.
@@ -106,28 +115,28 @@ class ProjInds():
             >>> #use cartopy transforms to get xyz coordinates
             >>> proj_ll = ccrs.Geodetic()
             >>> geo_cent = proj_ll.as_geocentric()
-            >>> xyz = geo_cent.transform_points(proj_ll, np.asarray(regular_lons),
-            ...                                          np.asarray(regular_lats))
+            >>> x, y, z = geo_tools.latlon_to_unit_sphere_xyz(np.asarray(regular_lons),
+            ...                                               np.asarray(regular_lats),
+            ...                                               combined=False)
             >>>
             >>> #lets rotate points by 45 degrees counter clockwise
             >>> theta = np.pi/4
-            >>> rotation_matrix = geo_tools.rotation_matrix([xyz[1,1,0], #x
-            ...                                              xyz[1,1,1], #y
-            ...                                              xyz[1,1,2]],#z
+            >>> rotation_matrix = geo_tools.rotation_matrix([x[1,1],
+            ...                                              y[1,1],
+            ...                                              z[1,1]],
             ...                                              theta)
             >>> rotated_xyz = np.zeros((3,3,3))
             >>> for ii, (lat_arr, lon_arr) in enumerate(zip(regular_lats, regular_lons)):
             ...     for jj, (this_lat, this_lon) in enumerate(zip(lat_arr, lat_arr)):
-            ...         rotated_xyz[ii,jj,:] = np.matmul(rotation_matrix,[xyz[ii,jj,0], #x
-            ...                                                           xyz[ii,jj,1], #y
-            ...                                                           xyz[ii,jj,2]])#z
+            ...         rotated_xyz[ii,jj,:] = np.matmul(rotation_matrix,[x[ii,jj],
+            ...                                                           y[ii,jj],
+            ...                                                           z[ii,jj]])
             >>>
             >>> #from xyz to lat/lon
-            >>> rotated_latlon = proj_ll.transform_points(geo_cent, rotated_xyz[:,:,0],
-            ...                                                     rotated_xyz[:,:,1],
-            ...                                                     rotated_xyz[:,:,2])
-            >>> rotatedLons = rotated_latlon[:,:,0]
-            >>> rotatedLats = rotated_latlon[:,:,1]
+            >>> rotatedLons, rotatedLats = geo_tools.unit_sphere_xyz_to_latlon(rotated_xyz[:,:,0],
+            ...                                                                rotated_xyz[:,:,1],
+            ...                                                                rotated_xyz[:,:,2],
+            ...                                                                combined=False)
             >>> # done rotating
             >>> #-------------------------------------------------------------------
             >>> 
@@ -369,6 +378,8 @@ class ProjInds():
              
 
     """
+
+    
     def __init__(self,
                  data_xx:       Optional[Any]=None,
                  data_yy:       Optional[Any]=None,
@@ -403,7 +414,7 @@ class ProjInds():
         #check specification of destination grid
         if (dest_lon is not None) and (dest_lat is not None):
             #destination lat/lon are provided by user, use those
-            dest_lon = np.asarray(dest_lon)
+            dest_lon = normalize_longitudes(np.asarray(dest_lon))
             dest_lat = np.asarray(dest_lat)
 
         elif (dest_crs is not None) :
@@ -435,10 +446,12 @@ class ProjInds():
                 #                                                                W-E              S-NE     see explanation below
                 dest_lon, dest_lat, extent = cimgt.mesh_projection(dest_crs, int(image_res[0]), int(image_res[1]),
                                                                    x_extents=[pt1[0],pt2[0]], y_extents=[pt1[1],pt2[1]])
+                dest_lon = normalize_longitudes(dest_lon)
 
             else:
                 #use default extent for this projection
                 dest_lon, dest_lat, extent = cimgt.mesh_projection(dest_crs, int(image_res[0]), int(image_res[1]))
+                dest_lon = normalize_longitudes(dest_lon)
 
             #Image returned by Cartopy is of shape (ny,nx) so that nx corresponds to S-N
             # with orientation
@@ -495,23 +508,23 @@ class ProjInds():
 
         
         #insure input coords are numpy arrays
-        np_xx = np.asarray(src_lon)
-        np_yy = np.asarray(src_lat)
+        src_lon = normalize_longitudes(np.asarray(src_lon))
+        src_lat = np.asarray(src_lat)
         
         #only necessary for plotting border
         # borders make no sense for continuous grids such as global grids
         # set either extend_x or extend_y = False to skip computation of borders
         if extend_x and extend_y:
             #get lat/lon at the border of the domain        Note the half dist in the call to lat_lon_extend
-            border_lat2d = np.zeros(np.asarray(np_yy.shape)+2)
-            border_lon2d = np.zeros(np.asarray(np_xx.shape)+2)
+            border_lat2d = np.zeros(np.asarray(src_lat.shape)+2)
+            border_lon2d = np.zeros(np.asarray(src_lon.shape)+2)
             #center contains data lat/lon
-            border_lat2d[1:-1,1:-1] = np_yy
-            border_lon2d[1:-1,1:-1] = np_xx
+            border_lat2d[1:-1,1:-1] = src_lat
+            border_lon2d[1:-1,1:-1] = src_lon
             #extend left side
-            border_lon2d[1:-1,0], border_lat2d[1:-1,0] = lat_lon_extend(np_xx[:,1],np_yy[:,1],np_xx[:,0],np_yy[:,0], half_dist=True)
+            border_lon2d[1:-1,0], border_lat2d[1:-1,0] = lat_lon_extend(src_lon[:,1],src_lat[:,1],src_lon[:,0],src_lat[:,0], half_dist=True)
             #extend right side
-            border_lon2d[1:-1,-1], border_lat2d[1:-1,-1] = lat_lon_extend(np_xx[:,-2],np_yy[:,-2],np_xx[:,-1],np_yy[:,-1], half_dist=True)
+            border_lon2d[1:-1,-1], border_lat2d[1:-1,-1] = lat_lon_extend(src_lon[:,-2],src_lat[:,-2],src_lon[:,-1],src_lat[:,-1], half_dist=True)
             #extend top
             border_lon2d[0,:], border_lat2d[0,:] = lat_lon_extend(border_lon2d[2,:],border_lat2d[2,:],border_lon2d[1,:],border_lat2d[1,:], half_dist=True)
             #extend bottom
@@ -533,9 +546,13 @@ class ProjInds():
         
         #find proj_ind using _find_nearest
         if smooth_radius is not None:
+
+            radius_earth = 6371. # km
+            smooth_radius_unit = smooth_radius / radius_earth
+
             #when using a smoothing radius, the tree will be used in project_data
             kdtree, dest_xyz = _find_nearest(src_lon, src_lat, dest_lon, dest_lat,
-                                             smooth_radius=smooth_radius,
+                                             smooth_radius=smooth_radius_unit,
                                              extend_x=False, extend_y=False, missing=missing,
                                              source_crs=source_crs, dest_crs=dest_crs)
         elif average:
@@ -551,21 +568,21 @@ class ProjInds():
         
         #save needed data
         #data needed for projecting data
-        self.data_shape = np_xx.shape
+        self.data_shape = src_lon.shape
         self.dest_shape = dest_lon.shape
         self.min_hits = min_hits
         self.missing = missing
 
         if smooth_radius is not None:
-            #crs space in meters
-            self.smooth_radius_m = smooth_radius * 1e3
+            # distances along unit sphere
+            self.smooth_radius_unit = smooth_radius_unit
             self.kdtree = kdtree
             self.dest_xyz = dest_xyz
             self.average = True     #uses the averaging mechanism during smoothing
             self.destLon = dest_lon  #need those in project_data when smoothing
             self.destLat = dest_lat
         else:
-            self.smooth_radius_m = None
+            self.smooth_radius_unit = None
             self.proj_ind  = proj_ind
             self.average   = average
         
@@ -619,7 +636,7 @@ class ProjInds():
         #ensure numpy
         np_data = np.asarray(data)
 
-        if self.smooth_radius_m is None :
+        if self.smooth_radius_unit is None :
             #make sure data is of the right shape
             if (np_data.shape != self.data_shape) :
                 raise ValueError((f"data is not of the same shape as the coordinates used "  +
@@ -652,7 +669,7 @@ class ProjInds():
                     raise ValueError("Weights should have the same shape as data")
             weights_flat = weights_np.ravel()
 
-            if self.smooth_radius_m is not None:
+            if self.smooth_radius_unit is not None:
                 #smooth all data found within distance specified by smooth_radius
                 #
                 #  Note for future optimisation work
@@ -660,7 +677,7 @@ class ProjInds():
                 #  kdtree call takes ~15s while loop runs in ~60s
 
                 #KDtree call
-                good_pts_list = self.kdtree.query_ball_point(self.dest_xyz, self.smooth_radius_m)
+                good_pts_list = self.kdtree.query_ball_point(self.dest_xyz, self.smooth_radius_unit)
                 for ind, good_pts in enumerate(good_pts_list):
 
                     this_data    = data_flat[good_pts]
@@ -751,7 +768,7 @@ class ProjInds():
             proj_ll = ccrs.Geodetic()
 
         #clip pixels outside of domain
-        if self.smooth_radius_m is None:
+        if self.smooth_radius_unit is None:
             if mask_outside :
                 #get corners of image in data space
                 transform_data_to_axes = ax.transData + ax.transAxes.inverted()

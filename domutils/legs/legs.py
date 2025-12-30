@@ -615,7 +615,7 @@ class PalObj():
 
         #list containing mapping objects for exceptions
         excepts = []
-        for ii in range(int(n_excep)):
+        for ii in range(n_excep):
             #instantiate exception mapping object
             this_map = map_fct.solid_map(excep_val_np[ii]+excep_tol_np[ii], excep_val_np[ii]-excep_tol_np[ii],
                                          '<=', '>=',

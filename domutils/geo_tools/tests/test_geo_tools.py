@@ -2,6 +2,7 @@
 #python test_geo_tools.py TestStringMethods.test_no_extent_in_cartopy_projection
 
 import unittest
+import pytest
 
 class TestStringMethods(unittest.TestCase):
 
@@ -121,6 +122,8 @@ class TestStringMethods(unittest.TestCase):
         latitudes      = data_dict['latitudes']     #2D latitudes  [deg]
         ground_mask    = data_dict['groundMask']    #2D land fraction [0-1]; 1 = all land
         terrain_height = data_dict['terrainHeight'] #2D terrain height of model [m ASL]
+        print('before', longitudes[0:4,0:4])
+        print('before',  latitudes[0:4,0:4])
         
         #flag non-terrain (ocean and lakes) as -3333.
         inds = np.asarray( (ground_mask.ravel() <= .01) ).nonzero()
@@ -301,9 +304,125 @@ class TestStringMethods(unittest.TestCase):
         
 
 
+    @pytest.mark.timeout(20, method="thread")
+    def test_hrdps_projection_in_reasonable_time(self):
+        import os, inspect
+        import pickle
+        import numpy as np
+        import matplotlib as mpl
+        import matplotlib.pyplot as plt
+        import cartopy.crs as ccrs
+        import cartopy.feature as cfeature
+        import domutils
+        import domutils._py_tools as py_tools
+        
+        # In your scripts use something like :
+        import domutils.legs as legs
+        import domutils.geo_tools as geo_tools
+
+        #recover previously prepared data
+        domutils_dir = os.path.dirname(domutils.__file__)
+        package_dir  = os.path.dirname(domutils_dir)+'/'
+        source_file  = package_dir + '/test_data/radar_continental_2.5km_2882x2032.pickle'
+        with open(source_file, 'rb') as f:
+            data_dict = pickle.load(f)
+        longitudes     = data_dict['lon']    #2D longitudes [deg]
+        latitudes      = data_dict['lat']     #2D latitudes  [deg]
+        
+        #Setup geographical projection 
+        # Full HRDPS grid
+        pole_latitude=35.7
+        pole_longitude=65.5
+        lat_0 = 48.8
+        delta_lat = 10.
+        lon_0 = 266.00
+        delta_lon = 40.
+        map_extent=[lon_0-delta_lon, lon_0+delta_lon, lat_0-delta_lat, lat_0+delta_lat]  
+        proj_aea = ccrs.RotatedPole(pole_latitude=pole_latitude, pole_longitude=pole_longitude)
+        print('Making projection object')
+        proj_obj = geo_tools.ProjInds(src_lon=longitudes, src_lat=latitudes,
+                                      extent=map_extent, dest_crs=proj_aea, 
+                                      image_res=(800,400))
+
+    def test_simple_nn_projection(self):
+        import numpy as np
+        import domutils.geo_tools as geo_tools
+        
+        # Source data on a very simple grid
+        src_lon =     [ [-90.1 , -90.1  ],
+                        [-89.1 , -89.1  ] ]
+        
+        src_lat =     [ [ 44.1  , 45.1  ],
+                        [ 44.1  , 45.1  ] ]
+        
+        data    =     [ [  3    ,  1    ],
+                        [  4    ,  2    ] ]
+        
+        # destination grid where we want data
+        # Its larger than the source grid and slightly offset
+        dest_lon =     [ [-91. , -91  , -91 , -91  ],
+                         [-90. , -90  , -90 , -90  ],
+                         [-89. , -89  , -89 , -89  ],
+                         [-88. , -88  , -88 , -88  ] ]
+        
+        dest_lat =     [ [ 43  ,  44  ,  45 ,  46 ],
+                         [ 43  ,  44  ,  45 ,  46 ],
+                         [ 43  ,  44  ,  45 ,  46 ],
+                         [ 43  ,  44  ,  45 ,  46 ] ]
+        
+        #instantiate object to handle interpolation
+        ProjInds = geo_tools.ProjInds(src_lon=src_lon,   src_lat=src_lat,
+                                      dest_lon=dest_lon, dest_lat=dest_lat,
+                                      missing=-99.)
+        #interpolate data with "project_data"
+        interpolated = ProjInds.project_data(data)
+        #nearest neighbor output, pts outside the domain are set to missing
+        #Interpolation with border detection in all directions
+        expected =  [[-99., -99., -99., -99.],
+                     [-99.,   3.,   1., -99.],
+                     [-99.,   4.,   2., -99.],
+                     [-99., -99., -99., -99.]]
+
+        self.assertListEqual(interpolated.tolist(), expected)
+
+
+    def test_latlon_to_xyz(self):
+        import numpy as np
+        import domutils.geo_tools as geo_tools
+
+        test_points = { "equator_prime":        (0.0,   0.0),
+                        "equator_90E":          (90.0,  0.0),
+                        "equator_180":          (180.0, 0.0),
+                        "equator_180_neg":      (-180.0, 0.0),
+                        "north_pole":           (0.0,   90.0),
+                        "south_pole":           (0.0,  -90.0),
+                        "near_north_pole":      (45.0,  89.999999),
+                        "near_south_pole":      (-30.0, -89.999999),
+                        "antimeridian_pos":     (179.999999, 10.0),
+                        "antimeridian_neg":     (-179.999999, -10.0),
+                    }
+
+        for name, (lon, lat) in test_points.items():
+            xyz = geo_tools.latlon_to_unit_sphere_xyz(lon, lat, combined=True)
+            lon2, lat2 = geo_tools.unit_sphere_xyz_to_latlon(xyz, combined=True)
+
+            # results are the same to 6 digits
+            self.assertEqual(np.round(lat*1e6), np.round(lat2*1e6))
+            self.assertEqual(np.round(lon*1e6), np.round(lon2*1e6))
+
+        for name, (lon, lat) in test_points.items():
+            x, y, z = geo_tools.latlon_to_unit_sphere_xyz(lon, lat, combined=False)
+            lon2, lat2 = geo_tools.unit_sphere_xyz_to_latlon(x, y, z, combined=False)
+
+            # results are the same to 6 digits
+            self.assertEqual(np.round(lat*1e6), np.round(lat2*1e6))
+            self.assertEqual(np.round(lon*1e6), np.round(lon2*1e6))
+
+
+
+
 
 if __name__ == '__main__':
-
     unittest.main()
 
 
