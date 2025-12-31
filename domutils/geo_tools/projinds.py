@@ -24,7 +24,57 @@ def normalize_longitudes(lons):
     """
     import numpy as np
 
-    return np.mod(lons + 180, 360) - 180
+    
+
+    return np.mod(np.asarray(lons) + 180, 360) - 180
+
+
+def geographic_extent_to_rotated(extent_geo, rotated_crs):
+    """
+    Convert a geographic (PlateCarree) extent into rotated-pole coordinates.
+
+    Parameters
+    ----------
+    extent_geo : list or tuple
+        [lon_min, lon_max, lat_min, lat_max] in true geographic coords.
+    rotated_crs : cartopy.crs.RotatedPole
+        The rotated pole CRS you want to convert into.
+
+    Returns
+    -------
+    extent_rot : list
+        [rot_lon_min, rot_lon_max, rot_lat_min, rot_lat_max] in rotated coords.
+    """
+
+    import numpy as np
+    import cartopy.crs as ccrs
+
+    lon_min, lon_max, lat_min, lat_max = extent_geo
+    
+    # Four corner points of the geographic box
+    geo_corners = np.array([
+        [lon_min, lat_min],
+        [lon_min, lat_max],
+        [lon_max, lat_min],
+        [lon_max, lat_max],
+    ])
+
+    pc = ccrs.PlateCarree()
+
+    # Transform to rotated CRS
+    rot_corners = rotated_crs.transform_points(
+        pc, geo_corners[:, 0], geo_corners[:, 1]
+    )
+
+    rot_lon = rot_corners[:, 0]
+    rot_lat = rot_corners[:, 1]
+
+    return [
+        float(rot_lon.min()),
+        float(rot_lon.max()),
+        float(rot_lat.min()),
+        float(rot_lat.max()),
+    ]
 
 
 class ProjInds():
@@ -414,44 +464,47 @@ class ProjInds():
         #check specification of destination grid
         if (dest_lon is not None) and (dest_lat is not None):
             #destination lat/lon are provided by user, use those
-            dest_lon = normalize_longitudes(np.asarray(dest_lon))
+            dest_lon = normalize_longitudes(dest_lon)
             dest_lat = np.asarray(dest_lat)
 
         elif (dest_crs is not None) :
-            #we are projecting data onto an image, get destination grid from Cartopy
-            delete_dummy_fig = False
-            if fig is None:
-                dummy_fig = plt.figure()
-                delete_dummy_fig = True
-            else:
-                dummy_fig = fig
-            dummy_ax = dummy_fig.add_axes([0.,0.,1.,1.], projection=dest_crs)
-            if extent is not None:
-                dummy_ax.set_extent(extent)
+            # we are projecting data onto a given projection extent in cartopy
 
-            #No axes contour line
-            if version.parse(cartopy.__version__) >= version.parse("0.18.0"):
-                dummy_ax.spines['geo'].set_linewidth(0)
-            else:
-                dummy_ax.outline_patch.set_linewidth(0) 
+            #delete_dummy_fig = False
+            #if fig is None:
+            #    dummy_fig = plt.figure()
+            #    delete_dummy_fig = True
+            #else:
+            #    dummy_fig = fig
+            #dummy_ax = dummy_fig.add_axes([0.,0.,1.,1.], projection=dest_crs)
+            #if extent is not None:
+            #    dummy_ax.set_extent(extent)
+
+            ##No axes contour line
+            #if version.parse(cartopy.__version__) >= version.parse("0.18.0"):
+            #    dummy_ax.spines['geo'].set_linewidth(0)
+            #else:
+            #    dummy_ax.outline_patch.set_linewidth(0) 
             
             if extent is not None:
-                #get corners of image in data space
-                transform_data_to_axes = dummy_ax.transData + dummy_ax.transAxes.inverted()
-                transform_axes_to_data = transform_data_to_axes.inverted()
-                pts = ((0.,0.),(1.,1.))
-                pt1, pt2 = transform_axes_to_data.transform(pts)
-        
-                #get regular grid of pts in projected figure    units of dest_lon and dest_lat are in dataspace
-                #                                                                W-E              S-NE     see explanation below
-                dest_lon, dest_lat, extent = cimgt.mesh_projection(dest_crs, int(image_res[0]), int(image_res[1]),
-                                                                   x_extents=[pt1[0],pt2[0]], y_extents=[pt1[1],pt2[1]])
-                dest_lon = normalize_longitudes(dest_lon)
+                # we assume lat/lon extent
+                # check that values passed ae compatible
+                extent[0:2] = normalize_longitudes(extent[0:2])
+                if ((extent[0] > 180.) or (extent[0] < -180.) or
+                    (extent[1] > 180.) or (extent[1] < -180.) or
+                    (extent[2] >  90.) or (extent[2] <  -90.) or
+                    (extent[3] >  90.) or (extent[3] <  -90.)):
+                    raise ValueError(f'We assume lat/lon extent. The values provided are not compatible: {extent}')
 
+                # get extent in the provided crs
+                rotated_extent = geographic_extent_to_rotated(extent, dest_crs)
+
+                xx = np.linspace(rotated_extent[0], rotated_extent[1], image_res[0])
+                yy = np.linspace(rotated_extent[2], rotated_extent[3], image_res[1])
+                dest_xx, dest_yy = np.meshgrid(xx, yy)
             else:
                 #use default extent for this projection
-                dest_lon, dest_lat, extent = cimgt.mesh_projection(dest_crs, int(image_res[0]), int(image_res[1]))
-                dest_lon = normalize_longitudes(dest_lon)
+                dest_xx, dest_yy, extent = cimgt.mesh_projection(dest_crs, int(image_res[0]), int(image_res[1]))
 
             #Image returned by Cartopy is of shape (ny,nx) so that nx corresponds to S-N
             # with orientation
@@ -465,9 +518,14 @@ class ProjInds():
             #   S   
             #
             #the following transformation does that. 
+            dest_xx = np.flipud(dest_xx)
+            dest_yy = np.flipud(dest_yy)
 
-            dest_lon = np.rot90(np.transpose(dest_lon))
-            dest_lat = np.rot90(np.transpose(dest_lat))
+            #get lat/lon from data coords
+            proj_ll = cartopy.crs.PlateCarree()
+            out = proj_ll.transform_points(dest_crs, dest_xx, dest_yy)
+            dest_lon = out[:,:,0]
+            dest_lat = out[:,:,1]
 
             ##took me a long while to figure the  nx,ny -> ny,nx + transpose/rotation above 
             ##lets keep debugging code around for a little while...  
@@ -508,7 +566,7 @@ class ProjInds():
 
         
         #insure input coords are numpy arrays
-        src_lon = normalize_longitudes(np.asarray(src_lon))
+        src_lon = normalize_longitudes(src_lon)
         src_lat = np.asarray(src_lat)
         
         #only necessary for plotting border
@@ -589,12 +647,6 @@ class ProjInds():
         #data needed for plotting border
         self.border_lons = border_lons
         self.border_lats = border_lats
-        
-        #cleanup
-        if dest_crs:
-            dummy_ax.remove()
-            if delete_dummy_fig :
-                plt.close(dummy_fig)
 
 
 
