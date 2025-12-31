@@ -125,256 +125,33 @@ class ProjInds():
             Simple example showing how to project and display data.
             Rotation of points on the globe is also demonstrated
 
-            >>> import numpy as np
-            >>> import matplotlib as mpl
-            >>> import matplotlib.pyplot as plt
-            >>> import cartopy.crs as ccrs
-            >>> import cartopy.feature as cfeature
-            >>> import domutils.legs as legs
-            >>> import domutils.geo_tools as geo_tools
-            >>>
-            >>> # make mock data and coordinates
-            >>> # note that there is some regularity to the grid 
-            >>> # but that it does not conform to any particular projection
-            >>> regular_lons =     [ [-91. , -91  , -91   ],
-            ...                      [-90. , -90  , -90   ],
-            ...                      [-89. , -89  , -89   ] ]
-            >>> regular_lats =     [ [ 44  ,  45  ,  46   ],
-            ...                      [ 44  ,  45  ,  46   ],
-            ...                      [ 44  ,  45  ,  46   ] ]
-            >>> data_vals =        [ [  6.5,   3.5,    .5 ],
-            ...                      [  7.5,   4.5,   1.5 ],
-            ...                      [  8.5,   5.5,   2.5 ] ]
-            >>> missing = -9999.
-            >>>
-            >>> #pixel resolution of image that will be shown in the axes
-            >>> img_res = (800,600)
-            >>> #point density for entire figure
-            >>> mpl.rcParams['figure.dpi'] = 800
-            >>>
-            >>> #projection and extent of map being displayed
-            >>> proj_aea = ccrs.AlbersEqualArea(central_longitude=-94.,
-            ...                                 central_latitude=35.,
-            ...                                 standard_parallels=(30.,40.))
-            >>> map_extent=[-94.8,-85.2,43,48.]
-            >>>
-            >>> #-------------------------------------------------------------------
-            >>> #regular lat/lons are boring, lets rotate the coordinate system about
-            >>> # the central data point
-            >>> 
-            >>> #use cartopy transforms to get xyz coordinates
-            >>> proj_ll = ccrs.Geodetic()
-            >>> geo_cent = proj_ll.as_geocentric()
-            >>> x, y, z = geo_tools.latlon_to_unit_sphere_xyz(np.asarray(regular_lons),
-            ...                                               np.asarray(regular_lats),
-            ...                                               combined=False)
-            >>>
-            >>> #lets rotate points by 45 degrees counter clockwise
-            >>> theta = np.pi/4
-            >>> rotation_matrix = geo_tools.rotation_matrix([x[1,1],
-            ...                                              y[1,1],
-            ...                                              z[1,1]],
-            ...                                              theta)
-            >>> rotated_xyz = np.zeros((3,3,3))
-            >>> for ii, (lat_arr, lon_arr) in enumerate(zip(regular_lats, regular_lons)):
-            ...     for jj, (this_lat, this_lon) in enumerate(zip(lat_arr, lat_arr)):
-            ...         rotated_xyz[ii,jj,:] = np.matmul(rotation_matrix,[x[ii,jj],
-            ...                                                           y[ii,jj],
-            ...                                                           z[ii,jj]])
-            >>>
-            >>> #from xyz to lat/lon
-            >>> rotatedLons, rotatedLats = geo_tools.unit_sphere_xyz_to_latlon(rotated_xyz[:,:,0],
-            ...                                                                rotated_xyz[:,:,1],
-            ...                                                                rotated_xyz[:,:,2],
-            ...                                                                combined=False)
-            >>> # done rotating
-            >>> #-------------------------------------------------------------------
-            >>> 
-            >>> #larger characters
-            >>> mpl.rcParams.update({'font.size': 15})
-            >>>
-            >>> #instantiate figure
-            >>> fig = plt.figure(figsize=(7.5,6.))
-            >>> 
-            >>> #instantiate object to handle geographical projection of data
-            >>> # onto geoAxes with this specific crs and extent
-            >>> ProjInds = geo_tools.ProjInds(rotatedLons, rotatedLats,extent=map_extent, dest_crs=proj_aea,
-            ...                               image_res=img_res)
-            >>> 
-            >>> #axes for this plot
-            >>> ax = fig.add_axes([.01,.1,.8,.8], projection=proj_aea)
-            >>> ax.set_extent(map_extent)
-            >>> 
-            >>> # Set up colormapping object 
-            >>> color_mapping = legs.PalObj(range_arr=[0.,9.],
-            ...                              color_arr=['brown','blue','green','orange',
-            ...                                         'red','pink','purple','yellow','b_w'],
-            ...                              solid='col_dark',
-            ...                              excep_val=missing, excep_col='grey_220')
-            >>> 
-            >>> #geographical projection of data into axes space
-            >>> proj_data = ProjInds.project_data(data_vals)
-            >>> 
-            >>> #plot data & palette
-            >>> color_mapping.plot_data(ax=ax,data=proj_data,
-            ...                         palette='right', pal_units='[unitless]', 
-            ...                         pal_format='{:4.0f}')   #palette options
-            >>> 
-            >>> #add political boundaries
-            >>> dum = ax.add_feature(cfeature.STATES.with_scale('50m'), 
-            ...                      linewidth=0.5, edgecolor='0.2',zorder=1)
-            >>> 
-            >>> #plot border and mask everything outside model domain
-            >>> ProjInds.plot_border(ax, mask_outside=False, linewidth=2.)
-            >>> 
-            >>> #uncomment to save figure
-            >>> plt.savefig('_static/projection_demo.svg')
 
-            .. image:: _static/projection_demo.svg
+            .. literalinclude:: ../domutils/geo_tools/tests/test_geo_tools.py
+               :language: python
+               :start-after: DOCS:simple_projinds_example_begins
+               :end-before: DOCS:simple_projinds_example_ends
+
+            .. image:: _static/test_projinds_simple_example.svg
                 :align: center
 
 
             Example showing how ProjInds can also be used for nearest neighbor interpolation
 
-            >>> import numpy as np
-            >>> 
-            >>> # Source data on a very simple grid
-            >>> src_lon =     [ [-90.1 , -90.1  ],
-            ...                 [-89.1 , -89.1  ] ]
-            >>> 
-            >>> src_lat =     [ [ 44.1  , 45.1  ],
-            ...                 [ 44.1  , 45.1  ] ]
-            >>> 
-            >>> data    =     [ [  3    ,  1    ],
-            ...                 [  4    ,  2    ] ]
-            >>> 
-            >>> # destination grid where we want data
-            >>> # Its larger than the source grid and slightly offset
-            >>> dest_lon =     [ [-91. , -91  , -91 , -91  ],
-            ...                  [-90. , -90  , -90 , -90  ],
-            ...                  [-89. , -89  , -89 , -89  ],
-            ...                  [-88. , -88  , -88 , -88  ] ]
-            >>> 
-            >>> dest_lat =     [ [ 43  ,  44  ,  45 ,  46 ],
-            ...                  [ 43  ,  44  ,  45 ,  46 ],
-            ...                  [ 43  ,  44  ,  45 ,  46 ],
-            ...                  [ 43  ,  44  ,  45 ,  46 ] ]
-            >>>
-            >>> #instantiate object to handle interpolation
-            >>> ProjInds = geo_tools.ProjInds(data_xx=src_lon,   data_yy=src_lat,
-            ...                               dest_lon=dest_lon, dest_lat=dest_lat,
-            ...                               missing=-99.)
-            >>> #interpolate data with "project_data"
-            >>> interpolated = ProjInds.project_data(data)
-            >>> #nearest neighbor output, pts outside the domain are set to missing
-            >>> #Interpolation with border detection in all directions
-            >>> print(interpolated)
-            [[-99. -99. -99. -99.]
-             [-99.   3.   1. -99.]
-             [-99.   4.   2. -99.]
-             [-99. -99. -99. -99.]]
-            >>>
-            >>>
-            >>> #on some domain, border detection is not desirable, it can be turned off
-            >>> #
-            >>> # extend_x here refers to the dimension in data space (longitudes) that are
-            >>> # represented along rows of python array.
-            >>>
-            >>> # for example:
-            >>> 
-            >>> # Border detection in Y direction (latitudes) only
-            >>> proj_inds_ext_y = geo_tools.ProjInds(data_xx=src_lon,   data_yy=src_lat,
-            ...                                      dest_lon=dest_lon, dest_lat=dest_lat,
-            ...                                      missing=-99.,
-            ...                                      extend_x=False)
-            >>> interpolated_ext_y = proj_inds_ext_y.project_data(data)
-            >>> print(interpolated_ext_y)
-            [[-99.   3.   1. -99.]
-             [-99.   3.   1. -99.]
-             [-99.   4.   2. -99.]
-             [-99.   4.   2. -99.]]
-            >>> #
-            >>> # Border detection in X direction (longitudes) only
-            >>> proj_inds_ext_x = geo_tools.ProjInds(data_xx=src_lon,   data_yy=src_lat,
-            ...                                      dest_lon=dest_lon, dest_lat=dest_lat,
-            ...                                      missing=-99.,
-            ...                                      extend_y=False)
-            >>> interpolated_ext_x = proj_inds_ext_x.project_data(data)
-            >>> print(interpolated_ext_x)
-            [[-99. -99. -99. -99.]
-             [  3.   3.   1.   1.]
-             [  4.   4.   2.   2.]
-             [-99. -99. -99. -99.]]
-            >>> # 
-            >>> # no border detection
-            >>> proj_inds_no_b = geo_tools.ProjInds(data_xx=src_lon,   data_yy=src_lat,
-            ...                                     dest_lon=dest_lon, dest_lat=dest_lat,
-            ...                                     missing=-99.,
-            ...                                     extend_x=False, extend_y=False)
-            >>> interpolated_no_b = proj_inds_no_b.project_data(data)
-            >>> print(interpolated_no_b)
-            [[3. 3. 1. 1.]
-             [3. 3. 1. 1.]
-             [4. 4. 2. 2.]
-             [4. 4. 2. 2.]]
+            .. literalinclude:: ../domutils/geo_tools/tests/test_geo_tools.py
+               :language: python
+               :start-after: DOCS:simple_nearest_neighbor_interpolation_begins
+               :end-before: DOCS:simple_nearest_neighbor_interpolation_ends
 
             Interpolation to coarser grids can be done with the *nearest* keyword. 
             With this flag, all high-resoution data falling within a tile of the 
             destination grid will be averaged together. 
             Border detection works as in the example above.
 
-            >>> import numpy as np
-            >>> # source data on a very simple grid
-            >>> src_lon =     [ [-88.2 , -88.2  ],
-            ...                 [-87.5 , -87.5  ] ]
-            >>> 
-            >>> src_lat =     [ [ 43.5  , 44.1  ],
-            ...                 [ 43.5  , 44.1  ] ]
-            >>> 
-            >>> data    =     [ [  3    ,  1    ],
-            ...                 [  4    ,  2    ] ]
-            >>> 
-            >>> # coarser destination grid where we want data
-            >>> dest_lon =     [ [-92. , -92  , -92 , -92  ],
-            ...                  [-90. , -90  , -90 , -90  ],
-            ...                  [-88. , -88  , -88 , -88  ],
-            ...                  [-86. , -86  , -86 , -86  ] ]
-            >>> 
-            >>> dest_lat =     [ [ 42  ,  44  ,  46 ,  48 ],
-            ...                  [ 42  ,  44  ,  46 ,  48 ],
-            ...                  [ 42  ,  44  ,  46 ,  48 ],
-            ...                  [ 42  ,  44  ,  46 ,  48 ] ]
-            >>> 
-            >>> #instantiate object to handle interpolation
-            >>> #Note the average keyword set to true
-            >>> ProjInds = geo_tools.ProjInds(data_xx=src_lon,   data_yy=src_lat,
-            ...                               dest_lon=dest_lon, dest_lat=dest_lat,
-            ...                               average=True, missing=-99.)
-            >>> 
-            >>> #interpolate data with "project_data"
-            >>> interpolated = ProjInds.project_data(data)
-            >>> 
-            >>> #Since all high resolution data falls into one of the output 
-            >>> #grid tile, they are all aaveraged togetherL:  (1+2+3+4)/4 = 2.5 
-            >>> print(interpolated)
-            [[-99.  -99.  -99.  -99. ]
-             [-99.  -99.  -99.  -99. ]
-             [-99.    2.5 -99.  -99. ]
-             [-99.  -99.  -99.  -99. ]]
-            >>>
-            >>> #weighted average can be obtained by providing weights for each data pt 
-            >>> #being averaged
-            >>> weights   =     [ [  0.5   ,  1.    ],
-            ...                   [  1.    ,  0.25  ] ]
-            >>> 
-            >>> weighted_avg = ProjInds.project_data(data, weights=weights)
-            >>> #result is a weighted average:  
-            >>> # (1.*1 + 0.25*2 + 0.5*3 + 1.*4) / (1.+0.25+0.5+1.) = 7.0/2.75 = 2.5454
-            >>> print(weighted_avg)
-            [[-99.         -99.         -99.         -99.        ]
-             [-99.         -99.         -99.         -99.        ]
-             [-99.           2.54545455 -99.         -99.        ]
-             [-99.         -99.         -99.         -99.        ]]
+            .. literalinclude:: ../domutils/geo_tools/tests/test_geo_tools.py
+               :language: python
+               :start-after: DOCS:averaging_interpolation_begins
+               :end-before: DOCS:averaging_interpolation_ends
+
 
             Sometimes, it is useful to smooth data during the interpolation process.
             For example when comparing radar measurement against model output, smoothing
@@ -384,48 +161,10 @@ class ProjInds():
             Use the *smoooth_radius* to average all source data point within a certain radius
             (in km) of the destination grid tiles. 
 
-            >>> # source data on a very simple grid
-            >>> src_lon =     [ [-88.2 , -88.2  ],
-            ...                 [-87.5 , -87.5  ] ]
-            >>> 
-            >>> src_lat =     [ [ 43.5  , 44.1  ],
-            ...                 [ 43.5  , 44.1  ] ]
-            >>> 
-            >>> data    =     [ [  3    ,  1    ],
-            ...                 [  4    ,  2    ] ]
-            >>> 
-            >>> # coarser destination grid where we want data
-            >>> dest_lon =     [ [-92. , -92  , -92 , -92  ],
-            ...                  [-90. , -90  , -90 , -90  ],
-            ...                  [-88. , -88  , -88 , -88  ],
-            ...                  [-86. , -86  , -86 , -86  ] ]
-            >>> 
-            >>> dest_lat =     [ [ 42  ,  44  ,  46 ,  48 ],
-            ...                  [ 42  ,  44  ,  46 ,  48 ],
-            ...                  [ 42  ,  44  ,  46 ,  48 ],
-            ...                  [ 42  ,  44  ,  46 ,  48 ] ]
-            >>> 
-            >>> #instantiate object to handle interpolation
-            >>> #All source data points found within 300km of each destination 
-            >>> #grid tiles will be averaged together
-            >>> ProjInds = geo_tools.ProjInds(data_xx=src_lon,    data_yy=src_lat,
-            ...                               dest_lat=dest_lat,  dest_lon=dest_lon,
-            ...                               smooth_radius=300., missing=-99.)
-            >>> 
-            >>> #interpolate and smooth data with "project_data"
-            >>> interpolated = ProjInds.project_data(data)
-            >>> 
-            >>> #output is smoother than data source
-            >>> print(interpolated)
-            [[-99.         -99.         -99.         -99.        ]
-             [  2.66666667   2.5          1.5        -99.        ]
-             [  2.5          2.5          2.5        -99.        ]
-             [  2.5          2.5          1.5        -99.        ]]
-
-
-
-
-             
+            .. literalinclude:: ../domutils/geo_tools/tests/test_geo_tools.py
+               :language: python
+               :start-after: DOCS:smooth_radius_interpolation_begins
+               :end-before: DOCS:smooth_radius_interpolation_ends
 
     """
 

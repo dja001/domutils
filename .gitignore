@@ -9,3 +9,4 @@ dist
 _build
 __pycache__
 sg_execution_times.rst
+logs

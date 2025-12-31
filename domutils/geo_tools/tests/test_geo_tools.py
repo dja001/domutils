@@ -1,16 +1,54 @@
-#info to run only one test
-#python test_geo_tools.py TestStringMethods.test_no_extent_in_cartopy_projection
+# to run only one test
+#
+# pytest test_geo_tools.py::test_projinds_simple_example 
+# 
+# can also be added to __main__ section below
+#
+# To run only tests that make figures used in docs 
+# and copy them to docs/_static
+# run with 
+# UPDATE_DOC_ARTIFACTS=1 pytest -m doc_artifact
+
+
+
 
 import unittest
 import pytest
 
+def copy_fig_to_static(src_fig_name):
+    """ Copy test artifacts to _static for documentation purpose
+    """
+    import os
+    import shutil
+    import domutils
+    import domutils._py_tools as py_tools
+
+    # figure out destinaion path
+    domutils_dir = os.path.dirname(domutils.__file__)
+    package_dir  = os.path.dirname(domutils_dir)
+    static_dir = os.path.join(package_dir, 'docs/_static')
+    # make sure output dir is there
+    py_tools.parallel_mkdir(static_dir)
+
+    # the figure we are copying to
+    dest_fig_name = os.path.join(static_dir, os.path.basename(src_fig_name))
+
+    print('copying figure to', dest_fig_name)
+    shutil.copy(src_fig_name, dest_fig_name)
+
+
+
+
+@pytest.mark.doc_artifact
 def test_projinds_simple_example():
 
+    # DOCS:simple_projinds_example_begins
+    import os
     import numpy as np
     import matplotlib as mpl
     import matplotlib.pyplot as plt
-    import cartopy.crs as ccrs
-    import cartopy.feature as cfeature
+    import cartopy
+    import domutils
     import domutils.legs as legs
     import domutils.geo_tools as geo_tools
     
@@ -34,9 +72,9 @@ def test_projinds_simple_example():
     mpl.rcParams['figure.dpi'] = 800
     
     #projection and extent of map being displayed
-    proj_aea = ccrs.AlbersEqualArea(central_longitude=-94.,
-                                    central_latitude=35.,
-                                    standard_parallels=(30.,40.))
+    proj_aea = cartopy.crs.AlbersEqualArea(central_longitude=-94.,
+                                           central_latitude=35.,
+                                           standard_parallels=(30.,40.))
     map_extent=[-94.8,-85.2,43,48.]
     
     #-------------------------------------------------------------------
@@ -44,7 +82,7 @@ def test_projinds_simple_example():
     # the central data point
     
     #use cartopy transforms to get xyz coordinates
-    proj_ll = ccrs.Geodetic()
+    proj_ll = cartopy.crs.Geodetic()
     geo_cent = proj_ll.as_geocentric()
     x, y, z = geo_tools.latlon_to_unit_sphere_xyz(np.asarray(regular_lons),
                                                   np.asarray(regular_lats),
@@ -85,7 +123,7 @@ def test_projinds_simple_example():
     
     #axes for this plot
     ax = fig.add_axes([.01,.1,.8,.8], projection=proj_aea)
-    ax.set_extent(map_extent, crs=ccrs.PlateCarree())
+    ax.set_extent(map_extent, crs=cartopy.crs.PlateCarree())
     
     # Set up colormapping object 
     color_mapping = legs.PalObj(range_arr=[0.,9.],
@@ -103,18 +141,221 @@ def test_projinds_simple_example():
                             pal_format='{:4.0f}')   #palette options
     
     #add political boundaries
-    dum = ax.add_feature(cfeature.STATES.with_scale('50m'), 
+    dum = ax.add_feature(cartopy.feature.STATES.with_scale('50m'), 
                          linewidth=0.5, edgecolor='0.2',zorder=1)
     
     #plot border and mask everything outside model domain
     ProjInds.plot_border(ax, mask_outside=False, linewidth=2.)
 
     
-    #uncomment to save figure
-    fig_name = '/home/dja001/python/packages/domutils_package/test_results/test_projinds_simple_example.svg'
+    # save figure
+    domutils_dir = os.path.dirname(domutils.__file__)
+    test_result_dir  = os.path.join(os.path.dirname(domutils_dir), 'test_results')
+    fig_name = os.path.join(test_result_dir, 'test_projinds_simple_example.svg')
     plt.savefig(fig_name)
-    print('saved', fig_name)
+
+    # DOCS:simple_projinds_example_ends
+
+    if os.environ.get("UPDATE_DOC_ARTIFACTS") == "1":
+        copy_fig_to_static(fig_name)
     
+def test_simple_nearest_neighbor_interpolation():
+
+    # DOCS:simple_nearest_neighbor_interpolation_begins
+    import numpy as np
+    import domutils.geo_tools as geo_tools
+    
+    # Source data on a very simple grid
+    src_lon =     [ [-90.1 , -90.1  ],
+                    [-89.1 , -89.1  ] ]
+    
+    src_lat =     [ [ 44.1  , 45.1  ],
+                    [ 44.1  , 45.1  ] ]
+    
+    data    =     [ [  3    ,  1    ],
+                    [  4    ,  2    ] ]
+    
+    # destination grid where we want data
+    # Its larger than the source grid and slightly offset
+    dest_lon =     [ [-91., -91, -91, -91  ],
+                     [-90., -90, -90, -90  ],
+                     [-89., -89, -89, -89  ],
+                     [-88., -88, -88, -88  ] ]
+    
+    dest_lat =     [ [ 43 ,  44,  45,  46 ],
+                     [ 43 ,  44,  45,  46 ],
+                     [ 43 ,  44,  45,  46 ],
+                     [ 43 ,  44,  45,  46 ] ]
+    
+    #instantiate object to handle interpolation
+    ProjInds = geo_tools.ProjInds(src_lon=src_lon,   src_lat=src_lat,
+                                  dest_lon=dest_lon, dest_lat=dest_lat,
+                                  missing=-99.)
+    #interpolate data with "project_data"
+    interpolated = ProjInds.project_data(data)
+    #nearest neighbor output, pts outside the domain are set to missing
+    #Interpolation with border detection in all directions
+    expected = np.array([[-99., -99., -99., -99.,],
+                         [-99.,   3.,   1., -99.,],
+                         [-99.,   4.,   2., -99.,],
+                         [-99., -99., -99., -99.,]])
+    assert np.allclose(interpolated, expected)
+    
+    
+    #on some domain, border detection is not desirable, it can be turned off
+    #
+    # extend_x here refers to the dimension in data space (longitudes) that are
+    # represented along rows of python array.
+    
+    # for example:
+    
+    # Border detection in Y direction (latitudes) only
+    proj_inds_ext_y = geo_tools.ProjInds(src_lon=src_lon,   src_lat=src_lat,
+                                         dest_lon=dest_lon, dest_lat=dest_lat,
+                                         missing=-99.,
+                                         extend_x=False)
+    interpolated_ext_y = proj_inds_ext_y.project_data(data)
+    expected = np.array([[-99.,  3.,  1.,-99.],
+                         [-99.,  3.,  1.,-99.],
+                         [-99.,  4.,  2.,-99.],
+                         [-99.,  4.,  2.,-99.]])
+    assert np.allclose(interpolated_ext_y, expected)
+    #
+    # Border detection in X direction (longitudes) only
+    proj_inds_ext_x = geo_tools.ProjInds(src_lon=src_lon,   src_lat=src_lat,
+                                         dest_lon=dest_lon, dest_lat=dest_lat,
+                                         missing=-99.,
+                                         extend_y=False)
+    interpolated_ext_x = proj_inds_ext_x.project_data(data)
+    expected = np.array([[-99., -99., -99., -99.],
+                         [  3.,   3.,   1.,   1.],
+                         [  4.,   4.,   2.,   2.],
+                         [-99., -99., -99., -99.]])
+    assert np.allclose(interpolated_ext_x, expected)
+    # 
+    # no border detection
+    proj_inds_no_b = geo_tools.ProjInds(src_lon=src_lon,   src_lat=src_lat,
+                                        dest_lon=dest_lon, dest_lat=dest_lat,
+                                        missing=-99.,
+                                        extend_x=False, extend_y=False)
+    interpolated_no_b = proj_inds_no_b.project_data(data)
+    expected = np.array([[3., 3., 1., 1.],
+                         [3., 3., 1., 1.],
+                         [4., 4., 2., 2.],
+                         [4., 4., 2., 2.]])
+
+    assert np.allclose(interpolated_no_b, expected)
+    # DOCS:simple_nearest_neighbor_interpolation_ends
+
+
+
+def test_averaging_interpolation():
+
+    # DOCS:averaging_interpolation_begins
+
+    import numpy as np
+    import domutils.geo_tools as geo_tools
+
+    # source data on a very simple grid
+    src_lon =     [ [-88.2 , -88.2  ],
+                    [-87.5 , -87.5  ] ]
+    
+    src_lat =     [ [ 43.5  , 44.1  ],
+                    [ 43.5  , 44.1  ] ]
+    
+    data    =     [ [  3    ,  1    ],
+                    [  4    ,  2    ] ]
+    
+    # coarser destination grid where we want data
+    dest_lon =     [ [-92. , -92  , -92 , -92  ],
+                     [-90. , -90  , -90 , -90  ],
+                     [-88. , -88  , -88 , -88  ],
+                     [-86. , -86  , -86 , -86  ] ]
+    
+    dest_lat =     [ [ 42  ,  44  ,  46 ,  48 ],
+                     [ 42  ,  44  ,  46 ,  48 ],
+                     [ 42  ,  44  ,  46 ,  48 ],
+                     [ 42  ,  44  ,  46 ,  48 ] ]
+    
+    #instantiate object to handle interpolation
+    #Note the average keyword set to true
+    ProjInds = geo_tools.ProjInds(src_lon=src_lon,   src_lat=src_lat,
+                                  dest_lon=dest_lon, dest_lat=dest_lat,
+                                  average=True, missing=-99.)
+    
+    #interpolate data with "project_data"
+    interpolated = ProjInds.project_data(data)
+    
+    #Since all high resolution data falls into one of the output 
+    #grid tile, they are all aaveraged together:  (1+2+3+4)/4 = 2.5 
+    expected = np.array([[-99., -99.  ,-99., -99. ],
+                         [-99., -99.  ,-99., -99. ],
+                         [-99.,   2.5 ,-99., -99. ],
+                         [-99., -99.  ,-99., -99. ]])
+    assert np.allclose(interpolated, expected)
+    
+    #weighted average can be obtained by providing weights for each data pt 
+    #being averaged
+    weights   =     [ [  0.5   ,  1.    ],
+                      [  1.    ,  0.25  ] ]
+    
+    weighted_avg = ProjInds.project_data(data, weights=weights)
+    #result is a weighted average:  
+    # (1.*1 + 0.25*2 + 0.5*3 + 1.*4) / (1.+0.25+0.5+1.) = 7.0/2.75 = 2.5454
+    expected = np.array([[-99., -99.        , -99., -99. ],
+                         [-99., -99.        , -99., -99. ],
+                         [-99.,   2.54545455, -99., -99. ],
+                         [-99., -99.        , -99., -99. ]])
+    assert np.allclose(weighted_avg, expected)
+
+    # DOCS:averaging_interpolation_ends
+
+def test_smooth_radius_interpolation():
+
+    # DOCS:smooth_radius_interpolation_begins
+    import numpy as np
+    import domutils.geo_tools as geo_tools
+    
+    # source data on a very simple grid
+    src_lon =     [ [-88.2 , -88.2  ],
+                    [-87.5 , -87.5  ] ]
+    
+    src_lat =     [ [ 43.5  , 44.1  ],
+                    [ 43.5  , 44.1  ] ]
+    
+    data    =     [ [  3    ,  1    ],
+                    [  4    ,  2    ] ]
+    
+    # coarser destination grid where we want data
+    dest_lon =     [ [-92. , -92  , -92 , -92  ],
+                     [-90. , -90  , -90 , -90  ],
+                     [-88. , -88  , -88 , -88  ],
+                     [-86. , -86  , -86 , -86  ] ]
+    
+    dest_lat =     [ [ 42  ,  44  ,  46 ,  48 ],
+                     [ 42  ,  44  ,  46 ,  48 ],
+                     [ 42  ,  44  ,  46 ,  48 ],
+                     [ 42  ,  44  ,  46 ,  48 ] ]
+    
+    #instantiate object to handle interpolation
+    #All source data points found within 300km of each destination 
+    #grid tiles will be averaged together
+    ProjInds = geo_tools.ProjInds(src_lon=src_lon,    src_lat=src_lat,
+                                  dest_lat=dest_lat,  dest_lon=dest_lon,
+                                  smooth_radius=300., missing=-99.)
+    
+    #interpolate and smooth data with "project_data"
+    interpolated = ProjInds.project_data(data)
+    
+    #output is smoother than data source
+    expected = np.array([[-99.       ,  -99. , -99.,  -99. ],
+                        [ 2.66666667,    2.5,   1.5, -99. ],
+                        [ 2.5       ,    2.5,   2.5, -99. ],
+                        [ 2.5       ,    2.5,   1.5, -99. ]])
+    assert np.allclose(interpolated, expected)
+
+
+    # DOCS:smooth_radius_interpolation_ends
     
 
 def test_no_extent_in_cartopy_projection():
@@ -126,8 +367,6 @@ def test_no_extent_in_cartopy_projection():
     import numpy as np
     from packaging import version
     import cartopy
-    import cartopy.crs as ccrs
-    import cartopy.feature as cfeature
     import matplotlib as mpl
     import matplotlib.pyplot as plt
     import domutils
@@ -155,7 +394,7 @@ def test_no_extent_in_cartopy_projection():
     image_res = [grid_w_pts,image_ratio*grid_w_pts] #100 x 50
     
     #cartopy projection with no extent
-    proj_rob = ccrs.Robinson()
+    proj_rob = cartopy.crs.Robinson()
     
     #instantiate object to handle geographical projection of data
     # onto geoAxes with this specific crs 
@@ -215,8 +454,7 @@ def test_general_lam_projection():
     import numpy as np
     import matplotlib as mpl
     import matplotlib.pyplot as plt
-    import cartopy.crs as ccrs
-    import cartopy.feature as cfeature
+    import cartopy
     import domutils
     import domutils._py_tools as py_tools
     
@@ -250,9 +488,9 @@ def test_general_lam_projection():
     
     ##define Albers projection and extend of map
     #Obtained through trial and error for good fit of the mdel grid being plotted
-    proj_aea = ccrs.AlbersEqualArea(central_longitude=-94.,
-                                    central_latitude=35.,
-                                    standard_parallels=(30.,40.))
+    proj_aea = cartopy.crs.AlbersEqualArea(central_longitude=-94.,
+                                           central_latitude=35.,
+                                           standard_parallels=(30.,40.))
     map_extent=[-104.8,-75.2,27.8,48.5]
 
     #point density for figure
@@ -292,7 +530,7 @@ def test_general_lam_projection():
                          palette='right', pal_units='[meters]', pal_format='{:4.0f}')   #palette options
     
     #add political boundaries
-    ax.add_feature(cfeature.STATES.with_scale('50m'), linewidth=0.5, edgecolor='0.2',zorder=1)
+    ax.add_feature(cartopy.feature.STATES.with_scale('50m'), linewidth=0.5, edgecolor='0.2',zorder=1)
     
     #plot border and mask everything outside model domain
     proj_inds.plot_border(ax, mask_outside=True, linewidth=.5)
@@ -322,8 +560,6 @@ def test_basic_projection():
 
     import os
     import numpy as np
-    import cartopy.crs as ccrs
-    import cartopy.feature as cfeature
     import matplotlib.pyplot as plt
     import domutils
     import domutils.legs as legs
@@ -370,8 +606,6 @@ def test_1d_inputs():
 
     import os
     import numpy as np
-    import cartopy.crs as ccrs
-    import cartopy.feature as cfeature
     import matplotlib.pyplot as plt
     import domutils
     import domutils.legs as legs
@@ -420,8 +654,7 @@ def test_hrdps_projection_in_reasonable_time():
     import numpy as np
     import matplotlib as mpl
     import matplotlib.pyplot as plt
-    import cartopy.crs as ccrs
-    import cartopy.feature as cfeature
+    import cartopy
     import domutils
     import domutils._py_tools as py_tools
     
@@ -447,7 +680,7 @@ def test_hrdps_projection_in_reasonable_time():
     lon_0 = 266.00
     delta_lon = 40.
     map_extent=[lon_0-delta_lon, lon_0+delta_lon, lat_0-delta_lat, lat_0+delta_lat]  
-    proj_aea = ccrs.RotatedPole(pole_latitude=pole_latitude, pole_longitude=pole_longitude)
+    proj_aea = cartopy.crs.RotatedPole(pole_latitude=pole_latitude, pole_longitude=pole_longitude)
     print('Making projection object')
     proj_obj = geo_tools.ProjInds(src_lon=longitudes, src_lat=latitudes,
                                   extent=map_extent, dest_crs=proj_aea, 
@@ -531,5 +764,10 @@ def test_latlon_to_xyz():
 
 
 if __name__ == '__main__':
+    import os
     #test_projinds_simple_example()
-    test_no_extent_in_cartopy_projection()
+    #test_no_extent_in_cartopy_projection()
+
+    # omit if you dont want to copy artefacts to _static
+    os.environ["UPDATE_DOC_ARTIFACTS"] = "1"
+    test_projinds_simple_example()
