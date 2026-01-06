@@ -98,7 +98,13 @@ def lat_lon_extend(lon1_in:   Any,
         if predefined_theta is not None:
             theta = predefined_theta
         else:
-            theta = np.arccos( np.sum(v1*v2) / (np.linalg.norm(v1)*np.linalg.norm(v2)) )
+            # Normalize vectors 
+            v1_norm = v1 / np.linalg.norm(v1)
+            v2_norm = v2 / np.linalg.norm(v2)
+            
+            # Use atan2 for numerical stability
+            theta = np.arctan2(np.linalg.norm(np.cross(v1_norm, v2_norm)), np.dot(v1_norm, v2_norm))
+
         if half_dist :
             theta /= 2.
 

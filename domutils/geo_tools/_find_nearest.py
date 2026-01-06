@@ -55,7 +55,7 @@ def _find_nearest(source_lon:  Any,
     from .latlon_to_unit_sphere_xyz import unit_sphere_xyz_to_latlon
 
 
-    #insure numpy arrays
+    # ensure numpy arrays
     source_xx=np.asarray(source_lon)
     source_yy=np.asarray(source_lat)
     dest_xx=np.asarray(dest_lon)

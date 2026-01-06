@@ -117,7 +117,7 @@ def test_projinds_simple_example():
     
     #instantiate object to handle geographical projection of data
     # onto geoAxes with this specific crs and extent
-    ProjInds = geo_tools.ProjInds(rotatedLons, rotatedLats,
+    ProjInds = geo_tools.ProjInds(src_lon=rotatedLons, src_lat=rotatedLats,
                                   extent=map_extent, dest_crs=proj_aea,
                                   image_res=img_res)
     
@@ -449,7 +449,7 @@ def test_no_extent_in_cartopy_projection():
 
     
 def test_general_lam_projection():
-    import os, inspect
+    import os
     import pickle
     import numpy as np
     import matplotlib as mpl
@@ -647,10 +647,11 @@ def test_1d_inputs():
     
 
 
-@pytest.mark.timeout(20, method="thread")
+@pytest.mark.timeout(5, method="thread")
 def test_hrdps_projection_in_reasonable_time():
-    import os, inspect
+    import os
     import pickle
+    import time
     import numpy as np
     import matplotlib as mpl
     import matplotlib.pyplot as plt
@@ -681,10 +682,12 @@ def test_hrdps_projection_in_reasonable_time():
     delta_lon = 40.
     map_extent=[lon_0-delta_lon, lon_0+delta_lon, lat_0-delta_lat, lat_0+delta_lat]  
     proj_aea = cartopy.crs.RotatedPole(pole_latitude=pole_latitude, pole_longitude=pole_longitude)
-    print('Making projection object')
+    t1 = time.time()
     proj_obj = geo_tools.ProjInds(src_lon=longitudes, src_lat=latitudes,
                                   extent=map_extent, dest_crs=proj_aea, 
                                   image_res=(800,400))
+    t2 = time.time()
+    print(f'Making projection object took {t2-t1} seconds')
 
 
 def test_simple_nn_projection():
@@ -765,9 +768,11 @@ def test_latlon_to_xyz():
 
 if __name__ == '__main__':
     import os
+    # omit if you dont want to copy artefacts to _static
+    #os.environ["UPDATE_DOC_ARTIFACTS"] = "1"
+
     #test_projinds_simple_example()
     #test_no_extent_in_cartopy_projection()
 
-    # omit if you dont want to copy artefacts to _static
-    os.environ["UPDATE_DOC_ARTIFACTS"] = "1"
-    test_projinds_simple_example()
+    #test_projinds_simple_example()
+    test_hrdps_projection_in_reasonable_time()
