@@ -51,8 +51,8 @@ def _find_nearest(source_lon:  Any,
     import cartopy.crs as ccrs
 
     from .lat_lon_extend import lat_lon_extend
-    from .latlon_to_unit_sphere_xyz import latlon_to_unit_sphere_xyz
-    from .latlon_to_unit_sphere_xyz import unit_sphere_xyz_to_latlon
+    from .lat_lon_to_xyz import latlon_to_unit_sphere_xyz
+    from .lat_lon_to_xyz import unit_sphere_xyz_to_latlon
 
 
     # ensure numpy arrays

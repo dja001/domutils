@@ -73,8 +73,8 @@ def lat_lon_extend(lon1_in:   Any,
 
     import numpy as np
     from .rotation_matrix  import rotation_matrix
-    from .latlon_to_unit_sphere_xyz import latlon_to_unit_sphere_xyz
-    from .latlon_to_unit_sphere_xyz import unit_sphere_xyz_to_latlon
+    from .lat_lon_to_xyz import latlon_to_unit_sphere_xyz
+    from .lat_lon_to_xyz import unit_sphere_xyz_to_latlon
 
 
 

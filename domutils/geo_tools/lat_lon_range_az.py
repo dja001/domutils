@@ -120,8 +120,8 @@ def lat_lon_range_az( lon1_in:      Any,
     import numpy as np
     import cartopy.crs as ccrs
     from .rotation_matrix  import rotation_matrix_components
-    from .latlon_to_unit_sphere_xyz import latlon_to_unit_sphere_xyz
-    from .latlon_to_unit_sphere_xyz import unit_sphere_xyz_to_latlon
+    from .lat_lon_to_xyz import latlon_to_unit_sphere_xyz
+    from .lat_lon_to_xyz import unit_sphere_xyz_to_latlon
 
     #ensure numpy type; copy to avoid modifying inputs
     lon1       = np.array(lon1_in,    copy=True)
