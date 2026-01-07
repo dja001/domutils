@@ -530,7 +530,7 @@ def test_general_lam_projection():
 
     #compare image with saved reference
     #copy reference image to testdir
-    reference_image = package_dir+'/test_data/_static/'+os.path.basename(image_name)
+    reference_image = package_dir+'/test_data/test_results/'+os.path.basename(image_name)
     images_are_similar = py_tools.render_similarly(image_name, reference_image)
 
     #test fails if images are not similar
