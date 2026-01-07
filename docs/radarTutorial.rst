@@ -51,7 +51,7 @@ data that we will be reading:
     ...     x0 = 0.01
     ...     y0 = .1
     ...     ax1 = fig.add_axes([x0,y0,rec_w,rec_h], projection=proj_aea)
-    ...     ax1.set_extent(map_extent)
+    ...     ax1.set_extent(proj_inds.rotated_extent, crs=proj_aea)
     ... 
     ...     #add title 
     ...     dum = ax1.annotate(title, size=20,

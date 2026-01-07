@@ -93,13 +93,13 @@ def test_projinds_simple_example(copy_to_static=None):
     
     #instantiate object to handle geographical projection of data
     # onto geoAxes with this specific crs and extent
-    ProjInds = geo_tools.ProjInds(src_lon=rotatedLons, src_lat=rotatedLats,
-                                  extent=map_extent, dest_crs=proj_aea,
-                                  image_res=img_res)
+    proj_inds = geo_tools.ProjInds(src_lon=rotatedLons, src_lat=rotatedLats,
+                                   extent=map_extent, dest_crs=proj_aea,
+                                   image_res=img_res)
     
     #axes for this plot
     ax = fig.add_axes([.01,.1,.8,.8], projection=proj_aea)
-    ax.set_extent(map_extent, crs=cartopy.crs.PlateCarree())
+    ax.set_extent(proj_inds.rotated_extent, crs=proj_aea)
     
     # Set up colormapping object 
     color_mapping = legs.PalObj(range_arr=[0.,9.],
@@ -109,7 +109,7 @@ def test_projinds_simple_example(copy_to_static=None):
                                  excep_val=missing, excep_col='grey_220')
     
     #geographical projection of data into axes space
-    proj_data = ProjInds.project_data(data_vals)
+    proj_data = proj_inds.project_data(data_vals)
     
     #plot data & palette
     color_mapping.plot_data(ax=ax,data=proj_data,
@@ -121,7 +121,7 @@ def test_projinds_simple_example(copy_to_static=None):
                          linewidth=0.5, edgecolor='0.2',zorder=1)
     
     #plot border and mask everything outside model domain
-    ProjInds.plot_border(ax, mask_outside=False, linewidth=2.)
+    proj_inds.plot_border(ax, mask_outside=False, linewidth=2.)
 
     
     # save figure
@@ -172,11 +172,11 @@ def test_simple_nearest_neighbor_interpolation():
                      [ 43 ,  44,  45,  46 ] ]
     
     #instantiate object to handle interpolation
-    ProjInds = geo_tools.ProjInds(src_lon=src_lon,   src_lat=src_lat,
-                                  dest_lon=dest_lon, dest_lat=dest_lat,
-                                  missing=-99.)
+    proj_inds = geo_tools.ProjInds(src_lon=src_lon,   src_lat=src_lat,
+                                   dest_lon=dest_lon, dest_lat=dest_lat,
+                                   missing=-99.)
     #interpolate data with "project_data"
-    interpolated = ProjInds.project_data(data)
+    interpolated = proj_inds.project_data(data)
     #nearest neighbor output, pts outside the domain are set to missing
     #Interpolation with border detection in all directions
     expected = np.array([[-99., -99., -99., -99.,],
@@ -263,12 +263,12 @@ def test_averaging_interpolation():
     
     #instantiate object to handle interpolation
     #Note the average keyword set to true
-    ProjInds = geo_tools.ProjInds(src_lon=src_lon,   src_lat=src_lat,
-                                  dest_lon=dest_lon, dest_lat=dest_lat,
-                                  average=True, missing=-99.)
+    proj_inds = geo_tools.ProjInds(src_lon=src_lon,   src_lat=src_lat,
+                                   dest_lon=dest_lon, dest_lat=dest_lat,
+                                   average=True, missing=-99.)
     
     #interpolate data with "project_data"
-    interpolated = ProjInds.project_data(data)
+    interpolated = proj_inds.project_data(data)
     
     #Since all high resolution data falls into one of the output 
     #grid tile, they are all aaveraged together:  (1+2+3+4)/4 = 2.5 
@@ -283,7 +283,7 @@ def test_averaging_interpolation():
     weights   =     [ [  0.5   ,  1.    ],
                       [  1.    ,  0.25  ] ]
     
-    weighted_avg = ProjInds.project_data(data, weights=weights)
+    weighted_avg = proj_inds.project_data(data, weights=weights)
     #result is a weighted average:  
     # (1.*1 + 0.25*2 + 0.5*3 + 1.*4) / (1.+0.25+0.5+1.) = 7.0/2.75 = 2.5454
     expected = np.array([[-99., -99.        , -99., -99. ],
@@ -324,12 +324,12 @@ def test_smooth_radius_interpolation():
     #instantiate object to handle interpolation
     #All source data points found within 300km of each destination 
     #grid tiles will be averaged together
-    ProjInds = geo_tools.ProjInds(src_lon=src_lon,    src_lat=src_lat,
-                                  dest_lat=dest_lat,  dest_lon=dest_lon,
-                                  smooth_radius=300., missing=-99.)
+    proj_inds = geo_tools.ProjInds(src_lon=src_lon,    src_lat=src_lat,
+                                   dest_lat=dest_lat,  dest_lon=dest_lon,
+                                   smooth_radius=300., missing=-99.)
     
     #interpolate and smooth data with "project_data"
-    interpolated = ProjInds.project_data(data)
+    interpolated = proj_inds.project_data(data)
     
     #output is smoother than data source
     expected = np.array([[-99.       ,  -99. , -99.,  -99. ],
@@ -382,12 +382,12 @@ def test_no_extent_in_cartopy_projection():
     
     #instantiate object to handle geographical projection of data
     # onto geoAxes with this specific crs 
-    ProjInds = geo_tools.ProjInds(src_lon=regular_lons, src_lat=regular_lats, 
-                                  dest_crs=proj_rob,    image_res=image_res,
-                                  extend_x=False, extend_y=False)
+    proj_inds = geo_tools.ProjInds(src_lon=regular_lons, src_lat=regular_lats, 
+                                   dest_crs=proj_rob,    image_res=image_res,
+                                   extend_x=False, extend_y=False)
     
     #geographical projection of data into axes space
-    projected_data = ProjInds.project_data(data_vals)
+    projected_data = proj_inds.project_data(data_vals)
 
     #plot data to make sure it works
     #the image that is generated can be looked at to insure proper functionning of the test
@@ -492,7 +492,7 @@ def test_general_lam_projection():
     
     #axes for this plot
     ax = fig.add_axes([.01,.1,.8,.8], projection=proj_aea)
-    ax.set_extent(map_extent)
+    ax.set_extent(proj_inds.rotated_extent, crs=proj_aea)
     
     # Set up colormapping object
     #
@@ -701,11 +701,11 @@ def test_simple_nn_projection():
                      [ 43  ,  44  ,  45 ,  46 ] ]
     
     #instantiate object to handle interpolation
-    ProjInds = geo_tools.ProjInds(src_lon=src_lon,   src_lat=src_lat,
+    proj_inds = geo_tools.ProjInds(src_lon=src_lon,   src_lat=src_lat,
                                   dest_lon=dest_lon, dest_lat=dest_lat,
                                   missing=-99.)
     #interpolate data with "project_data"
-    interpolated = ProjInds.project_data(data)
+    interpolated = proj_inds.project_data(data)
     #nearest neighbor output, pts outside the domain are set to missing
     #Interpolation with border detection in all directions
     expected =  [[-99., -99., -99., -99.],

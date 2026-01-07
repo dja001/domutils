@@ -72,9 +72,7 @@ def test_obs_process(copy_to_static=None):
     reference_image = package_dir+'/test_data/test_results/make_radar_fst/'+os.path.basename(new_figure)
 
     #compare image with saved reference
-    #copy reference image to testdir
     images_are_similar = py_tools.render_similarly(new_figure, reference_image)
-
 
     #test fails if images are not similar
     assert images_are_similar
@@ -86,7 +84,8 @@ def test_obs_process(copy_to_static=None):
         copy_to_static(new_figure)
 
 
-def test_nowcast_time_interpol():
+@pytest.mark.doc_artifact
+def test_nowcast_time_interpol(copy_to_static=None):
     ''' Test temporal interpolation using nowcasts
 
     '''
@@ -157,6 +156,9 @@ def test_nowcast_time_interpol():
 
     #test fails if images are not similar
     assert images_are_similar
+
+    if os.environ.get("UPDATE_DOC_ARTIFACTS") == "1":
+        copy_to_static(new_figure)
 
 
 def test_read_odim_vol():
@@ -438,5 +440,6 @@ def test_read_sqlite_vol():
 if __name__ == '__main__':
 
 
-    test_obs_process()
+    #test_obs_process()
+    test_nowcast_time_interpol()
     

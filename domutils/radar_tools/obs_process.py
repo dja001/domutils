@@ -366,7 +366,7 @@ def _make_motion_vectors(args):
             this_result = _motion_vector_at_one_time(this_time, args)
             
             #shift before next round
-            result_arr[tt] = this_result
+            result_arr[tt] = this_result[0]
 
     else:
         #parallel execution

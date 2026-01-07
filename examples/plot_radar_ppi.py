@@ -216,7 +216,7 @@ def main():
     pos = [sp_w, sp_h+(sp_h+rec_h), rec_w, rec_h]
     ax = fig.add_axes(pos, projection=proj_rp)
     ax.spines['geo'].set_linewidth(0.3)
-    ax.set_extent(map_extent)
+    ax.set_extent(proj_inds.rotated_extent, crs=proj_rp)
     ax.set_aspect('auto')
 
     ax.annotate('Qced Reflectivity', size=30,
@@ -256,7 +256,7 @@ def main():
     #
     pos = [sp_w+x0*rec_w, sp_h+(sp_h+rec_h)+y0*rec_h, dx*rec_w, dy*rec_h]
     ax2 = fig.add_axes(pos, projection=proj_rp, label='reflectivity overlay')
-    ax2.set_extent(map_extent_close)
+    ax2.set_extent(proj_inds_close.rotated_extent, crs=proj_rp)
     ax2.spines['geo'].set_linewidth(0.0)  #no border line
     ax2.set_facecolor((1.,1.,1.,0.))      #transparent background
     
@@ -298,7 +298,7 @@ def main():
     #axes for this plot
     pos = [sp_w+(sp_w+rec_w+1./fig_w), sp_h+(sp_h+rec_h), rec_w, rec_h]
     ax = fig.add_axes(pos, projection=proj_rp)
-    ax.set_extent(map_extent)
+    ax.set_extent(proj_inds.rotated_extent, crs=proj_rp)
     ax.set_aspect('auto')
 
     ax.annotate('Qced Doppler velocity', size=30,
@@ -349,7 +349,7 @@ def main():
     #
     pos = [sp_w+1.*(sp_w+rec_w+1./fig_w)+x0*rec_w, sp_h+(sp_h+rec_h)+y0*rec_h, dx*rec_w, dy*rec_h]
     ax2 = fig.add_axes(pos, projection=proj_rp, label='overlay')
-    ax2.set_extent(map_extent_close)
+    ax2.set_extent(proj_inds_close.rotated_extent, crs=proj_rp)
     ax2.spines['geo'].set_linewidth(0.0) #no border line
     ax2.set_facecolor((1.,1.,1.,0.))     #transparent background
     
@@ -386,7 +386,7 @@ def main():
     #axes for this plot
     pos = [sp_w, sp_h, rec_w, rec_h]
     ax = fig.add_axes(pos, projection=proj_rp)
-    ax.set_extent(map_extent)
+    ax.set_extent(proj_inds.rotated_extent, crs=proj_rp)
     ax.set_aspect('auto')
 
     ax.annotate('Depolarization ratio', size=30,
@@ -419,7 +419,7 @@ def main():
     #axes for this plot
     pos = [sp_w+(sp_w+rec_w+1./fig_w), sp_h, rec_w, rec_h]
     ax = fig.add_axes(pos, projection=proj_rp)
-    ax.set_extent(map_extent)
+    ax.set_extent(proj_inds.rotated_extent, crs=proj_rp)
     ax.set_aspect('auto')
 
     ax.annotate('Total quality index', size=30,

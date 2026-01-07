@@ -58,7 +58,7 @@ def main():
     
     #axes for this plot
     ax = fig.add_axes([.01,.1,.8,.8], projection=proj_aea)
-    ax.set_extent(map_extent)
+    ax.set_extent(proj_inds.rotated_extent, crs=proj_aea)
     
     # Set up colormapping object
     #

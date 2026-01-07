@@ -116,14 +116,14 @@ each individual panels.
 
     >>> def plot_panel(data,
     ...                fig, ax_pos, title, 
-    ...                proj_aea, map_extent,
+    ...                proj_aea, 
     ...                proj_obj, colormap, 
     ...                plot_palette=None, 
     ...                pal_units=None, 
     ...                show_artefacts=False):
     ...
     ...     ax = fig.add_axes(ax_pos, projection=proj_aea)
-    ...     ax.set_extent(map_extent)
+    ...     ax.set_extent(proj_obj.rotated_extent, crs=proj_aea)
     ...     dum = ax.annotate(title, size=32,
     ...                       xy=(.022, .85), xycoords='axes fraction',
     ...                       bbox=dict(boxstyle="round", fc='white', ec='white'))
@@ -250,7 +250,7 @@ See :ref:`Legs Tutorial` for information on the definition of color mapping obje
     ...         title = f'Source data \n @ t0+{src_dt}minutes'
     ...         plot_panel(dat_dict['precip_rate'],
     ...                    fig, ax_pos, title, 
-    ...                    proj_aea, map_extent,
+    ...                    proj_aea, 
     ...                    input_proj_obj, pr_colormap,
     ...                    plot_palette='right',
     ...                    pal_units='mm/h')
@@ -266,7 +266,7 @@ See :ref:`Legs Tutorial` for information on the definition of color mapping obje
     ...         title = f'Processed data \n @ t0+{src_dt}minutes'
     ...         plot_panel(dat_dict['precip_rate'],
     ...                    fig, ax_pos, title, 
-    ...                    proj_aea, map_extent,
+    ...                    proj_aea, 
     ...                    output_proj_obj, pr_colormap,
     ...                    plot_palette='right',
     ...                    pal_units='mm/h')
@@ -282,7 +282,7 @@ See :ref:`Legs Tutorial` for information on the definition of color mapping obje
     ...         title = f'Interpolated \n @ t0+{src_dt+interpolated_dt}minutes'
     ...         plot_panel(dat_dict['precip_rate'],
     ...                    fig, ax_pos, title, 
-    ...                    proj_aea, map_extent,
+    ...                    proj_aea, 
     ...                    output_proj_obj, pr_colormap)
     ...
     ...         # quality index is also interpolated using nowcasting
@@ -292,7 +292,7 @@ See :ref:`Legs Tutorial` for information on the definition of color mapping obje
     ...         title = f'Quality Ind Interpolated \n @ t0+{src_dt+interpolated_dt}minutes'
     ...         plot_panel(dat_dict['total_quality_index'],
     ...                    fig, ax_pos, title, 
-    ...                    proj_aea, map_extent,
+    ...                    proj_aea, 
     ...                    output_proj_obj, qi_colormap,
     ...                    plot_palette='right',
     ...                    pal_units='[unitless]')
