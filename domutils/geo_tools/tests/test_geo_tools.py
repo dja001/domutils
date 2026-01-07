@@ -12,35 +12,10 @@
 
 
 
-import unittest
 import pytest
 
-def copy_fig_to_static(src_fig_name):
-    """ Copy test artifacts to _static for documentation purpose
-    """
-    import os
-    import shutil
-    import domutils
-    import domutils._py_tools as py_tools
-
-    # figure out destinaion path
-    domutils_dir = os.path.dirname(domutils.__file__)
-    package_dir  = os.path.dirname(domutils_dir)
-    static_dir = os.path.join(package_dir, 'docs/_static')
-    # make sure output dir is there
-    py_tools.parallel_mkdir(static_dir)
-
-    # the figure we are copying to
-    dest_fig_name = os.path.join(static_dir, os.path.basename(src_fig_name))
-
-    print('copying figure to', dest_fig_name)
-    shutil.copy(src_fig_name, dest_fig_name)
-
-
-
-
 @pytest.mark.doc_artifact
-def test_projinds_simple_example():
+def test_projinds_simple_example(copy_to_static=None):
 
     # DOCS:simple_projinds_example_begins
     import os
@@ -51,6 +26,7 @@ def test_projinds_simple_example():
     import domutils
     import domutils.legs as legs
     import domutils.geo_tools as geo_tools
+    import domutils._py_tools as py_tools
     
     # make mock data and coordinates
     # note that there is some regularity to the grid 
@@ -88,7 +64,7 @@ def test_projinds_simple_example():
                                                   np.asarray(regular_lats),
                                                   combined=False)
     
-    #lets rotate points by 45 degrees counter clockwise
+    # rotate points by 45 degrees counter clockwise
     theta = np.pi/4
     rotation_matrix = geo_tools.rotation_matrix([x[1,1],
                                                  y[1,1],
@@ -150,14 +126,22 @@ def test_projinds_simple_example():
     
     # save figure
     domutils_dir = os.path.dirname(domutils.__file__)
-    test_result_dir  = os.path.join(os.path.dirname(domutils_dir), 'test_results')
-    fig_name = os.path.join(test_result_dir, 'test_projinds_simple_example.svg')
-    plt.savefig(fig_name)
+    package_dir  = os.path.dirname(domutils_dir)
+    test_result_dir  = os.path.join(package_dir, 'test_results')
+    svg_name = 'test_projinds_simple_example.svg'
+    new_image = os.path.join(test_result_dir, svg_name)
+    plt.savefig(new_image)
 
     # DOCS:simple_projinds_example_ends
 
+    # the testing needs not be included in docs
+    reference_image = os.path.join(package_dir, 'test_data/_static/', svg_name)
+    print(reference_image)
+    images_are_similar = py_tools.render_similarly(new_image, reference_image, force_comparison_image=False)
+    assert images_are_similar
+
     if os.environ.get("UPDATE_DOC_ARTIFACTS") == "1":
-        copy_fig_to_static(fig_name)
+        copy_to_static(fig_name)
     
 def test_simple_nearest_neighbor_interpolation():
 
@@ -768,11 +752,11 @@ def test_latlon_to_xyz():
 
 if __name__ == '__main__':
     import os
-    # omit if you dont want to copy artefacts to _static
+    # uncomment if you want to copy artefacts to docs/_static
     #os.environ["UPDATE_DOC_ARTIFACTS"] = "1"
 
-    #test_projinds_simple_example()
+    test_projinds_simple_example()
     #test_no_extent_in_cartopy_projection()
 
     #test_projinds_simple_example()
-    test_hrdps_projection_in_reasonable_time()
+    #test_hrdps_projection_in_reasonable_time()

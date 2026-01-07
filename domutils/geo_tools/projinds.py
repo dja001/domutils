@@ -205,25 +205,10 @@ class ProjInds():
             #destination lat/lon are provided by user, use those
             dest_lon = normalize_longitudes(dest_lon)
             dest_lat = np.asarray(dest_lat)
+            rotated_extent = None
 
         elif (dest_crs is not None) :
             # we are projecting data onto a given projection extent in cartopy
-
-            #delete_dummy_fig = False
-            #if fig is None:
-            #    dummy_fig = plt.figure()
-            #    delete_dummy_fig = True
-            #else:
-            #    dummy_fig = fig
-            #dummy_ax = dummy_fig.add_axes([0.,0.,1.,1.], projection=dest_crs)
-            #if extent is not None:
-            #    dummy_ax.set_extent(extent)
-
-            ##No axes contour line
-            #if version.parse(cartopy.__version__) >= version.parse("0.18.0"):
-            #    dummy_ax.spines['geo'].set_linewidth(0)
-            #else:
-            #    dummy_ax.outline_patch.set_linewidth(0) 
             
             if extent is not None:
                 # we assume lat/lon extent
@@ -243,6 +228,7 @@ class ProjInds():
                 dest_xx, dest_yy = np.meshgrid(xx, yy)
             else:
                 #use default extent for this projection
+                rotated_extent = None
                 dest_xx, dest_yy, extent = cimgt.mesh_projection(dest_crs, int(image_res[0]), int(image_res[1]))
 
             #Image returned by Cartopy is of shape (ny,nx) so that nx corresponds to S-N
@@ -369,6 +355,7 @@ class ProjInds():
         self.dest_shape = dest_lon.shape
         self.min_hits = min_hits
         self.missing = missing
+        self.rotated_extent = rotated_extent
 
         if smooth_radius is not None:
             # distances along unit sphere
@@ -554,19 +541,11 @@ class ProjInds():
         if ax is None:
             raise ValueError('The "ax" keyword must be provided')
 
-        #assume data is defined by latitude/longigude
-        if crs is None :
-            proj_ll = ccrs.Geodetic()
-
         #clip pixels outside of domain
         if self.smooth_radius_unit is None:
             if mask_outside :
                 #get corners of image in data space
-                transform_data_to_axes = ax.transData + ax.transAxes.inverted()
-                transform_axes_to_data = transform_data_to_axes.inverted()
-                pts = ((0.,0.),(1.,1.))
-                pt1, pt2 = transform_axes_to_data.transform(pts)
-                extent_data_space = [pt1[0],pt2[0],pt1[1],pt2[1]]
+                extent_data_space = ax.get_extent()
             
                 rgb   = np.full(self.dest_shape + (3,), 1., dtype='float32')
                 alpha = np.full(self.dest_shape + (1,), 0., dtype='float32')
@@ -600,7 +579,7 @@ class ProjInds():
 
         #plot border
         ax.plot(self.border_lons, self.border_lats,
-                color='.1', linewidth=linewidth, transform=proj_ll, zorder=zorder)
+                color='.1', linewidth=linewidth, transform=ccrs.PlateCarree(), zorder=zorder)
 
 
 

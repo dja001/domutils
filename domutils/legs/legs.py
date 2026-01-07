@@ -317,8 +317,9 @@ class PalObj():
         if equal_legs == True:
             boundaries = np.linspace(self.cols[0].val_low,self.cols[-1].val_high,n_cols+1)
 
-        ax.imshow(pal_rgb, axes=ax, aspect='auto',extent=[0.,1,boundaries[0],boundaries[-1]],
+        ax.imshow(pal_rgb, axes=ax, extent=[0.,1,boundaries[0],boundaries[-1]],
                   interpolation='nearest', origin='upper')
+        ax.set_aspect('auto', adjustable='datalim')
         ax.set_xticks([])
         ax.set_yticks(boundaries)
         ax.set_yticklabels(labels)

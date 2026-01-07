@@ -38,7 +38,6 @@ def plot_rdpr_rdqi(fst_file:   str=None,
     from shapely.errors import ShapelyDeprecationWarning
     warnings.filterwarnings('ignore', category=ShapelyDeprecationWarning)
     import cartopy
-    import cartopy.crs as ccrs
     import cartopy.feature as cfeature
 
     import domutils.legs as legs
@@ -79,7 +78,7 @@ def plot_rdpr_rdqi(fst_file:   str=None,
     # all sizes are inches for consistency with matplotlib
     rec_w = 6.            # Horizontal size of a panel  /2.54 for dimensions in cm
     rec_h = ratio * rec_w # Vertical size of a panel
-    sp_w = .1             # horizontal space between panels
+    sp_w = .2             # horizontal space between panels
     sp_h = .5             # vertical space between panels
     pal_sp = .1           # spavce between panel and palette
     pal_w = .25           # width of palette
@@ -99,16 +98,29 @@ def plot_rdpr_rdqi(fst_file:   str=None,
     pal_w /= fig_w
     tit_h /= fig_h 
     # matplotlib global settings
-    mpl.rcParams.update({'font.size': 24})
+    mpl.rcParams.update({
+        'font.family': 'Latin Modern Roman',
+        'font.size': 24,
+        'axes.titlesize': 24,
+        'axes.labelsize': 24,
+        'xtick.labelsize': 20,
+        'ytick.labelsize': 20,
+        'legend.fontsize': 20,
+        })
+
     # Use this for editable text in svg
     mpl.rcParams['text.usetex']  = False
     mpl.rcParams['svg.fonttype'] = 'none'
     # Hi def figure
-    mpl.rcParams['figure.dpi'] = dpi
+    mpl.rcParams.update({
+        'figure.dpi': dpi,
+        'savefig.dpi': dpi,
+        })
+
     # pretty font in figures
-    #mpl.rcParams['font.family'] = 'Latin Modern Roman'
     # instantiate figure
-    fig = plt.figure(figsize=(fig_w, fig_h))
+    fig = plt.figure(figsize=(fig_w, fig_h), constrained_layout=False)
+    fig.set_layout_engine(None)
 
     ax = fig.add_axes([0,0,1,1],zorder=0)
     ax.axis('off')
@@ -159,7 +171,7 @@ def plot_rdpr_rdqi(fst_file:   str=None,
         lon_0 = 266.00
         delta_lon = 40.
         map_extent=[lon_0-delta_lon, lon_0+delta_lon, lat_0-delta_lat, lat_0+delta_lat]  
-        proj_aea = ccrs.RotatedPole(pole_latitude=pole_latitude, pole_longitude=pole_longitude)
+        proj_aea = cartopy.crs.RotatedPole(pole_latitude=pole_latitude, pole_longitude=pole_longitude)
         logger.info('Making projection object')
         proj_obj = geo_tools.ProjInds(src_lon=pr_dict['lon'], src_lat=pr_dict['lat'],
                                       extent=map_extent, dest_crs=proj_aea, 
@@ -173,7 +185,10 @@ def plot_rdpr_rdqi(fst_file:   str=None,
         pos = [x0, y0, rec_w, rec_h]
         #setup axes
         ax = fig.add_axes(pos, projection=proj_aea)
-        ax.set_extent(map_extent)
+        # lat/lon extent will not work properly you need to use rotated_extent in the projection crs
+        ax.set_extent(proj_obj.rotated_extent, crs=proj_aea)
+        ax.set_autoscale_on(False)
+        ax.set_aspect('auto', adjustable='datalim')
         #thinner lines
         if version.parse(cartopy.__version__) >= version.parse("0.18.0"):
             ax.spines['geo'].set_linewidth(0.3)
@@ -191,11 +206,15 @@ def plot_rdpr_rdqi(fst_file:   str=None,
                          pal_linewidth=0.3, pal_units='[mm/h]', 
                          pal_format='{:5.1f}', equal_legs=True)
         #force axes to respect ratio we previously indicated...
-        ax.set_aspect('auto')  
         #plot geographical contours
         ax.add_feature(cfeature.STATES.with_scale('50m'), linewidth=0.3, edgecolor='0.3',zorder=1)
         #plot border
         proj_obj.plot_border(ax, mask_outside=True, linewidth=.3)
+
+        # Final call to prevent resizing by cartopy's geoaxes calls
+        ax.set_position(pos)
+        ax.set_anchor('C')   # optional but helps stability
+        ax.set_aspect('auto', adjustable='datalim')
 
 
         #plot quality index
@@ -206,7 +225,9 @@ def plot_rdpr_rdqi(fst_file:   str=None,
         pos = [x0, y0, rec_w, rec_h]
         #setup axes
         ax = fig.add_axes(pos, projection=proj_aea)
-        ax.set_extent(map_extent)
+        ax.set_extent(proj_obj.rotated_extent, crs=proj_aea)
+        ax.set_autoscale_on(False)
+        ax.set_aspect('auto', adjustable='datalim')
         #thinner lines
         if version.parse(cartopy.__version__) >= version.parse("0.18.0"):
             ax.spines['geo'].set_linewidth(0.3)
@@ -233,11 +254,15 @@ def plot_rdpr_rdqi(fst_file:   str=None,
                              pal_linewidth=0.3, pal_units='[unitless]',
                              pal_format='{:2.1f}')
             #force axes to respect ratio we previously indicated...
-            ax.set_aspect('auto')  
             #plot geographical contours
             ax.add_feature(cfeature.STATES.with_scale('50m'), linewidth=0.3, edgecolor='0.3',zorder=1)
             #plot border
-            proj_obj.plot_border(ax, mask_outside=True, linewidth=.3)
+            proj_obj.plot_border(ax, mask_outside=True, linewidth=0.3)
+
+        # Final call to prevent resizing by cartopy's geoaxes calls
+        ax.set_position(pos)
+        ax.set_anchor('C')   # optional but helps stability
+        ax.set_aspect('auto', adjustable='datalim')
 
 
     #save figure
