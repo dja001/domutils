@@ -11,7 +11,7 @@ import doctest
 #doctest.testfile("legsResources.rst")
 #doctest.testfile("legsTutorial.rst")
 #doctest.testfile("radarDoc.rst")
-#doctest.testfile("radarTutorial.rst")
+doctest.testfile("radarTutorial.rst")
 #doctest.testfile("radarTutorialIndex.rst")
-doctest.testfile("radarTimeInterp.rst")
+#doctest.testfile("radarTimeInterp.rst")
 #
