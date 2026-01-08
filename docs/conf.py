@@ -95,20 +95,3 @@ html_theme_path = ["_themes", ]
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
-
-
-
-
-# No longer using LFD on github due to paywall restrictions
-# I am keeping this as a reference
-#
-### Workaround to install and execute git-lfs on Read the Docs
-### from https://github.com/readthedocs/readthedocs.org/issues/1846
-### may not be needed in the future
-##on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
-##if on_rtd :
-##    os.system('wget https://github.com/git-lfs/git-lfs/releases/download/v2.7.1/git-lfs-linux-amd64-v2.7.1.tar.gz')
-##    os.system('tar xvfz git-lfs-linux-amd64-v2.7.1.tar.gz')
-##    os.system('./git-lfs install')  # make lfs available in current repository
-##    os.system('./git-lfs fetch')    # download content from remote
-##    os.system('./git-lfs checkout') # make local files to have the real content on them

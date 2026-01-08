@@ -112,31 +112,37 @@ def plot_img():
 def setup_values_and_palettes():
 
     # DOCS:values_and_palette_begins
+    import os 
+    import domutils
     import domutils.legs as legs
+
+    # where is the data
+    domutils_dir = os.path.dirname(domutils.__file__)
+    package_dir  = os.path.dirname(domutils_dir)
     
-    #flags
+    # flags
     undetect = -3333.
     missing  = -9999.
     
-    #Color mapping object for reflectivity
+    # Color mapping object for reflectivity
     ref_color_map = legs.PalObj(range_arr=[0.,60.],
                                 n_col=6,
                                 over_high='extend', under_low='white',
                                 excep_val=[undetect,missing], excep_col=['grey_200','grey_120'])
     
-    #Color mapping object for quality index
+    # Color mapping object for quality index
     pastel = [ [[255,190,187],[230,104, 96]],  #pale/dark red
                [[255,185,255],[147, 78,172]],  #pale/dark purple
                [[255,227,215],[205,144, 73]],  #pale/dark brown
                [[210,235,255],[ 58,134,237]],  #pale/dark blue
                [[223,255,232],[ 61,189, 63]] ] #pale/dark green
-    #precip Rate
+    # precip Rate
     ranges = [.1,1.,2.,4.,8.,16.,32.]
     pr_color_map = legs.PalObj(range_arr=ranges,
                                n_col=6,
                                over_high='extend', under_low='white',
                                excep_val=[undetect,missing], excep_col=['grey_200','grey_120'])
-    #accumulations
+    # accumulations
     ranges = [1.,2.,5.,10., 20., 50., 100.]
     acc_color_map = legs.PalObj(range_arr=ranges,
                                 n_col=6,
@@ -145,7 +151,7 @@ def setup_values_and_palettes():
 
     # DOCS:values_and_palette_ends
 
-    return undetect, missing, ref_color_map, pr_color_map, acc_color_map
+    return undetect, missing, ref_color_map, pr_color_map, acc_color_map, package_dir
 
 # -----------------------------------------------------------------------------
 # Baltrad ODIM H5
@@ -153,12 +159,13 @@ def setup_values_and_palettes():
 
 @pytest.mark.doc_artifact
 def test_baltrad_odim_h5(copy_to_static, setup_values_and_palettes, plot_img):
-    undetect, missing, ref_color_map, pr_color_map, acc_color_map = setup_values_and_palettes
+    (undetect, missing, ref_color_map, 
+     pr_color_map, acc_color_map,
+     package_dir) = setup_values_and_palettes
 
     # DOCS:baltrad_odim_h5_begins
     import os
     import datetime
-    import domutils
     import domutils.radar_tools as radar_tools
     import domutils._py_tools as py_tools
     
@@ -166,8 +173,6 @@ def test_baltrad_odim_h5(copy_to_static, setup_values_and_palettes, plot_img):
     this_date = datetime.datetime(2019, 10, 31, 16, 30, 0, tzinfo=datetime.timezone.utc)
     
     # where is the data
-    domutils_dir = os.path.dirname(domutils.__file__)
-    package_dir  = os.path.dirname(domutils_dir)
     data_path = os.path.join(package_dir, 'test_data', 'odimh5_radar_composites/')
     
     # how to construct filename. 
@@ -216,25 +221,23 @@ def test_baltrad_odim_h5(copy_to_static, setup_values_and_palettes, plot_img):
 # -----------------------------------------------------------------------------
 # MRMS precipitation rates in grib2 format
 # -----------------------------------------------------------------------------
-
 @pytest.mark.doc_artifact
 def test_mrms_grib2(copy_to_static, setup_values_and_palettes, plot_img):
-    undetect, missing, ref_color_map, pr_color_map, acc_color_map = setup_values_and_palettes
+    (undetect, missing, ref_color_map, 
+     pr_color_map, acc_color_map,
+     package_dir) = setup_values_and_palettes
     # DOCS:mrms_grib2_begins
 
     import os
     import datetime
-    import domutils
     import domutils.radar_tools as radar_tools
     import domutils._py_tools as py_tools
     
-    #when we want data
+    # when we want data
     this_date = datetime.datetime(2019, 10, 31, 16, 30, 0, tzinfo=datetime.timezone.utc)
     
-    #where is the data
-    domutils_dir = os.path.dirname(domutils.__file__)
-    package_dir  = os.path.dirname(domutils_dir)
-    data_path = package_dir + '/test_data/mrms_grib2/'
+    # where is the data
+    data_path = os.path.join(package_dir, 'test_data', 'mrms_grib2/')
     
     #how to construct filename. 
     #   See documentation for the *strftime* method in the datetime module
@@ -274,7 +277,7 @@ def test_mrms_grib2(copy_to_static, setup_values_and_palettes, plot_img):
     # DOCS:mrms_grib2_ends
 
     #compare image with saved reference
-    reference_image = package_dir+'/test_data/_static/'+os.path.basename(fig_name)
+    reference_image = os.path.join(package_dir, 'test_data', '_static', os.path.basename(fig_name))
     images_are_similar = py_tools.render_similarly(fig_name, reference_image)
 
     #test fails if images are not similar
@@ -284,103 +287,676 @@ def test_mrms_grib2(copy_to_static, setup_values_and_palettes, plot_img):
         copy_to_static(fig_name)
 
 
-## -----------------------------------------------------------------------------
-## 4-km mosaics from URP
-## -----------------------------------------------------------------------------
-#
-#def test_urp_4km():
-#    # DOCS:urp_4km_begins
-#
-#    from domutils.geo_tools import radar_tools
-#
-#    parentdir = os.path.dirname(__file__)
-#    urp_file = os.path.join(parentdir, "test_data/urp/urp_4km.nc")
-#
-#    urp = radar_tools.read_urp_mosaic(urp_file)
-#
-#    # DOCS:urp_4km_ends
-#
-#
-## -----------------------------------------------------------------------------
-## dBZ → precipitation rate
-## -----------------------------------------------------------------------------
-#
-#def test_dbz_to_rr():
-#    # DOCS:dbz_to_rr_begins
-#
-#    from domutils.geo_tools import radar_tools
-#    import numpy as np
-#
-#    dbz = np.array([10., 20., 30.])
-#    rr = radar_tools.dbz_to_rr(dbz)
-#
-#    # DOCS:dbz_to_rr_ends
-#
-#
-## -----------------------------------------------------------------------------
-## Median filter
-## -----------------------------------------------------------------------------
-#
-#def test_median_filter():
-#    # DOCS:median_filter_begins
-#
-#    from scipy.ndimage import median_filter
-#    import numpy as np
-#
-#    data = np.random.rand(100, 100)
-#    filtered = median_filter(data, size=3)
-#
-#    # DOCS:median_filter_ends
-#
-#
-## -----------------------------------------------------------------------------
-## Interpolation
-## -----------------------------------------------------------------------------
-#
-#def test_interpolation():
-#    # DOCS:interpolation_begins
-#
-#    from domutils.geo_tools import geo_tools
-#    import numpy as np
-#
-#    src = np.random.rand(50, 50)
-#    interp = geo_tools.interpolate_to_grid(src)
-#
-#    # DOCS:interpolation_ends
-#
-#
-## -----------------------------------------------------------------------------
-## On-the-fly accumulation
-## -----------------------------------------------------------------------------
-#
-#def test_accumulation_otf():
-#    # DOCS:accumulation_otf_begins
-#
-#    from domutils.geo_tools import radar_tools
-#    import numpy as np
-#
-#    rates = np.random.rand(10, 100, 100)
-#    accum = radar_tools.accumulate_rates(rates, dt_minutes=5)
-#
-#    # DOCS:accumulation_otf_ends
-#
-#
-## -----------------------------------------------------------------------------
-## Stage IV accumulations
-## -----------------------------------------------------------------------------
-#
-#def test_stage4():
-#    # DOCS:stage4_begins
-#
-#    from domutils.geo_tools import radar_tools
-#
-#    parentdir = os.path.dirname(__file__)
-#    stage4_file = os.path.join(parentdir, "test_data/stage4/stage4.nc")
-#
-#    stage4 = radar_tools.read_stage4(stage4_file)
-#
-#    # DOCS:stage4_ends
-#
+# -----------------------------------------------------------------------------
+# 4-km mosaics from URP
+# -----------------------------------------------------------------------------
+
+@pytest.mark.doc_artifact
+def test_urp_4km(copy_to_static, setup_values_and_palettes, plot_img):
+    (undetect, missing, ref_color_map, 
+     pr_color_map, acc_color_map,
+     package_dir) = setup_values_and_palettes
+    # DOCS:urp_4km_begins
+
+    import os
+    import datetime
+    import domutils.radar_tools as radar_tools
+    import domutils._py_tools as py_tools
+
+    # when we want data
+    this_date = datetime.datetime(2019, 10, 31, 16, 30, 0, tzinfo=datetime.timezone.utc)
+
+    #URP 4km reflectivity mosaics
+    data_path = os.path.join(package_dir , 'test_data', 'std_radar_mosaics/')
+    #note the *.stnd* extension specifying that a standard file will be read
+    data_recipe = '%Y%m%d%H_%Mref_4.0km.stnd'
+    
+    #exactly the same command as before
+    dat_dict = radar_tools.get_instantaneous(valid_date=this_date,
+                                             data_path=data_path,
+                                             data_recipe=data_recipe,
+                                             latlon=True)
+    assert dat_dict['valid_date'] == this_date
+    assert dat_dict['reflectivity'].shape == (1650, 1500)
+    assert dat_dict['total_quality_index'].shape == (1650, 1500)
+    assert dat_dict['latitudes'].shape == (1650, 1500)
+    assert dat_dict['longitudes'].shape == (1650, 1500)
+    
+    #show data
+    fig_name = os.path.join(package_dir, 'test_results', 'radar_tutorial', 
+                            'URP4km_reflectivity.svg')
+    title = 'URP 4km reflectivity on original grid'
+    units = '[dBZ]'
+    data       = dat_dict['reflectivity']
+    latitudes  = dat_dict['latitudes']
+    longitudes = dat_dict['longitudes']
+    
+    plot_img(fig_name, title, units, data, latitudes, longitudes,
+             ref_color_map)
+
+    # DOCS:urp_4km_ends
+
+    #compare image with saved reference
+    reference_image = os.path.join(package_dir, 'test_data', '_static', os.path.basename(fig_name))
+    images_are_similar = py_tools.render_similarly(fig_name, reference_image)
+
+    #test fails if images are not similar
+    assert images_are_similar
+
+    if os.environ.get("UPDATE_DOC_ARTIFACTS") == "1":
+        copy_to_static(fig_name)
+
+
+# -----------------------------------------------------------------------------
+# None and nearest
+# -----------------------------------------------------------------------------
+def test_none_and_nearest(setup_values_and_palettes):
+    (undetect, missing, ref_color_map, 
+     pr_color_map, acc_color_map,
+     package_dir) = setup_values_and_palettes
+    # DOCS:return_none_begins
+    import os
+    import datetime
+    import domutils.radar_tools as radar_tools
+
+    #set time at 16h35 where no mosaic file exists
+    this_date = datetime.datetime(2019, 10, 31, 16, 35, 0, tzinfo=datetime.timezone.utc)
+    data_path = package_dir + '/test_data/odimh5_radar_composites/'
+    data_recipe = '%Y/%m/%d/qcomp_%Y%m%d%H%M.h5'
+    dat_dict = radar_tools.get_instantaneous(valid_date=this_date,
+                                             data_path=data_path,
+                                             data_recipe=data_recipe)
+    assert dat_dict is None
+    # DOCS:return_none_ends
+
+    # DOCS:nearest_time_begins
+    dat_dict = radar_tools.get_instantaneous(valid_date=this_date,
+                                             data_path=data_path,
+                                             data_recipe=data_recipe,
+                                             nearest_time=10)
+
+    # note valid date 16h30 instead of 16h35 in the function call
+    assert dat_dict['valid_date'] == datetime.datetime(2019, 10, 31, 16, 30, 0, tzinfo=datetime.timezone.utc)
+    # DOCS:nearest_time_ends
+
+
+
+# -----------------------------------------------------------------------------
+# precip rate from dbz
+# -----------------------------------------------------------------------------
+@pytest.mark.doc_artifact
+def test_precip_rate(copy_to_static, setup_values_and_palettes, plot_img):
+    (undetect, missing, ref_color_map, 
+     pr_color_map, acc_color_map,
+     package_dir) = setup_values_and_palettes
+
+    # DOCS:wdssr_zr_begins
+    import os
+    import datetime
+    import domutils.radar_tools as radar_tools
+    import domutils._py_tools as py_tools
+
+    this_date = datetime.datetime(2019, 10, 31, 16, 30, 0, tzinfo=datetime.timezone.utc)
+    data_path = package_dir + '/test_data/odimh5_radar_composites/'
+    data_recipe = '%Y/%m/%d/qcomp_%Y%m%d%H%M.h5'
+     
+    #require precipitation rate in the output
+    dat_dict = radar_tools.get_instantaneous(desired_quantity='precip_rate',
+                                             valid_date=this_date,
+                                             data_path=data_path,
+                                             data_recipe=data_recipe,
+                                             latlon=True)
+    
+    #show data  
+    fig_name = os.path.join(package_dir, 'test_results', 'radar_tutorial', 
+                            'odimh5_reflectivity_300_1p4.svg')
+    title = 'precip rate with a=300, b=1.4 '
+    units = '[mm/h]'
+    data       = dat_dict['precip_rate']
+    latitudes  = dat_dict['latitudes']
+    longitudes = dat_dict['longitudes']
+    
+    plot_img(fig_name, title, units, data, latitudes, longitudes,
+             pr_color_map, equal_legs=True)
+
+    # DOCS:wdssr_zr_ends
+
+    #compare image with saved reference
+    reference_image = os.path.join(package_dir, 'test_data', '_static', os.path.basename(fig_name))
+    images_are_similar = py_tools.render_similarly(fig_name, reference_image)
+
+    #test fails if images are not similar
+    assert images_are_similar
+
+    if os.environ.get("UPDATE_DOC_ARTIFACTS") == "1":
+        copy_to_static(fig_name)
+
+
+
+# -----------------------------------------------------------------------------
+# precip rate from dbz
+# -----------------------------------------------------------------------------
+@pytest.mark.doc_artifact
+def test_zr(copy_to_static, setup_values_and_palettes, plot_img):
+    (undetect, missing, ref_color_map, 
+     pr_color_map, acc_color_map,
+     package_dir) = setup_values_and_palettes
+
+    # DOCS:wdssr_zr_begins
+    import os
+    import datetime
+    import domutils.radar_tools as radar_tools
+    import domutils._py_tools as py_tools
+
+    this_date = datetime.datetime(2019, 10, 31, 16, 30, 0, tzinfo=datetime.timezone.utc)
+    data_path = package_dir + '/test_data/odimh5_radar_composites/'
+    data_recipe = '%Y/%m/%d/qcomp_%Y%m%d%H%M.h5'
+     
+    #require precipitation rate in the output
+    dat_dict = radar_tools.get_instantaneous(desired_quantity='precip_rate',
+                                             valid_date=this_date,
+                                             data_path=data_path,
+                                             data_recipe=data_recipe,
+                                             latlon=True)
+    
+    #show data  
+    fig_name = os.path.join(package_dir, 'test_results', 'radar_tutorial', 
+                            'odimh5_reflectivity_300_1p4.svg')
+    title = 'precip rate with a=300, b=1.4 '
+    units = '[mm/h]'
+    data       = dat_dict['precip_rate']
+    latitudes  = dat_dict['latitudes']
+    longitudes = dat_dict['longitudes']
+    
+    plot_img(fig_name, title, units, data, latitudes, longitudes,
+             pr_color_map, equal_legs=True)
+
+    # DOCS:wdssr_zr_ends
+
+    #compare image with saved reference
+    reference_image = os.path.join(package_dir, 'test_data', '_static', os.path.basename(fig_name))
+    images_are_similar = py_tools.render_similarly(fig_name, reference_image)
+
+    #test fails if images are not similar
+    assert images_are_similar
+
+    if os.environ.get("UPDATE_DOC_ARTIFACTS") == "1":
+        copy_to_static(fig_name)
+
+    # DOCS:200_1.6_begins
+
+    # custom coefficients a and b
+    dat_dict = radar_tools.get_instantaneous(desired_quantity='precip_rate',
+                                             coef_a=200, coef_b=1.6,
+                                             valid_date=this_date,
+                                             data_path=data_path,
+                                             data_recipe=data_recipe,
+                                             latlon=True)
+    
+    #show data
+    fig_name = os.path.join(package_dir, 'test_results', 'radar_tutorial', 
+                            'odimh5_reflectivity_200_1p6.svg')
+    title = 'precip rate with a=200, b=1.6 '
+    units = '[mm/h]'
+    data       = dat_dict['precip_rate']
+    latitudes  = dat_dict['latitudes']
+    longitudes = dat_dict['longitudes']
+    
+    plot_img(fig_name, title, units, data, latitudes, longitudes,
+             pr_color_map, equal_legs=True)
+
+    # DOCS:200_1.6_ends
+
+    #compare image with saved reference
+    reference_image = os.path.join(package_dir, 'test_data', '_static', os.path.basename(fig_name))
+    images_are_similar = py_tools.render_similarly(fig_name, reference_image)
+
+    #test fails if images are not similar
+    assert images_are_similar
+
+    if os.environ.get("UPDATE_DOC_ARTIFACTS") == "1":
+        copy_to_static(fig_name)
+
+# -----------------------------------------------------------------------------
+# Median filter
+# -----------------------------------------------------------------------------
+
+@pytest.mark.doc_artifact
+def test_median_filter(copy_to_static, setup_values_and_palettes, plot_img):
+    (undetect, missing, ref_color_map, 
+     pr_color_map, acc_color_map,
+     package_dir) = setup_values_and_palettes
+
+    # DOCS:median_filter_begins
+    import os
+    import datetime
+    import domutils.radar_tools as radar_tools
+    import domutils._py_tools as py_tools
+
+    this_date = datetime.datetime(2019, 10, 31, 16, 30, 0, tzinfo=datetime.timezone.utc)
+    data_path = package_dir + '/test_data/odimh5_radar_composites/'
+    data_recipe = '%Y/%m/%d/qcomp_%Y%m%d%H%M.h5'
+     
+    #Apply median filter by setting *median_filt=3* meaning that a 3x3 boxcar
+    #will be used for the filtering
+    dat_dict = radar_tools.get_instantaneous(valid_date=this_date,
+                                             data_path=data_path,
+                                             data_recipe=data_recipe,
+                                             latlon=True,
+                                             median_filt=3)
+    
+    #show data
+    fig_name = os.path.join(package_dir, 'test_results', 'radar_tutorial', 
+                            'speckle_filtered_reflectivity.svg')
+    title = 'Speckle filtered Odim H5 reflectivity'
+    units = '[dBZ]'
+    data       = dat_dict['reflectivity']
+    latitudes  = dat_dict['latitudes']
+    longitudes = dat_dict['longitudes']
+    
+    plot_img(fig_name, title, units, data, latitudes, longitudes,
+             ref_color_map)
+
+    # DOCS:median_filter_ends
+
+    #compare image with saved reference
+    reference_image = os.path.join(package_dir, 'test_data', '_static', os.path.basename(fig_name))
+    images_are_similar = py_tools.render_similarly(fig_name, reference_image)
+
+    #test fails if images are not similar
+    assert images_are_similar
+
+    if os.environ.get("UPDATE_DOC_ARTIFACTS") == "1":
+        copy_to_static(fig_name)
+
+# -----------------------------------------------------------------------------
+# Interpolation
+# -----------------------------------------------------------------------------
+@pytest.mark.doc_artifact
+def test_interpolation(copy_to_static, setup_values_and_palettes, plot_img):
+    (undetect, missing, ref_color_map, 
+     pr_color_map, acc_color_map,
+     package_dir) = setup_values_and_palettes
+    # DOCS:interpolation_setup_begins
+
+    import os
+    import datetime
+    import domutils.radar_tools as radar_tools
+    import domutils._py_tools as py_tools
+    import pickle
+
+    #let our destination grid be at 10 km resolution in the middle of the US
+    #this is a grid where I often perform integration with the GEM atmospheric model
+    #recover previously prepared data
+    with open(package_dir + '/test_data/pal_demo_data.pickle', 'rb') as f:
+        data_dict = pickle.load(f)
+    gem_lon = data_dict['longitudes']    #2D longitudes [deg]
+    gem_lat = data_dict['latitudes']     #2D latitudes  [deg]
+
+    this_date = datetime.datetime(2019, 10, 31, 16, 30, 0, tzinfo=datetime.timezone.utc)
+    data_path = package_dir + '/test_data/odimh5_radar_composites/'
+    data_recipe = '%Y/%m/%d/qcomp_%Y%m%d%H%M.h5'
+    # DOCS:interpolation_setup_ends
+
+
+    # DOCS:nearest_neighbor_begins
+    dat_dict = radar_tools.get_instantaneous(valid_date=this_date,
+                                             data_path=data_path,
+                                             data_recipe=data_recipe,
+                                             latlon=True,
+                                             dest_lon=gem_lon,
+                                             dest_lat=gem_lat)
+    
+    #show data
+    fig_name = os.path.join(package_dir, 'test_results', 'radar_tutorial', 
+                            'nearest_interpolation_reflectivity.svg')
+    title = 'Nearest Neighbor to 10 km grid'
+    units = '[dBZ]'
+    data       = dat_dict['reflectivity']
+    latitudes  = dat_dict['latitudes']
+    longitudes = dat_dict['longitudes']
+    plot_img(fig_name, title, units, data, latitudes, longitudes,
+             ref_color_map)
+
+    # DOCS:nearest_neighbor_ends
+
+    #compare image with saved reference
+    reference_image = os.path.join(package_dir, 'test_data', '_static', os.path.basename(fig_name))
+    images_are_similar = py_tools.render_similarly(fig_name, reference_image)
+
+    #test fails if images are not similar
+    assert images_are_similar
+
+    if os.environ.get("UPDATE_DOC_ARTIFACTS") == "1":
+        copy_to_static(fig_name)
+
+
+    # DOCS:average_in_tile_begins
+
+    # get data on destination grid using averaging
+    dat_dict = radar_tools.get_instantaneous(valid_date=this_date,
+                                             data_path=data_path,
+                                             data_recipe=data_recipe,
+                                             latlon=True,
+                                             dest_lon=gem_lon,
+                                             dest_lat=gem_lat,
+                                             average=True)
+    
+    #show data
+    fig_name = os.path.join(package_dir, 'test_results', 'radar_tutorial', 
+                            'average_interpolation_reflectivity.svg')
+    title = 'Average to 10 km grid'
+    units = '[dBZ]'
+    data       = dat_dict['reflectivity']
+    latitudes  = dat_dict['latitudes']
+    longitudes = dat_dict['longitudes']
+    plot_img(fig_name, title, units, data, latitudes, longitudes,
+             ref_color_map)
+
+    # DOCS:average_in_tile_ends
+
+    #compare image with saved reference
+    reference_image = os.path.join(package_dir, 'test_data', '_static', os.path.basename(fig_name))
+    images_are_similar = py_tools.render_similarly(fig_name, reference_image)
+
+    #test fails if images are not similar
+    assert images_are_similar
+
+    if os.environ.get("UPDATE_DOC_ARTIFACTS") == "1":
+        copy_to_static(fig_name)
+
+
+    # DOCS:average_in_radius_begins
+
+    #get data on destination grid averaging all points
+    #within a circle of a given radius
+    #also apply the median filter on input data
+    dat_dict = radar_tools.get_instantaneous(valid_date=this_date,
+                                             data_path=data_path,
+                                             data_recipe=data_recipe,
+                                             latlon=True,
+                                             dest_lon=gem_lon,
+                                             dest_lat=gem_lat,
+                                             median_filt=3,
+                                             smooth_radius=12.)
+    
+    #show data
+    fig_name = os.path.join(package_dir, 'test_results', 'radar_tutorial', 
+                            'smooth_radius_interpolation_reflectivity.svg')
+    title = 'Average input within a radius of 12 km'
+    units = '[dBZ]'
+    data       = dat_dict['reflectivity']
+    latitudes  = dat_dict['latitudes']
+    longitudes = dat_dict['longitudes']
+    plot_img(fig_name, title, units, data, latitudes, longitudes,
+             ref_color_map)
+
+    # DOCS:average_in_radius_ends
+
+    #compare image with saved reference
+    reference_image = os.path.join(package_dir, 'test_data', '_static', os.path.basename(fig_name))
+    images_are_similar = py_tools.render_similarly(fig_name, reference_image)
+
+    #test fails if images are not similar
+    assert images_are_similar
+
+    if os.environ.get("UPDATE_DOC_ARTIFACTS") == "1":
+        copy_to_static(fig_name)
+
+
+
+# -----------------------------------------------------------------------------
+# On-the-fly accumulation
+# -----------------------------------------------------------------------------
+@pytest.mark.doc_artifact
+def test_accumulation(copy_to_static, setup_values_and_palettes, plot_img):
+    (undetect, missing, ref_color_map, 
+     pr_color_map, acc_color_map,
+     package_dir) = setup_values_and_palettes
+
+    # DOCS:compute_accumulation_begins
+
+    import os
+    import pickle
+    import datetime
+    import domutils.radar_tools as radar_tools
+    import domutils._py_tools as py_tools
+
+    #1h accumulations of precipitation
+    end_date = datetime.datetime(2019, 10, 31, 16, 30, 0, tzinfo=datetime.timezone.utc)
+    duration = 60.  #duration of accumulation in minutes
+
+    data_path = package_dir + '/test_data/odimh5_radar_composites/'
+    data_recipe = '%Y/%m/%d/qcomp_%Y%m%d%H%M.h5'
+    dat_dict = radar_tools.get_accumulation(end_date=end_date,
+                                            duration=duration,
+                                            data_path=data_path,
+                                            data_recipe=data_recipe,
+                                            latlon=True)
+    
+    #show data
+    fig_name = os.path.join(package_dir, 'test_results', 'radar_tutorial', 
+                            'one_hour_accum_orig_grid.svg')
+    title = '1h accumulation original grid'
+    units = '[mm]'
+    data       = dat_dict['accumulation']
+    latitudes  = dat_dict['latitudes']
+    longitudes = dat_dict['longitudes']
+    plot_img(fig_name, title, units, data, latitudes, longitudes,
+             pr_color_map, equal_legs=True)
+
+    # DOCS:compute_accumulation_ends
+
+    #compare image with saved reference
+    reference_image = os.path.join(package_dir, 'test_data', '_static', os.path.basename(fig_name))
+    images_are_similar = py_tools.render_similarly(fig_name, reference_image)
+
+    #test fails if images are not similar
+    assert images_are_similar
+
+    if os.environ.get("UPDATE_DOC_ARTIFACTS") == "1":
+        copy_to_static(fig_name)
+
+    # DOCS:combine_options_begins
+
+    # destination grid
+    with open(package_dir + '/test_data/pal_demo_data.pickle', 'rb') as f:
+        data_dict = pickle.load(f)
+    gem_lon = data_dict['longitudes']    #2D longitudes [deg]
+    gem_lat = data_dict['latitudes']     #2D latitudes  [deg]
+
+    dat_dict = radar_tools.get_accumulation(end_date=end_date,
+                                            duration=duration,
+                                            data_path=data_path,
+                                            data_recipe=data_recipe,
+                                            dest_lon=gem_lon,
+                                            dest_lat=gem_lat,
+                                            median_filt=3,
+                                            smooth_radius=12.,
+                                            latlon=True)
+    
+    #if you were to look a "INFO" level logs, you would see what is going on under the hood:
+    #
+    # get_accumulation starting
+    # get_instantaneous, getting data for:  2019-10-31 16:30:00
+    # read_h5_composite: reading: b'DBZH' from: .../odimh5_radar_composites/2019/10/31/qcomp_201910311630.h5
+    # get_instantaneous, applying median filter
+    # get_instantaneous, getting data for:  2019-10-31 16:20:00
+    # read_h5_composite: reading: b'DBZH' from: .../odimh5_radar_composites/2019/10/31/qcomp_201910311620.h5
+    # get_instantaneous, applying median filter
+    # get_instantaneous, getting data for:  2019-10-31 16:10:00
+    # read_h5_composite: reading: b'DBZH' from: .../odimh5_radar_composites/2019/10/31/qcomp_201910311610.h5
+    # get_instantaneous, applying median filter
+    # get_instantaneous, getting data for:  2019-10-31 16:00:00
+    # read_h5_composite: reading: b'DBZH' from: .../odimh5_radar_composites/2019/10/31/qcomp_201910311600.h5
+    # get_instantaneous, applying median filter
+    # get_instantaneous, getting data for:  2019-10-31 15:50:00
+    # read_h5_composite: reading: b'DBZH' from: .../odimh5_radar_composites/2019/10/31/qcomp_201910311550.h5
+    # get_instantaneous, applying median filter
+    # get_instantaneous, getting data for:  2019-10-31 15:40:00
+    # read_h5_composite: reading: b'DBZH' from: .../odimh5_radar_composites/2019/10/31/qcomp_201910311540.h5
+    # get_instantaneous, applying median filter
+    # get_accumulation, computing average precip rate in accumulation period
+    # get_accumulation, interpolating to destination grid
+    # get_accumulation computing accumulation from avg precip rate
+    # get_accumulation done
+    
+    #show data
+    fig_name = os.path.join(package_dir, 'test_results', 'radar_tutorial', 
+                            'one_hour_accum_interpolated.svg')
+    title = '1h accum, filtered and interpolated'
+    units = '[mm]'
+    data       = dat_dict['accumulation']
+    latitudes  = dat_dict['latitudes']
+    longitudes = dat_dict['longitudes']
+    plot_img(fig_name, title, units, data, latitudes, longitudes,
+             pr_color_map, equal_legs=True)
+
+    # DOCS:combine_options_ends
+
+    #compare image with saved reference
+    reference_image = os.path.join(package_dir, 'test_data', '_static', os.path.basename(fig_name))
+    images_are_similar = py_tools.render_similarly(fig_name, reference_image)
+
+    #test fails if images are not similar
+    assert images_are_similar
+
+    if os.environ.get("UPDATE_DOC_ARTIFACTS") == "1":
+        copy_to_static(fig_name)
+
+
+
+# -----------------------------------------------------------------------------
+# Stage IV accumulations
+# -----------------------------------------------------------------------------
+@pytest.mark.doc_artifact
+def test_stage_4(copy_to_static, setup_values_and_palettes, plot_img):
+    (undetect, missing, ref_color_map, 
+     pr_color_map, acc_color_map,
+     package_dir) = setup_values_and_palettes
+    # DOCS:stage_4_basic_begins
+
+    import os
+    import datetime
+    import pickle
+    import domutils.radar_tools as radar_tools
+    import domutils._py_tools as py_tools
+
+    #6h accumulations of precipitation
+    end_date = datetime.datetime(2019, 10, 31, 18, 0, tzinfo=datetime.timezone.utc)
+    duration = 360.  #duration of accumulation in minutes here 6h
+
+    data_path = package_dir + '/test_data/stage4_composites/'
+    data_recipe = 'ST4.%Y%m%d%H.06h' #note the '06h' for a 6h accumulation file
+    dat_dict = radar_tools.get_accumulation(end_date=end_date,
+                                            duration=duration,
+                                            data_path=data_path,
+                                            data_recipe=data_recipe,
+                                            latlon=True)
+    
+    #show data
+    fig_name = os.path.join(package_dir, 'test_results', 'radar_tutorial', 
+                            'stageIV_six_hour_accum_orig_grid.svg')
+    title = '6h accumulation original grid'
+    units = '[mm]'
+    data       = dat_dict['accumulation']
+    latitudes  = dat_dict['latitudes']
+    longitudes = dat_dict['longitudes']
+    plot_img(fig_name, title, units, data, latitudes, longitudes,
+             acc_color_map, equal_legs=True)
+
+    # DOCS:stage_4_basic_ends
+
+    #compare image with saved reference
+    reference_image = os.path.join(package_dir, 'test_data', '_static', os.path.basename(fig_name))
+    images_are_similar = py_tools.render_similarly(fig_name, reference_image)
+
+    #test fails if images are not similar
+    assert images_are_similar
+
+    if os.environ.get("UPDATE_DOC_ARTIFACTS") == "1":
+        copy_to_static(fig_name)
+
+
+    # DOCS:stage_4_maniputate_begins
+
+    #6h average precipitation rate on 10km grid
+    # destination grid
+    with open(package_dir + '/test_data/pal_demo_data.pickle', 'rb') as f:
+        data_dict = pickle.load(f)
+    gem_lon = data_dict['longitudes']    #2D longitudes [deg]
+    gem_lat = data_dict['latitudes']     #2D latitudes  [deg]
+
+    dat_dict = radar_tools.get_accumulation(desired_quantity='avg_precip_rate', #what quantity want
+                                            end_date=end_date,
+                                            duration=duration,
+                                            data_path=data_path,
+                                            data_recipe=data_recipe,
+                                            dest_lon=gem_lon,       #lat/lon of 10km grid
+                                            dest_lat=gem_lat,
+                                            smooth_radius=12.)  #use smoothing radius of 12km for the interpolation
+    
+    #show data
+    fig_name = os.path.join(package_dir, 'test_results', 'radar_tutorial', 
+                            'stageIV_six_hour_pr_10km_grid.svg')
+    title = '6h average precip rate on 10km grid'
+    units = '[mm/h]'
+    data       = dat_dict['avg_precip_rate']
+    latitudes  = gem_lat
+    longitudes = gem_lon
+    plot_img(fig_name, title, units, data, latitudes, longitudes,
+             pr_color_map, equal_legs=True)
+
+    # DOCS:stage_4_maniputate_ends
+
+    #compare image with saved reference
+    reference_image = os.path.join(package_dir, 'test_data', '_static', os.path.basename(fig_name))
+    images_are_similar = py_tools.render_similarly(fig_name, reference_image)
+
+    #test fails if images are not similar
+    assert images_are_similar
+
+    if os.environ.get("UPDATE_DOC_ARTIFACTS") == "1":
+        copy_to_static(fig_name)
+
+    # DOCS:stage_4_build_accum_begins
+
+    #3h accumulation from three 1h accumulations file
+    end_date = datetime.datetime(2019, 10, 31, 23, 0)
+    duration = 180.  #duration of accumulation in minutes here 3h
+    data_recipe = 'ST4.%Y%m%d%H.01h' #note the '01h' for a 1h accumulation file
+    dat_dict = radar_tools.get_accumulation(end_date=end_date,
+                                            duration=duration,
+                                            data_path=data_path,
+                                            data_recipe=data_recipe,
+                                            dest_lon=gem_lon,   #lat/lon of 10km grid
+                                            dest_lat=gem_lat,
+                                            smooth_radius=5.)  #use smoothing radius of 5km for the interpolation
+    
+    #show data
+    fig_name = os.path.join(package_dir, 'test_results', 'radar_tutorial', 
+                            'stageIV_3h_accum_10km_grid.svg')
+    title = '3h accumulation on 10km grid'
+    units = '[mm]'
+    data       = dat_dict['accumulation']
+    latitudes  = gem_lat
+    longitudes = gem_lon
+    plot_img(fig_name, title, units, data, latitudes, longitudes,
+             acc_color_map, equal_legs=True)
+
+    # DOCS:stage_4_build_accum_ends
+
+    #compare image with saved reference
+    reference_image = os.path.join(package_dir, 'test_data', '_static', os.path.basename(fig_name))
+    images_are_similar = py_tools.render_similarly(fig_name, reference_image)
+
+    #test fails if images are not similar
+    assert images_are_similar
+
+    if os.environ.get("UPDATE_DOC_ARTIFACTS") == "1":
+        copy_to_static(fig_name)
+
+
 
 if __name__ == '__main__':
     test_baltrad_odim_h5(setup_values_and_palettes, plot_img)

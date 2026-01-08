@@ -179,6 +179,11 @@ def render_similarly(new_image_file, reference_image_file,
     image1 = Image.open(new_file_cp)
     image2 = Image.open(ref_file_cp)
 
+    if extension_new == '.gif':
+        # gif are encoded differently and need to be decoded
+        image1 = image1.convert("RGB")
+        image2 = image2.convert("RGB")
+
     #if image size is not the same, then images are considered different
     if image1.size != image2.size:
         if verbose > 0 :
