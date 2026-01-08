@@ -40,18 +40,22 @@ Baltrad ODIM H5
     .. image:: _static/original_reflectivity.svg
         :align: center
 
-..
     
-    MRMS precipitation rates in grib2 format
-    ----------------------------------------------
-    
-    Reading MRMS precipitation rates provided in grib2 format.
+MRMS precipitation rates in grib2 format
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+    Reading precipitation rates from MRMS is done in a very similar way with the 
+    *get_instantaneous* method.
     
     .. literalinclude:: ../domutils/radar_tools/tests/test_radar_tutorial.py
        :language: python
        :start-after: DOCS:mrms_grib2_begins
        :end-before: DOCS:mrms_grib2_ends
+
+    .. image:: _static/mrms_precip_rate.svg
+        :align: center
     
+..
     
     4-km mosaics from URP
     ----------------------------------------------

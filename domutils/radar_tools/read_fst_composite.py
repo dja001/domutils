@@ -109,6 +109,7 @@ def read_fst_composite(fst_file:   str=None,
     datev = fst_dict['meta']['datev']
     date_obj = RPNDate(datev)
     valid_date = date_obj.toDateTime()
+    valid_date = valid_date.replace(tzinfo=datetime.timezone.utc)
 
     #missing and undetect depend on how data was encoded in fst file, this is very annoying...
     if this_var == 'RDPR':

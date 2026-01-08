@@ -8,6 +8,10 @@ Please use the following tags when editing this file:
 *Removed* for now removed features.
 *Fixed* for any bug fixes. 
 
+## [2.2.2] - 2026-01-10
+### Changed
+- geo_tools  points in space (say for a Robinson peojection) are now handled before being passed to kdtree
+- radar_tools  all readear now return time in UTC and not naive timestamps
 
 ## [2.2.1] - 2025-11-26
 ### Changed

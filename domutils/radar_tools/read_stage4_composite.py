@@ -115,6 +115,7 @@ def read_stage4_composite(st4_file:   str=None,
     
     #make datestamp for output
     valid_date = grb.analDate + datetime.timedelta(hours=timestepval)
+    valid_date = valid_date.replace(tzinfo=datetime.timezone.utc)
     
     #construct a fake quality index = 1 wherever we have data or undetect
     total_quality_index = np.ones_like(values)

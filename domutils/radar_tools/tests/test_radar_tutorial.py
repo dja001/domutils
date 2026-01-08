@@ -1,3 +1,14 @@
+# to run only one test
+#
+# pytest -vs  test_geo_tools.py::test_projinds_simple_example 
+# 
+#
+# To run only tests that make figures used in docs 
+# and copy them to docs/_static
+# run with 
+# UPDATE_DOC_ARTIFACTS=1 pytest -m doc_artifact
+
+
 import pytest
 import os
 import numpy as np
@@ -13,10 +24,26 @@ def plot_img():
     def _plot_img(fig_name, title, units, data, latitudes, longitudes,
                   colormap, equal_legs=False ):
     
+        import matplotlib as mpl
         import matplotlib.pyplot as plt
         import cartopy.crs as ccrs
         import cartopy.feature as cfeature
         import domutils.geo_tools as geo_tools
+        import domutils._py_tools as py_tools
+
+        # matplotlib global settings
+        dpi = 400             # density of pixel for figure
+        mpl.rcParams.update({
+            'font.family': 'Latin Modern Roman',
+            'font.size': 24,
+            'axes.titlesize': 24,
+            'axes.labelsize': 24,
+            'xtick.labelsize': 20,
+            'ytick.labelsize': 20,
+            'legend.fontsize': 20,
+            'figure.dpi': dpi,
+            'savefig.dpi': dpi,
+            })
     
         #pixel density of image to plot
         ratio = .8
@@ -70,8 +97,11 @@ def plot_img():
         #plot border 
         #proj_inds.plot_border(ax1, linewidth=.5)
     
+        # make sure output directory exists
+        py_tools.parallel_mkdir(os.path.dirname(fig_name))
+
         #save output
-        plt.savefig(fig_name,dpi=400)
+        plt.savefig(fig_name)
         plt.close(fig)
     
        # DOCS:plot_img_ends
@@ -121,7 +151,8 @@ def setup_values_and_palettes():
 # Baltrad ODIM H5
 # -----------------------------------------------------------------------------
 
-def test_baltrad_odim_h5(setup_values_and_palettes, plot_img):
+@pytest.mark.doc_artifact
+def test_baltrad_odim_h5(copy_to_static, setup_values_and_palettes, plot_img):
     undetect, missing, ref_color_map, pr_color_map, acc_color_map = setup_values_and_palettes
 
     # DOCS:baltrad_odim_h5_begins
@@ -137,7 +168,7 @@ def test_baltrad_odim_h5(setup_values_and_palettes, plot_img):
     # where is the data
     domutils_dir = os.path.dirname(domutils.__file__)
     package_dir  = os.path.dirname(domutils_dir)
-    data_path = os.path.join(package_dir, 'test_data/odimh5_radar_composites/')
+    data_path = os.path.join(package_dir, 'test_data', 'odimh5_radar_composites/')
     
     # how to construct filename. 
     #   See documentation for the *strftime* method in the datetime module
@@ -158,8 +189,8 @@ def test_baltrad_odim_h5(setup_values_and_palettes, plot_img):
     assert dat_dict['longitudes'].shape == (2882, 2032)
 
     #show data
-    fig_name = os.path.join(package_dir, 'test_results/radar_tutorial/original_reflectivity.svg')
-    py_tools.parallel_mkdir(os.path.dirname(fig_name))
+    fig_name = os.path.join(package_dir, 'test_results', 'radar_tutorial', 
+                            'original_reflectivity.svg')
     title = 'Odim H5 reflectivity on original grid'
     units = '[dBZ]'
     data       = dat_dict['reflectivity']
@@ -169,14 +200,11 @@ def test_baltrad_odim_h5(setup_values_and_palettes, plot_img):
     plot_img(fig_name, title, units, data, latitudes, longitudes,
              ref_color_map)
 
+    # DOCS:baltrad_odim_h5_ends
+
     #compare image with saved reference
-    #copy reference image to testdir
     reference_image = package_dir+'/test_data/_static/'+os.path.basename(fig_name)
     images_are_similar = py_tools.render_similarly(fig_name, reference_image)
-
-    if images_are_similar:
-        log_dir = './logs'
-        shutil.rmtree(log_dir)
 
     #test fails if images are not similar
     assert images_are_similar
@@ -185,26 +213,77 @@ def test_baltrad_odim_h5(setup_values_and_palettes, plot_img):
         copy_to_static(fig_name)
 
 
-    # DOCS:baltrad_odim_h5_ends
+# -----------------------------------------------------------------------------
+# MRMS precipitation rates in grib2 format
+# -----------------------------------------------------------------------------
+
+@pytest.mark.doc_artifact
+def test_mrms_grib2(copy_to_static, setup_values_and_palettes, plot_img):
+    undetect, missing, ref_color_map, pr_color_map, acc_color_map = setup_values_and_palettes
+    # DOCS:mrms_grib2_begins
+
+    import os
+    import datetime
+    import domutils
+    import domutils.radar_tools as radar_tools
+    import domutils._py_tools as py_tools
+    
+    #when we want data
+    this_date = datetime.datetime(2019, 10, 31, 16, 30, 0, tzinfo=datetime.timezone.utc)
+    
+    #where is the data
+    domutils_dir = os.path.dirname(domutils.__file__)
+    package_dir  = os.path.dirname(domutils_dir)
+    data_path = package_dir + '/test_data/mrms_grib2/'
+    
+    #how to construct filename. 
+    #   See documentation for the *strftime* method in the datetime module
+    #   Note the *.grib2* extention, this is where we specify that we wants mrms data
+    data_recipe = 'PrecipRate_00.00_%Y%m%d-%H%M%S.grib2'
+    
+    #Note that the file RadarQualityIndex_00.00_20191031-163000.grib2.gz must be present in the 
+    #same directory for the quality index to be defined.
+     
+    #get precipitation on native grid
+    #with latlon=True, we will also get the data coordinates
+    dat_dict = radar_tools.get_instantaneous(valid_date=this_date,
+                                             data_path=data_path,
+                                             data_recipe=data_recipe,
+                                             desired_quantity='precip_rate',
+                                             latlon=True)
+    #show what we just got
+    # test what we just got
+    assert dat_dict['valid_date'] == this_date
+    assert dat_dict['precip_rate'].shape == (3500, 7000)
+    assert dat_dict['total_quality_index'].shape == (3500, 7000)
+    assert dat_dict['latitudes'].shape == (3500, 7000)
+    assert dat_dict['longitudes'].shape == (3500, 7000)
+    
+    #show data
+    fig_name = os.path.join(package_dir, 'test_results', 'radar_tutorial', 
+                            'mrms_precip_rate.svg')
+    title = 'MRMS precip rates on original grid'
+    units = '[mm/h]'
+    data       = dat_dict['precip_rate']
+    latitudes  = dat_dict['latitudes']
+    longitudes = dat_dict['longitudes']
+    
+    plot_img(fig_name, title, units, data, latitudes, longitudes,
+             pr_color_map, equal_legs=True)
+
+    # DOCS:mrms_grib2_ends
+
+    #compare image with saved reference
+    reference_image = package_dir+'/test_data/_static/'+os.path.basename(fig_name)
+    images_are_similar = py_tools.render_similarly(fig_name, reference_image)
+
+    #test fails if images are not similar
+    assert images_are_similar
+
+    if os.environ.get("UPDATE_DOC_ARTIFACTS") == "1":
+        copy_to_static(fig_name)
 
 
-## -----------------------------------------------------------------------------
-## MRMS precipitation rates in grib2 format
-## -----------------------------------------------------------------------------
-#
-#def test_mrms_grib2():
-#    # DOCS:mrms_grib2_begins
-#
-#    from domutils.geo_tools import radar_tools
-#
-#    parentdir = os.path.dirname(__file__)
-#    grib_file = os.path.join(parentdir, "test_data/mrms/mrms_rate.grib2")
-#
-#    mrms = radar_tools.read_mrms_grib2(grib_file)
-#
-#    # DOCS:mrms_grib2_ends
-#
-#
 ## -----------------------------------------------------------------------------
 ## 4-km mosaics from URP
 ## -----------------------------------------------------------------------------

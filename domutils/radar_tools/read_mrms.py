@@ -94,6 +94,7 @@ def read_mrms(mrms_file:  str=None,
     #get valid date from filename
     date_string = mrms_file[-21:-6]
     valid_date = datetime.datetime.strptime(date_string, '%Y%m%d-%H%M%S')
+    valid_date = valid_date.replace(tzinfo=datetime.timezone.utc)
 
     #get values using PySteps reader
     values, _, metadata = import_mrms_grib(mrms_file)

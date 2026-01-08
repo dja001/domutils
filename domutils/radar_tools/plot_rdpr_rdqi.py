@@ -106,16 +106,13 @@ def plot_rdpr_rdqi(fst_file:   str=None,
         'xtick.labelsize': 20,
         'ytick.labelsize': 20,
         'legend.fontsize': 20,
+        'figure.dpi': dpi,
+        'savefig.dpi': dpi,
         })
 
     # Use this for editable text in svg
     mpl.rcParams['text.usetex']  = False
     mpl.rcParams['svg.fonttype'] = 'none'
-    # Hi def figure
-    mpl.rcParams.update({
-        'figure.dpi': dpi,
-        'savefig.dpi': dpi,
-        })
 
     # pretty font in figures
     # instantiate figure

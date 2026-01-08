@@ -122,7 +122,9 @@ def get_instantaneous(valid_date:       Optional[Any]   = None,
 
     #defaut time is now
     if valid_date is None:
-        valid_date = datetime.datetime()
+        valid_date = datetime.now(datetime.timezone.utc)
+    else:
+        valid_date = valid_date.replace(tzinfo=datetime.timezone.utc)
 
     logger.info('get_instantaneous, getting data for: '+str( valid_date))
 
@@ -169,7 +171,7 @@ def get_instantaneous(valid_date:       Optional[Any]   = None,
         try : 
             minutes = this_time.minute
         except :
-            raise ValueError('Could get minute from datetime object valid_date*')
+            raise ValueError(f'Could not get minute from datetime object at {this_time}')
 
         for tt in np.arange(0, float(nearest_time)):
             this_time = valid_date - datetime.timedelta(minutes=tt)
