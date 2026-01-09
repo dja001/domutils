@@ -212,8 +212,10 @@ class ProjInds():
             
             if extent is not None:
                 # we assume lat/lon extent
-                # check that values passed ae compatible
-                extent[0:2] = normalize_longitudes(extent[0:2])
+                # check that values passed are compatible
+                # this expression works even if extent is passed as a tuple
+                extent = (*normalize_longitudes(extent[:2]), *extent[2:])
+
                 if ((extent[0] > 180.) or (extent[0] < -180.) or
                     (extent[1] > 180.) or (extent[1] < -180.) or
                     (extent[2] >  90.) or (extent[2] <  -90.) or

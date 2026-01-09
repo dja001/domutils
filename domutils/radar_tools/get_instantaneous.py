@@ -136,9 +136,7 @@ def get_instantaneous(valid_date:       Optional[Any]   = None,
 
     #default data path and recipe point to operational h5 outputs
     if data_path is None:
-        data_path = '/space/hall2/sitestore/eccc/cmod/prod/hubs/radar/BALTRAD/Outcoming/Composites'
-    if data_recipe is None:
-        data_recipe = '/%Y/%m/%d/qcomp_%Y%m%d%H%M.h5'
+        raise ValueError('You need to specify the data_path!')
 
     #defaut value for desired quantity
     if desired_quantity is None:
@@ -189,7 +187,7 @@ def get_instantaneous(valid_date:       Optional[Any]   = None,
     except :
         raise ValueError('Could not build filename from datetime object')
     #complete filename of data file to read
-    data_file = data_path + this_file_name
+    data_file = os.path.join(data_path, this_file_name)
 
 
     #
