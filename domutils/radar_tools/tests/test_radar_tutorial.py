@@ -119,7 +119,6 @@ def setup_values_and_palettes():
     reference_figure_dir = os.path.join(package_dir, 'test_data',    'reference_figures', 'test_radar_tutorial')
 
     py_tools.parallel_mkdir(generated_figure_dir)
-    py_tools.parallel_mkdir(reference_figure_dir)
     
     # flags
     undetect = -3333.

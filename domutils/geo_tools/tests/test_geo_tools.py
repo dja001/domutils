@@ -26,7 +26,6 @@ def setup_values_and_palettes():
     reference_figure_dir = os.path.join(package_dir, 'test_data',    'reference_figures', 'test_geo_tools')
 
     py_tools.parallel_mkdir(generated_figure_dir)
-    py_tools.parallel_mkdir(reference_figure_dir)
 
     # DOCS:values_and_palette_ends
 

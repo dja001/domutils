@@ -257,10 +257,11 @@ def test_renders_in_non_geo_plots():
     #setting up directories
     domutils_dir = os.path.dirname(domutils.__file__)
     package_dir  = os.path.dirname(domutils_dir)
-    test_results_dir = package_dir+'/test_results/make_radar_fst/'
-    if not os.path.isdir(test_results_dir):
-        os.makedirs(test_results_dir)
 
+    generated_figure_dir = os.path.join(package_dir, 'test_results', 'generated_figures', 'test_legs')
+    reference_figure_dir = os.path.join(package_dir, 'test_data',    'reference_figures', 'test_legs')
+
+    py_tools.parallel_mkdir(generated_figure_dir)
     
     #Gaussian bell mock data
     npts = 1024
@@ -305,15 +306,12 @@ def test_renders_in_non_geo_plots():
                                pal_format='{:2.0f}')
     
     #newly generated figure
-    new_figure = test_results_dir+'three_exceptions.svg'
-    plt.savefig(new_figure)
-
-    #pre saved figure for what the results should be
-    reference_image = package_dir+'/test_data/_static/'+'three_exceptions.svg'
+    generated_figure = os.path.join(generated_figure_dir, 'three_exceptions.svg')
+    plt.savefig(generated_figure)
 
     #compare image with saved reference
-    #copy reference image to testdir
-    images_are_similar = py_tools.render_similarly(new_figure, reference_image)
+    reference_figure = os.path.join(reference_figure_dir, os.path.basename(generated_figure))
+    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure)
 
     #test fails if images are not similar
     assert images_are_similar
