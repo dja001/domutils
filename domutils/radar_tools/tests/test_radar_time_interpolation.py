@@ -1,19 +1,12 @@
 # to run only one test
 #
 # pytest -vs  test_geo_tools.py::test_projinds_simple_example 
-# 
-#
-# To run only tests that make figures used in docs 
-# and copy them to docs/_static
-# run with 
-# UPDATE_DOC_ARTIFACTS=1 pytest -m doc_artifact
 
 
 import pytest
 import os
 import numpy as np
 
-@pytest.mark.doc_artifact
 def test_time_interpolation():
     """ This test runs obs_process and generates images from the output files
 
@@ -38,23 +31,19 @@ def test_time_interpolation():
     import domutils.legs as legs
     import domutils.geo_tools as geo_tools
     import domutils.radar_tools as radar_tools
-    import domutils._py_tools as py_tools
     import domcmc.fst_tools as fst_tools
+    import domutils._py_tools as py_tools
     
     #setting up directories
     domutils_dir = os.path.dirname(domutils.__file__)
     package_dir  = os.path.dirname(domutils_dir)
-    test_data_dir = os.path.join(package_dir, 'test_data/')
-    test_results_dir = os.path.join(package_dir, 'test_results/')
-    figure_dir = os.path.join(test_results_dir, 't_interp_demo/')
+    test_data_dir = os.path.join(package_dir, 'test_data')
+    generated_files_dir = os.path.join(package_dir,  'test_results', 'generated_files',   'test_radar_time_interpolation')
+    generated_figure_dir = os.path.join(package_dir, 'test_results', 'generated_figures', 'test_radar_time_interpolation')
+    reference_figure_dir = os.path.join(package_dir, 'test_data',    'reference_figures', 'test_radar_time_interpolation')
 
-    if not os.path.isdir(figure_dir):
-        os.makedirs(figure_dir)
-    if not os.path.isdir(test_results_dir):
-        os.makedirs(test_results_dir)
-    log_dir = './logs'
-    if not os.path.isdir(log_dir):
-        os.makedirs(log_dir)
+    py_tools.parallel_mkdir(generated_files_dir)
+    py_tools.parallel_mkdir(generated_figure_dir)
     
     # matplotlib global settings
     dpi = 400
@@ -85,26 +74,28 @@ def test_time_interpolation():
         output_file_format       = 'fst'
         complete_dataset         = 'False'
         t_interp_method          = 'nowcast'
-        input_data_dir           = test_data_dir+'/odimh5_radar_composites/'
+        input_data_dir           = os.path.join(test_data_dir, 'odimh5_radar_composites')
         input_file_struc         = '%Y/%m/%d/qcomp_%Y%m%d%H%M.h5'
-        h5_latlon_file           = test_data_dir+'radar_continental_2.5km_2882x2032.pickle'
-        sample_pr_file           = test_data_dir+'hrdps_5p1_prp0.fst'
+        h5_latlon_file           = os.path.join(test_data_dir, 'radar_continental_2.5km_2882x2032.pickle')
+        sample_pr_file           = os.path.join(test_data_dir, 'hrdps_5p1_prp0.fst')
         ncores                   = 40    # use as many cpus as you have on your system 
         median_filt              = 3    
-        output_dir               = test_results_dir+'/obs_process_t_interp/'
+        output_dir               = os.path.join(generated_files_dir, 'obs_process_t_interp')
         processed_file_struc     = '%Y%m%d%H%M.fst'
         tinterpolated_file_struc = '%Y%m%d%H.fst'
         log_level                = 'WARNING'
+
     # DOCS:class_ends
 
-
     # DOCS:process_data_begins
+
     # all the arguments are attributes of the args object
     args = ArgsClass()
     
     # observations are processed here
     # the output are files in different directories
     radar_tools.obs_process(args)
+
     # DOCS:process_data_ends
 
     # DOCS:function_definition_begins
@@ -197,7 +188,7 @@ def test_time_interpolation():
     proj_aea = ccrs.RotatedPole(pole_latitude=pole_latitude, pole_longitude=pole_longitude)
     
     # get lat/lon of input data from one of the h5 files 
-    dum_h5_file = test_data_dir+'/odimh5_radar_composites/2022/05/21/qcomp_202205212100.h5'
+    dum_h5_file = os.path.join(test_data_dir, 'odimh5_radar_composites', '2022/05/21/qcomp_202205212100.h5')
     input_ll    = radar_tools.read_h5_composite(dum_h5_file, latlon=True)
     input_lats  = input_ll['latitudes']
     input_lons  = input_ll['longitudes']
@@ -251,7 +242,7 @@ def test_time_interpolation():
             # processed data on destination grid
             dat_dict = radar_tools.get_instantaneous(desired_quantity='precip_rate',
                                                      valid_date=source_valid_time,
-                                                     data_path=args.output_dir+'processed/',
+                                                     data_path=os.path.join(args.output_dir, 'processed'),
                                                      data_recipe=args.processed_file_struc)
             x0 = sp_w + rec_w + sp_m
             y0 = sp_h
@@ -291,7 +282,7 @@ def test_time_interpolation():
                        pal_units='[unitless]')
     
             # save output
-            fig_name = os.path.join(figure_dir, f'{this_frame:02}_time_interpol_demo_plain.png')
+            fig_name = os.path.join(generated_figure_dir, f'{this_frame:02}_time_interpol_demo_plain.png')
             plt.savefig(fig_name)
             plt.close(fig)
             print(f'done with {fig_name}')
@@ -309,24 +300,20 @@ def test_time_interpolation():
     # DOCS:animation_frames_ends
 
     #compare image with saved reference
-    fig_name = os.path.join(figure_dir, '01_time_interpol_demo_plain.gif')
-    reference_image = package_dir+'/test_data/_static/'+os.path.basename(fig_name)
-    images_are_similar = py_tools.render_similarly(fig_name, reference_image, tol=1.)
+    fig_name = os.path.join(generated_figure_dir, '01_time_interpol_demo_plain.gif')
+    reference_figure = os.path.join(reference_figure_dir, os.path.basename(fig_name))
+    images_are_similar = py_tools.render_similarly(fig_name, reference_figure, tol=1.)
 
     #test fails if images are not similar
     assert images_are_similar
 
     # DOCS:animated_gif_begins
-    movie_name = os.path.join(figure_dir, '_static', 
-                              'time_interpol_plain_movie.gif')
-    gif_list = sorted(glob.glob(figure_dir+'*plain.gif'))   
+    movie_name = os.path.join(generated_figure_dir, 'time_interpol_plain_movie.gif')
+    gif_list = sorted(glob.glob(generated_figure_dir+'*plain.gif'))   
     cmd = ['convert', '-loop', '0', '-delay', '30']+gif_list+[movie_name]
     process = subprocess.Popen(cmd, stdout=subprocess.PIPE)
     output, error = process.communicate()
     # DOCS:animated_gif_ends
-
-    if os.environ.get("UPDATE_DOC_ARTIFACTS") == "1":
-        copy_to_static(movie_name)
 
     # DOCS:accumulation_begins
     end_date = datetime.datetime(2022,5,21,21,40, tzinfo=datetime.timezone.utc)
@@ -357,7 +344,7 @@ def test_time_interpolation():
     dat_dict = radar_tools.get_accumulation(end_date=end_date,
                                             duration=duration,
                                             input_dt=10., # minutes
-                                            data_path=args.output_dir+'/processed/', 
+                                            data_path=os.path.join(args.output_dir, 'processed'), 
                                             data_recipe=args.processed_file_struc)
     x0 = 2.*sp_w + rec_w
     y0 = sp_h
@@ -387,24 +374,16 @@ def test_time_interpolation():
                output_proj_obj, pr_colormap)
     
     # save output
-    fig_name = os.path.join(figure_dir, 'time_interpol_demo_accum_plain.svg')
+    fig_name = os.path.join(generated_figure_dir, 'time_interpol_demo_accum_plain.svg')
     plt.savefig(fig_name)
     plt.close(fig)
     
     # DOCS:accumulation_ends
 
     #compare image with saved reference
-    reference_image = os.path.join(package_dir, 'test_data', '_static/', os.path.basename(fig_name))
-    images_are_similar = py_tools.render_similarly(fig_name, reference_image)
+    reference_figure = os.path.join(reference_figure_dir, os.path.basename(fig_name))
+    images_are_similar = py_tools.render_similarly(fig_name, reference_figure)
 
     #test fails if images are not similar
     assert images_are_similar
-
-    if os.environ.get("UPDATE_DOC_ARTIFACTS") == "1":
-        copy_to_static(fig_name)
-
-
-    # we are done, remove logs
-    if os.path.isdir(log_dir):
-        shutil.rmtree(log_dir)
 
