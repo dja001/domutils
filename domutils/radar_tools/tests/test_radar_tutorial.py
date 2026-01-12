@@ -1,12 +1,6 @@
 # to run only one test
 #
 # pytest -vs  test_geo_tools.py::test_projinds_simple_example 
-# 
-#
-# To run only tests that make figures used in docs 
-# and copy them to docs/_static
-# run with 
-# UPDATE_DOC_ARTIFACTS=1 pytest -m doc_artifact
 
 
 import pytest
@@ -21,7 +15,7 @@ import numpy as np
 @pytest.fixture(scope="module")
 def plot_img():
     # DOCS:plot_img_begins
-    def _plot_img(fig_name, title, units, data, latitudes, longitudes,
+    def _plot_img(generated_figure, title, units, data, latitudes, longitudes,
                   colormap, equal_legs=False ):
     
         import matplotlib as mpl
@@ -98,10 +92,10 @@ def plot_img():
         #proj_inds.plot_border(ax1, linewidth=.5)
     
         # make sure output directory exists
-        py_tools.parallel_mkdir(os.path.dirname(fig_name))
+        py_tools.parallel_mkdir(os.path.dirname(generated_figure))
 
         #save output
-        plt.savefig(fig_name)
+        plt.savefig(generated_figure)
         plt.close(fig)
     
        # DOCS:plot_img_ends
@@ -119,6 +113,9 @@ def setup_values_and_palettes():
     # where is the data
     domutils_dir = os.path.dirname(domutils.__file__)
     package_dir  = os.path.dirname(domutils_dir)
+
+    generated_figure_dir = os.path.join(package_dir, 'test_results', 'generated_figures', 'test_radar_tutorial')
+    reference_figure_dir = os.path.join(package_dir, 'test_data',    'reference_figures', 'test_radar_tutorial')
     
     # flags
     undetect = -3333.
@@ -151,17 +148,19 @@ def setup_values_and_palettes():
 
     # DOCS:values_and_palette_ends
 
-    return undetect, missing, ref_color_map, pr_color_map, acc_color_map, package_dir
+    return (undetect, missing, 
+            ref_color_map, pr_color_map, acc_color_map, 
+            package_dir, generated_figure_dir, reference_figure_dir)
 
 # -----------------------------------------------------------------------------
 # Baltrad ODIM H5
 # -----------------------------------------------------------------------------
+def test_baltrad_odim_h5(setup_values_and_palettes, plot_img):
 
-@pytest.mark.doc_artifact
-def test_baltrad_odim_h5(copy_to_static, setup_values_and_palettes, plot_img):
-    (undetect, missing, ref_color_map, 
-     pr_color_map, acc_color_map,
-     package_dir) = setup_values_and_palettes
+    # comon test data
+    (undetect, missing, 
+     ref_color_map, pr_color_map, acc_color_map, 
+     package_dir, generated_figure_dir, reference_figure_dir) = setup_values_and_palettes
 
     # DOCS:baltrad_odim_h5_begins
     import os
@@ -173,7 +172,7 @@ def test_baltrad_odim_h5(copy_to_static, setup_values_and_palettes, plot_img):
     this_date = datetime.datetime(2019, 10, 31, 16, 30, 0, tzinfo=datetime.timezone.utc)
     
     # where is the data
-    data_path = os.path.join(package_dir, 'test_data', 'odimh5_radar_composites/')
+    data_path = os.path.join(package_dir, 'test_data', 'odimh5_radar_composites')
     
     # how to construct filename. 
     #   See documentation for the *strftime* method in the datetime module
@@ -194,38 +193,33 @@ def test_baltrad_odim_h5(copy_to_static, setup_values_and_palettes, plot_img):
     assert dat_dict['longitudes'].shape == (2882, 2032)
 
     #show data
-    fig_name = os.path.join(package_dir, 'test_results', 'radar_tutorial', 
-                            'original_reflectivity.svg')
+    generated_figure = os.path.join(generated_figure_dir, 'original_reflectivity.svg')
     title = 'Odim H5 reflectivity on original grid'
     units = '[dBZ]'
     data       = dat_dict['reflectivity']
     latitudes  = dat_dict['latitudes']
     longitudes = dat_dict['longitudes']
     
-    plot_img(fig_name, title, units, data, latitudes, longitudes,
+    plot_img(generated_figure, title, units, data, latitudes, longitudes,
              ref_color_map)
 
     # DOCS:baltrad_odim_h5_ends
 
     #compare image with saved reference
-    reference_image = package_dir+'/test_data/_static/'+os.path.basename(fig_name)
-    images_are_similar = py_tools.render_similarly(fig_name, reference_image)
+    reference_figure = os.path.join(reference_figure_dir, os.path.basename(generated_figure))
+    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure)
 
     #test fails if images are not similar
     assert images_are_similar
-
-    if os.environ.get("UPDATE_DOC_ARTIFACTS") == "1":
-        copy_to_static(fig_name)
 
 
 # -----------------------------------------------------------------------------
 # MRMS precipitation rates in grib2 format
 # -----------------------------------------------------------------------------
-@pytest.mark.doc_artifact
-def test_mrms_grib2(copy_to_static, setup_values_and_palettes, plot_img):
-    (undetect, missing, ref_color_map, 
-     pr_color_map, acc_color_map,
-     package_dir) = setup_values_and_palettes
+def test_mrms_grib2(setup_values_and_palettes, plot_img):
+    (undetect, missing, 
+     ref_color_map, pr_color_map, acc_color_map, 
+     package_dir, generated_figure_dir, reference_figure_dir) = setup_values_and_palettes
     # DOCS:mrms_grib2_begins
 
     import os
@@ -263,39 +257,34 @@ def test_mrms_grib2(copy_to_static, setup_values_and_palettes, plot_img):
     assert dat_dict['longitudes'].shape == (3500, 7000)
     
     #show data
-    fig_name = os.path.join(package_dir, 'test_results', 'radar_tutorial', 
-                            'mrms_precip_rate.svg')
+    generated_figure = os.path.join(generated_figure_dir, 'mrms_precip_rate.svg')
     title = 'MRMS precip rates on original grid'
     units = '[mm/h]'
     data       = dat_dict['precip_rate']
     latitudes  = dat_dict['latitudes']
     longitudes = dat_dict['longitudes']
     
-    plot_img(fig_name, title, units, data, latitudes, longitudes,
+    plot_img(generated_figure, title, units, data, latitudes, longitudes,
              pr_color_map, equal_legs=True)
 
     # DOCS:mrms_grib2_ends
 
     #compare image with saved reference
-    reference_image = os.path.join(package_dir, 'test_data', '_static', os.path.basename(fig_name))
-    images_are_similar = py_tools.render_similarly(fig_name, reference_image)
+    Reference_figure = os.path.join(reference_figure_dir, os.path.basename(generated_figure))
+    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure)
 
     #test fails if images are not similar
     assert images_are_similar
-
-    if os.environ.get("UPDATE_DOC_ARTIFACTS") == "1":
-        copy_to_static(fig_name)
 
 
 # -----------------------------------------------------------------------------
 # 4-km mosaics from URP
 # -----------------------------------------------------------------------------
 
-@pytest.mark.doc_artifact
-def test_urp_4km(copy_to_static, setup_values_and_palettes, plot_img):
-    (undetect, missing, ref_color_map, 
-     pr_color_map, acc_color_map,
-     package_dir) = setup_values_and_palettes
+def test_urp_4km(setup_values_and_palettes, plot_img):
+    (undetect, missing, 
+     ref_color_map, pr_color_map, acc_color_map, 
+     package_dir, generated_figure_dir, reference_figure_dir) = setup_values_and_palettes
     # DOCS:urp_4km_begins
 
     import os
@@ -323,37 +312,33 @@ def test_urp_4km(copy_to_static, setup_values_and_palettes, plot_img):
     assert dat_dict['longitudes'].shape == (1650, 1500)
     
     #show data
-    fig_name = os.path.join(package_dir, 'test_results', 'radar_tutorial', 
-                            'URP4km_reflectivity.svg')
+    generated_figure = os.path.join(generated_figure_dir, 'URP4km_reflectivity.svg')
     title = 'URP 4km reflectivity on original grid'
     units = '[dBZ]'
     data       = dat_dict['reflectivity']
     latitudes  = dat_dict['latitudes']
     longitudes = dat_dict['longitudes']
     
-    plot_img(fig_name, title, units, data, latitudes, longitudes,
+    plot_img(generated_figure, title, units, data, latitudes, longitudes,
              ref_color_map)
 
     # DOCS:urp_4km_ends
 
     #compare image with saved reference
-    reference_image = os.path.join(package_dir, 'test_data', '_static', os.path.basename(fig_name))
-    images_are_similar = py_tools.render_similarly(fig_name, reference_image)
+    reference_figure = os.path.join(reference_figure_dir, os.path.basename(generated_figure))
+    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure)
 
     #test fails if images are not similar
     assert images_are_similar
-
-    if os.environ.get("UPDATE_DOC_ARTIFACTS") == "1":
-        copy_to_static(fig_name)
 
 
 # -----------------------------------------------------------------------------
 # None and nearest
 # -----------------------------------------------------------------------------
 def test_none_and_nearest(setup_values_and_palettes):
-    (undetect, missing, ref_color_map, 
-     pr_color_map, acc_color_map,
-     package_dir) = setup_values_and_palettes
+    (undetect, missing, 
+     ref_color_map, pr_color_map, acc_color_map, 
+     package_dir, generated_figure_dir, reference_figure_dir) = setup_values_and_palettes
     # DOCS:return_none_begins
     import os
     import datetime
@@ -384,11 +369,10 @@ def test_none_and_nearest(setup_values_and_palettes):
 # -----------------------------------------------------------------------------
 # precip rate from dbz
 # -----------------------------------------------------------------------------
-@pytest.mark.doc_artifact
-def test_precip_rate(copy_to_static, setup_values_and_palettes, plot_img):
-    (undetect, missing, ref_color_map, 
-     pr_color_map, acc_color_map,
-     package_dir) = setup_values_and_palettes
+def test_precip_rate(setup_values_and_palettes, plot_img):
+    (undetect, missing, 
+     ref_color_map, pr_color_map, acc_color_map, 
+     package_dir, generated_figure_dir, reference_figure_dir) = setup_values_and_palettes
 
     # DOCS:wdssr_zr_begins
     import os
@@ -408,39 +392,34 @@ def test_precip_rate(copy_to_static, setup_values_and_palettes, plot_img):
                                              latlon=True)
     
     #show data  
-    fig_name = os.path.join(package_dir, 'test_results', 'radar_tutorial', 
-                            'odimh5_reflectivity_300_1p4.svg')
+    generated_figure = os.path.join(generated_figure_dir, 'odimh5_reflectivity_300_1p4.svg')
     title = 'precip rate with a=300, b=1.4 '
     units = '[mm/h]'
     data       = dat_dict['precip_rate']
     latitudes  = dat_dict['latitudes']
     longitudes = dat_dict['longitudes']
     
-    plot_img(fig_name, title, units, data, latitudes, longitudes,
+    plot_img(generated_figure, title, units, data, latitudes, longitudes,
              pr_color_map, equal_legs=True)
 
     # DOCS:wdssr_zr_ends
 
     #compare image with saved reference
-    reference_image = os.path.join(package_dir, 'test_data', '_static', os.path.basename(fig_name))
-    images_are_similar = py_tools.render_similarly(fig_name, reference_image)
+    reference_figure = os.path.join(reference_figure_dir, os.path.basename(generated_figure))
+    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure)
 
     #test fails if images are not similar
     assert images_are_similar
-
-    if os.environ.get("UPDATE_DOC_ARTIFACTS") == "1":
-        copy_to_static(fig_name)
 
 
 
 # -----------------------------------------------------------------------------
 # precip rate from dbz
 # -----------------------------------------------------------------------------
-@pytest.mark.doc_artifact
-def test_zr(copy_to_static, setup_values_and_palettes, plot_img):
-    (undetect, missing, ref_color_map, 
-     pr_color_map, acc_color_map,
-     package_dir) = setup_values_and_palettes
+def test_zr(setup_values_and_palettes, plot_img):
+    (undetect, missing, 
+     ref_color_map, pr_color_map, acc_color_map, 
+     package_dir, generated_figure_dir, reference_figure_dir) = setup_values_and_palettes
 
     # DOCS:wdssr_zr_begins
     import os
@@ -460,28 +439,24 @@ def test_zr(copy_to_static, setup_values_and_palettes, plot_img):
                                              latlon=True)
     
     #show data  
-    fig_name = os.path.join(package_dir, 'test_results', 'radar_tutorial', 
-                            'odimh5_reflectivity_300_1p4.svg')
+    generated_figure = os.path.join(generated_figure_dir, 'odimh5_reflectivity_300_1p4.svg')
     title = 'precip rate with a=300, b=1.4 '
     units = '[mm/h]'
     data       = dat_dict['precip_rate']
     latitudes  = dat_dict['latitudes']
     longitudes = dat_dict['longitudes']
     
-    plot_img(fig_name, title, units, data, latitudes, longitudes,
+    plot_img(generated_figure, title, units, data, latitudes, longitudes,
              pr_color_map, equal_legs=True)
 
     # DOCS:wdssr_zr_ends
 
     #compare image with saved reference
-    reference_image = os.path.join(package_dir, 'test_data', '_static', os.path.basename(fig_name))
-    images_are_similar = py_tools.render_similarly(fig_name, reference_image)
+    reference_figure = os.path.join(reference_figure_dir, os.path.basename(generated_figure))
+    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure)
 
     #test fails if images are not similar
     assert images_are_similar
-
-    if os.environ.get("UPDATE_DOC_ARTIFACTS") == "1":
-        copy_to_static(fig_name)
 
     # DOCS:200_1.6_begins
 
@@ -493,39 +468,33 @@ def test_zr(copy_to_static, setup_values_and_palettes, plot_img):
                                              data_recipe=data_recipe,
                                              latlon=True)
     
-    #show data
-    fig_name = os.path.join(package_dir, 'test_results', 'radar_tutorial', 
-                            'odimh5_reflectivity_200_1p6.svg')
+    #show data  
+    generated_figure = os.path.join(generated_figure_dir, 'odimh5_reflectivity_200_1p6.svg')
     title = 'precip rate with a=200, b=1.6 '
     units = '[mm/h]'
     data       = dat_dict['precip_rate']
     latitudes  = dat_dict['latitudes']
     longitudes = dat_dict['longitudes']
     
-    plot_img(fig_name, title, units, data, latitudes, longitudes,
+    plot_img(generated_figure, title, units, data, latitudes, longitudes,
              pr_color_map, equal_legs=True)
 
     # DOCS:200_1.6_ends
 
     #compare image with saved reference
-    reference_image = os.path.join(package_dir, 'test_data', '_static', os.path.basename(fig_name))
-    images_are_similar = py_tools.render_similarly(fig_name, reference_image)
+    reference_figure = os.path.join(reference_figure_dir, os.path.basename(generated_figure))
+    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure)
 
     #test fails if images are not similar
     assert images_are_similar
 
-    if os.environ.get("UPDATE_DOC_ARTIFACTS") == "1":
-        copy_to_static(fig_name)
-
 # -----------------------------------------------------------------------------
 # Median filter
 # -----------------------------------------------------------------------------
-
-@pytest.mark.doc_artifact
-def test_median_filter(copy_to_static, setup_values_and_palettes, plot_img):
-    (undetect, missing, ref_color_map, 
-     pr_color_map, acc_color_map,
-     package_dir) = setup_values_and_palettes
+def test_median_filter(setup_values_and_palettes, plot_img):
+    (undetect, missing, 
+     ref_color_map, pr_color_map, acc_color_map, 
+     package_dir, generated_figure_dir, reference_figure_dir) = setup_values_and_palettes
 
     # DOCS:median_filter_begins
     import os
@@ -546,37 +515,32 @@ def test_median_filter(copy_to_static, setup_values_and_palettes, plot_img):
                                              median_filt=3)
     
     #show data
-    fig_name = os.path.join(package_dir, 'test_results', 'radar_tutorial', 
-                            'speckle_filtered_reflectivity.svg')
+    generated_figure = os.path.join(generated_figure_dir, 'speckle_filtered_reflectivity.svg')
     title = 'Speckle filtered Odim H5 reflectivity'
     units = '[dBZ]'
     data       = dat_dict['reflectivity']
     latitudes  = dat_dict['latitudes']
     longitudes = dat_dict['longitudes']
     
-    plot_img(fig_name, title, units, data, latitudes, longitudes,
+    plot_img(generated_figure, title, units, data, latitudes, longitudes,
              ref_color_map)
 
     # DOCS:median_filter_ends
 
     #compare image with saved reference
-    reference_image = os.path.join(package_dir, 'test_data', '_static', os.path.basename(fig_name))
-    images_are_similar = py_tools.render_similarly(fig_name, reference_image)
+    reference_figure = os.path.join(reference_figure_dir, os.path.basename(generated_figure))
+    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure)
 
     #test fails if images are not similar
     assert images_are_similar
 
-    if os.environ.get("UPDATE_DOC_ARTIFACTS") == "1":
-        copy_to_static(fig_name)
-
 # -----------------------------------------------------------------------------
 # Interpolation
 # -----------------------------------------------------------------------------
-@pytest.mark.doc_artifact
-def test_interpolation(copy_to_static, setup_values_and_palettes, plot_img):
-    (undetect, missing, ref_color_map, 
-     pr_color_map, acc_color_map,
-     package_dir) = setup_values_and_palettes
+def test_interpolation(setup_values_and_palettes, plot_img):
+    (undetect, missing, 
+     ref_color_map, pr_color_map, acc_color_map, 
+     package_dir, generated_figure_dir, reference_figure_dir) = setup_values_and_palettes
     # DOCS:interpolation_setup_begins
 
     import os
@@ -608,27 +572,23 @@ def test_interpolation(copy_to_static, setup_values_and_palettes, plot_img):
                                              dest_lat=gem_lat)
     
     #show data
-    fig_name = os.path.join(package_dir, 'test_results', 'radar_tutorial', 
-                            'nearest_interpolation_reflectivity.svg')
+    generated_figure = os.path.join(generated_figure_dir, 'nearest_interpolation_reflectivity.svg')
     title = 'Nearest Neighbor to 10 km grid'
     units = '[dBZ]'
     data       = dat_dict['reflectivity']
     latitudes  = dat_dict['latitudes']
     longitudes = dat_dict['longitudes']
-    plot_img(fig_name, title, units, data, latitudes, longitudes,
+    plot_img(generated_figure, title, units, data, latitudes, longitudes,
              ref_color_map)
 
     # DOCS:nearest_neighbor_ends
 
     #compare image with saved reference
-    reference_image = os.path.join(package_dir, 'test_data', '_static', os.path.basename(fig_name))
-    images_are_similar = py_tools.render_similarly(fig_name, reference_image)
+    reference_figure = os.path.join(reference_figure_dir, os.path.basename(generated_figure))
+    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure)
 
     #test fails if images are not similar
     assert images_are_similar
-
-    if os.environ.get("UPDATE_DOC_ARTIFACTS") == "1":
-        copy_to_static(fig_name)
 
 
     # DOCS:average_in_tile_begins
@@ -643,27 +603,23 @@ def test_interpolation(copy_to_static, setup_values_and_palettes, plot_img):
                                              average=True)
     
     #show data
-    fig_name = os.path.join(package_dir, 'test_results', 'radar_tutorial', 
-                            'average_interpolation_reflectivity.svg')
+    generated_figure = os.path.join(generated_figure_dir, 'average_interpolation_reflectivity.svg')
     title = 'Average to 10 km grid'
     units = '[dBZ]'
     data       = dat_dict['reflectivity']
     latitudes  = dat_dict['latitudes']
     longitudes = dat_dict['longitudes']
-    plot_img(fig_name, title, units, data, latitudes, longitudes,
+    plot_img(generated_figure, title, units, data, latitudes, longitudes,
              ref_color_map)
 
     # DOCS:average_in_tile_ends
 
     #compare image with saved reference
-    reference_image = os.path.join(package_dir, 'test_data', '_static', os.path.basename(fig_name))
-    images_are_similar = py_tools.render_similarly(fig_name, reference_image)
+    reference_figure = os.path.join(reference_figure_dir, os.path.basename(generated_figure))
+    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure)
 
     #test fails if images are not similar
     assert images_are_similar
-
-    if os.environ.get("UPDATE_DOC_ARTIFACTS") == "1":
-        copy_to_static(fig_name)
 
 
     # DOCS:average_in_radius_begins
@@ -681,38 +637,33 @@ def test_interpolation(copy_to_static, setup_values_and_palettes, plot_img):
                                              smooth_radius=12.)
     
     #show data
-    fig_name = os.path.join(package_dir, 'test_results', 'radar_tutorial', 
-                            'smooth_radius_interpolation_reflectivity.svg')
+    generated_figure = os.path.join(generated_figure_dir, 'smooth_radius_interpolation_reflectivity.svg')
     title = 'Average input within a radius of 12 km'
     units = '[dBZ]'
     data       = dat_dict['reflectivity']
     latitudes  = dat_dict['latitudes']
     longitudes = dat_dict['longitudes']
-    plot_img(fig_name, title, units, data, latitudes, longitudes,
+    plot_img(generated_figure, title, units, data, latitudes, longitudes,
              ref_color_map)
 
     # DOCS:average_in_radius_ends
 
     #compare image with saved reference
-    reference_image = os.path.join(package_dir, 'test_data', '_static', os.path.basename(fig_name))
-    images_are_similar = py_tools.render_similarly(fig_name, reference_image)
+    reference_figure = os.path.join(reference_figure_dir, os.path.basename(generated_figure))
+    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure)
 
     #test fails if images are not similar
     assert images_are_similar
-
-    if os.environ.get("UPDATE_DOC_ARTIFACTS") == "1":
-        copy_to_static(fig_name)
 
 
 
 # -----------------------------------------------------------------------------
 # On-the-fly accumulation
 # -----------------------------------------------------------------------------
-@pytest.mark.doc_artifact
-def test_accumulation(copy_to_static, setup_values_and_palettes, plot_img):
-    (undetect, missing, ref_color_map, 
-     pr_color_map, acc_color_map,
-     package_dir) = setup_values_and_palettes
+def test_accumulation(setup_values_and_palettes, plot_img):
+    (undetect, missing, 
+     ref_color_map, pr_color_map, acc_color_map, 
+     package_dir, generated_figure_dir, reference_figure_dir) = setup_values_and_palettes
 
     # DOCS:compute_accumulation_begins
 
@@ -735,27 +686,23 @@ def test_accumulation(copy_to_static, setup_values_and_palettes, plot_img):
                                             latlon=True)
     
     #show data
-    fig_name = os.path.join(package_dir, 'test_results', 'radar_tutorial', 
-                            'one_hour_accum_orig_grid.svg')
+    generated_figure = os.path.join(generated_figure_dir, 'one_hour_accum_orig_grid.svg')
     title = '1h accumulation original grid'
     units = '[mm]'
     data       = dat_dict['accumulation']
     latitudes  = dat_dict['latitudes']
     longitudes = dat_dict['longitudes']
-    plot_img(fig_name, title, units, data, latitudes, longitudes,
+    plot_img(generated_figure, title, units, data, latitudes, longitudes,
              pr_color_map, equal_legs=True)
 
     # DOCS:compute_accumulation_ends
 
     #compare image with saved reference
-    reference_image = os.path.join(package_dir, 'test_data', '_static', os.path.basename(fig_name))
-    images_are_similar = py_tools.render_similarly(fig_name, reference_image)
+    reference_figure = os.path.join(reference_figure_dir, os.path.basename(generated_figure))
+    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure)
 
     #test fails if images are not similar
     assert images_are_similar
-
-    if os.environ.get("UPDATE_DOC_ARTIFACTS") == "1":
-        copy_to_static(fig_name)
 
     # DOCS:combine_options_begins
 
@@ -802,38 +749,33 @@ def test_accumulation(copy_to_static, setup_values_and_palettes, plot_img):
     # get_accumulation done
     
     #show data
-    fig_name = os.path.join(package_dir, 'test_results', 'radar_tutorial', 
-                            'one_hour_accum_interpolated.svg')
+    generated_figure = os.path.join(generated_figure_dir, 'one_hour_accum_interpolated.svg')
     title = '1h accum, filtered and interpolated'
     units = '[mm]'
     data       = dat_dict['accumulation']
     latitudes  = dat_dict['latitudes']
     longitudes = dat_dict['longitudes']
-    plot_img(fig_name, title, units, data, latitudes, longitudes,
+    plot_img(generated_figure, title, units, data, latitudes, longitudes,
              pr_color_map, equal_legs=True)
 
     # DOCS:combine_options_ends
 
     #compare image with saved reference
-    reference_image = os.path.join(package_dir, 'test_data', '_static', os.path.basename(fig_name))
-    images_are_similar = py_tools.render_similarly(fig_name, reference_image)
+    reference_figure = os.path.join(reference_figure_dir, os.path.basename(generated_figure))
+    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure)
 
     #test fails if images are not similar
     assert images_are_similar
-
-    if os.environ.get("UPDATE_DOC_ARTIFACTS") == "1":
-        copy_to_static(fig_name)
 
 
 
 # -----------------------------------------------------------------------------
 # Stage IV accumulations
 # -----------------------------------------------------------------------------
-@pytest.mark.doc_artifact
-def test_stage_4(copy_to_static, setup_values_and_palettes, plot_img):
-    (undetect, missing, ref_color_map, 
-     pr_color_map, acc_color_map,
-     package_dir) = setup_values_and_palettes
+def test_stage_4(setup_values_and_palettes, plot_img):
+    (undetect, missing, 
+     ref_color_map, pr_color_map, acc_color_map, 
+     package_dir, generated_figure_dir, reference_figure_dir) = setup_values_and_palettes
     # DOCS:stage_4_basic_begins
 
     import os
@@ -855,28 +797,23 @@ def test_stage_4(copy_to_static, setup_values_and_palettes, plot_img):
                                             latlon=True)
     
     #show data
-    fig_name = os.path.join(package_dir, 'test_results', 'radar_tutorial', 
-                            'stageIV_six_hour_accum_orig_grid.svg')
+    generated_figure = os.path.join(generated_figure_dir, 'stageIV_six_hour_accum_orig_grid.svg')
     title = '6h accumulation original grid'
     units = '[mm]'
     data       = dat_dict['accumulation']
     latitudes  = dat_dict['latitudes']
     longitudes = dat_dict['longitudes']
-    plot_img(fig_name, title, units, data, latitudes, longitudes,
+    plot_img(generated_figure, title, units, data, latitudes, longitudes,
              acc_color_map, equal_legs=True)
 
     # DOCS:stage_4_basic_ends
 
     #compare image with saved reference
-    reference_image = os.path.join(package_dir, 'test_data', '_static', os.path.basename(fig_name))
-    images_are_similar = py_tools.render_similarly(fig_name, reference_image)
+    reference_figure = os.path.join(reference_figure_dir, os.path.basename(generated_figure))
+    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure)
 
     #test fails if images are not similar
     assert images_are_similar
-
-    if os.environ.get("UPDATE_DOC_ARTIFACTS") == "1":
-        copy_to_static(fig_name)
-
 
     # DOCS:stage_4_maniputate_begins
 
@@ -897,27 +834,23 @@ def test_stage_4(copy_to_static, setup_values_and_palettes, plot_img):
                                             smooth_radius=12.)  #use smoothing radius of 12km for the interpolation
     
     #show data
-    fig_name = os.path.join(package_dir, 'test_results', 'radar_tutorial', 
-                            'stageIV_six_hour_pr_10km_grid.svg')
+    generated_figure = os.path.join(generated_figure_dir, 'stageIV_six_hour_pr_10km_grid.svg')
     title = '6h average precip rate on 10km grid'
     units = '[mm/h]'
     data       = dat_dict['avg_precip_rate']
     latitudes  = gem_lat
     longitudes = gem_lon
-    plot_img(fig_name, title, units, data, latitudes, longitudes,
+    plot_img(generated_figure, title, units, data, latitudes, longitudes,
              pr_color_map, equal_legs=True)
 
     # DOCS:stage_4_maniputate_ends
 
     #compare image with saved reference
-    reference_image = os.path.join(package_dir, 'test_data', '_static', os.path.basename(fig_name))
-    images_are_similar = py_tools.render_similarly(fig_name, reference_image)
+    reference_figure = os.path.join(reference_figure_dir, os.path.basename(generated_figure))
+    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure)
 
     #test fails if images are not similar
     assert images_are_similar
-
-    if os.environ.get("UPDATE_DOC_ARTIFACTS") == "1":
-        copy_to_static(fig_name)
 
     # DOCS:stage_4_build_accum_begins
 
@@ -934,27 +867,23 @@ def test_stage_4(copy_to_static, setup_values_and_palettes, plot_img):
                                             smooth_radius=5.)  #use smoothing radius of 5km for the interpolation
     
     #show data
-    fig_name = os.path.join(package_dir, 'test_results', 'radar_tutorial', 
-                            'stageIV_3h_accum_10km_grid.svg')
+    generated_figure = os.path.join(generated_figure_dir, 'stageIV_3h_accum_10km_grid.svg')
     title = '3h accumulation on 10km grid'
     units = '[mm]'
     data       = dat_dict['accumulation']
     latitudes  = gem_lat
     longitudes = gem_lon
-    plot_img(fig_name, title, units, data, latitudes, longitudes,
+    plot_img(generated_figure, title, units, data, latitudes, longitudes,
              acc_color_map, equal_legs=True)
 
     # DOCS:stage_4_build_accum_ends
 
     #compare image with saved reference
-    reference_image = os.path.join(package_dir, 'test_data', '_static', os.path.basename(fig_name))
-    images_are_similar = py_tools.render_similarly(fig_name, reference_image)
+    reference_figure = os.path.join(reference_figure_dir, os.path.basename(generated_figure))
+    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure)
 
     #test fails if images are not similar
     assert images_are_similar
-
-    if os.environ.get("UPDATE_DOC_ARTIFACTS") == "1":
-        copy_to_static(fig_name)
 
 
 
