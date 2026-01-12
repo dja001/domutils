@@ -3,19 +3,37 @@
 # pytest test_geo_tools.py::test_projinds_simple_example 
 # 
 # can also be added to __main__ section below
-#
-# To run only tests that make figures used in docs 
-# and copy them to docs/_static
-# run with 
-# UPDATE_DOC_ARTIFACTS=1 pytest -m doc_artifact
 
 
 
 
 import pytest
 
-@pytest.mark.doc_artifact
-def test_projinds_simple_example(copy_to_static=None):
+@pytest.fixture(scope="module")
+def setup_values_and_palettes():
+
+    # DOCS:values_and_palette_begins
+    import os 
+    import domutils
+    import domutils.legs as legs
+    import domutils._py_tools as py_tools
+
+    # where is the data
+    domutils_dir = os.path.dirname(domutils.__file__)
+    package_dir  = os.path.dirname(domutils_dir)
+
+    generated_figure_dir = os.path.join(package_dir, 'test_results', 'generated_figures', 'test_geo_tools')
+    reference_figure_dir = os.path.join(package_dir, 'test_data',    'reference_figures', 'test_geo_tools')
+
+    py_tools.parallel_mkdir(generated_figure_dir)
+    py_tools.parallel_mkdir(reference_figure_dir)
+
+    # DOCS:values_and_palette_ends
+
+    return (package_dir, generated_figure_dir, reference_figure_dir)
+
+def test_projinds_simple_example(setup_values_and_palettes):
+    (package_dir, generated_figure_dir, reference_figure_dir) = setup_values_and_palettes
 
     # DOCS:simple_projinds_example_begins
     import os
@@ -125,23 +143,17 @@ def test_projinds_simple_example(copy_to_static=None):
 
     
     # save figure
-    domutils_dir = os.path.dirname(domutils.__file__)
-    package_dir  = os.path.dirname(domutils_dir)
-    test_result_dir  = os.path.join(package_dir, 'test_results')
-    svg_name = 'test_projinds_simple_example.svg'
-    new_image = os.path.join(test_result_dir, svg_name)
-    plt.savefig(new_image)
+    generated_figure = os.path.join(generated_figure_dir, 'test_projinds_simple_example.svg')
+    plt.savefig(generated_figure)
 
     # DOCS:simple_projinds_example_ends
 
     # the testing needs not be included in docs
-    reference_image = os.path.join(package_dir, 'test_data/_static/', svg_name)
-    print(reference_image)
-    images_are_similar = py_tools.render_similarly(new_image, reference_image, force_comparison_image=False)
-    assert images_are_similar
+    reference_figure = os.path.join(reference_figure_dir, os.path.basename(generated_figure))
+    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure)
 
-    if os.environ.get("UPDATE_DOC_ARTIFACTS") == "1":
-        copy_to_static(fig_name)
+    #test fails if images are not similar
+    assert images_are_similar
     
 def test_simple_nearest_neighbor_interpolation():
 
@@ -342,7 +354,8 @@ def test_smooth_radius_interpolation():
     # DOCS:smooth_radius_interpolation_ends
     
 
-def test_no_extent_in_cartopy_projection():
+def test_no_extent_in_cartopy_projection(setup_values_and_palettes):
+    (package_dir, generated_figure_dir, reference_figure_dir) = setup_values_and_palettes
     '''
     make sure ProjInds works with projections requiring no extent
     '''
@@ -417,22 +430,22 @@ def test_no_extent_in_cartopy_projection():
     test_results_dir = package_dir+'/test_results/'
     if not os.path.isdir(test_results_dir):
         os.mkdir(test_results_dir)
-    svg_name = test_results_dir+'/test_no_extent_in_cartopy_projection.svg'
+    generated_figure = os.path.join(generated_figure_dir, 'test_no_extent_in_cartopy_projection.svg')
 
-    plt.savefig(svg_name, dpi=500)
+    plt.savefig(generated_figure, dpi=500)
     plt.close(fig)
-    print('saved: '+svg_name)
 
-    #compare image with saved reference
-    #copy reference image to testdir
-    reference_image = package_dir+'/test_data/_static/'+os.path.basename(svg_name)
-    images_are_similar = py_tools.render_similarly(svg_name, reference_image)
+    # compare with reference figure
+    reference_figure = os.path.join(reference_figure_dir, os.path.basename(generated_figure))
+    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure)
 
     #test fails if images are not similar
     assert images_are_similar
 
     
-def test_general_lam_projection():
+def test_general_lam_projection(setup_values_and_palettes):
+    (package_dir, generated_figure_dir, reference_figure_dir) = setup_values_and_palettes
+
     import os
     import pickle
     import numpy as np
@@ -445,10 +458,8 @@ def test_general_lam_projection():
     # In your scripts use something like :
     import domutils.legs as legs
     import domutils.geo_tools as geo_tools
-    #recover previously prepared data
-    domutils_dir = os.path.dirname(domutils.__file__)
-    package_dir  = os.path.dirname(domutils_dir)+'/'
-    source_file  = package_dir + '/test_data/pal_demo_data.pickle'
+
+    source_file  = os.path.join(package_dir, 'test_data', 'pal_demo_data.pickle')
     with open(source_file, 'rb') as f:
         data_dict = pickle.load(f)
     longitudes     = data_dict['longitudes']    #2D longitudes [deg]
@@ -520,18 +531,13 @@ def test_general_lam_projection():
     proj_inds.plot_border(ax, mask_outside=True, linewidth=.5)
     
     #uncomment to save figure
-    output_dir = package_dir+'test_results/'
-    if not os.path.isdir(output_dir):
-        os.mkdir(output_dir)
-    image_name = output_dir+'test_general_lam_projection.svg'
-    plt.savefig(image_name)
-    plt.close(fig)
-    print('saved: '+image_name)
+    generated_figure = os.path.join(generated_figure_dir, 'test_general_lam_projection.svg')
+
+    plt.savefig(generated_figure)
 
     #compare image with saved reference
-    #copy reference image to testdir
-    reference_image = package_dir+'/test_data/test_results/'+os.path.basename(image_name)
-    images_are_similar = py_tools.render_similarly(image_name, reference_image)
+    reference_figure = os.path.join(reference_figure_dir, os.path.basename(generated_figure))
+    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure)
 
     #test fails if images are not similar
     assert images_are_similar
@@ -632,7 +638,11 @@ def test_1d_inputs():
 
 
 @pytest.mark.timeout(5, method="thread")
-def test_hrdps_projection_in_reasonable_time():
+def test_hrdps_projection_in_reasonable_time(setup_values_and_palettes):
+    """ Test fails if it takes too long to generate projections
+    """
+    (package_dir, generated_figure_dir, reference_figure_dir) = setup_values_and_palettes
+
     import os
     import pickle
     import time
@@ -648,9 +658,7 @@ def test_hrdps_projection_in_reasonable_time():
     import domutils.geo_tools as geo_tools
 
     #recover previously prepared data
-    domutils_dir = os.path.dirname(domutils.__file__)
-    package_dir  = os.path.dirname(domutils_dir)+'/'
-    source_file  = package_dir + '/test_data/radar_continental_2.5km_2882x2032.pickle'
+    source_file  = os.path.join(package_dir, 'test_data', 'radar_continental_2.5km_2882x2032.pickle')
     with open(source_file, 'rb') as f:
         data_dict = pickle.load(f)
     longitudes     = data_dict['lon']    #2D longitudes [deg]
@@ -752,8 +760,6 @@ def test_latlon_to_xyz():
 
 if __name__ == '__main__':
     import os
-    # uncomment if you want to copy artefacts to docs/_static
-    #os.environ["UPDATE_DOC_ARTIFACTS"] = "1"
 
     test_projinds_simple_example()
     #test_no_extent_in_cartopy_projection()
