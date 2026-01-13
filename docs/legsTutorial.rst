@@ -12,7 +12,7 @@ Here the race happens in data space and goes from - infinity to + infinity.
 The general idea is to assign a number of distinct color mappings, hereafter 
 called legs,  to contiguous portions of this (quite large) range.
 
-.. image:: _static/legs_principle.svg
+.. image:: _static/illustrative/legs_principle.svg
     :align: center
     :width: 600px
 
@@ -53,7 +53,7 @@ The default color mapping applies a black and wite gradient in the interval [0,1
    :start-after: DOCS:default_cm_begins
    :end-before: DOCS:default_cm_ends
 
-.. image:: _static/default.svg
+.. image:: _static/test_legs_tutorial/default.svg
     :align: center
 
 Data values above and below the color palette
@@ -69,7 +69,8 @@ The following code will fail and give you suggestions as to what to do.
    :start-after: DOCS:fails_extending_begins
    :end-before: DOCS:fails_extending_ends
 
-:language: python
+.. code-block:: bash
+
     Traceback (most recent call last):
       File "/fs/site3/eccc/mrd/rpndat/dja001/python_miniconda3/envs/domutils_dev/lib/python3.7/doctest.py", line 1330, in __run
         compileflags, 1), test.globs)
@@ -82,20 +83,20 @@ The following code will fail and give you suggestions as to what to do.
       File "/fs/homeu1/eccc/mrd/ords/rpndat/dja001/python/packages/domutils_package/domutils/legs/validation_tools/no_unmapped.py", line 103, in no_unmapped
         raise RuntimeError(err_mess)
     RuntimeError: 
-    <BLANKLINE>
+
     Found data point(s) smaller than the minimum of an exact palette:
       [-0.19458771 -0.19446921 -0.19434859 -0.19434811 -0.19422583]...
-    <BLANKLINE>
-    <BLANKLINE>
+    
+    
     Found data point(s) larger than the maximum of an exact palette:
       [1.00004429 1.00055305 1.00060393 1.0008584  1.00101111]...
-    <BLANKLINE>
-    <BLANKLINE>
+    
+    
     One possibility is that the data value(s) exceed the palette
     while they should not.
        For example: correlation coefficients greater than one.
        In this case, fix your data.
-    <BLANKLINE>
+    
     Another possibility is that data value(s) is (are) expected  
     above/below the palette.
     In this case:
@@ -103,7 +104,7 @@ The following code will fail and give you suggestions as to what to do.
          assign a color to data values below/above the palette.
       2- Assign a color to exception values using the "excep_val" and "excep_col" keywords.
          For example: excep_val=-9999., excep_col="red".
-    <BLANKLINE>
+    
 
 
 Lets assume that we expected data values to exceed the [0,1] range where the color
@@ -117,7 +118,7 @@ to avoid errors.
    :end-before: DOCS:extend_demo_ends
 
 
-.. image:: _static/default_extend.svg
+.. image:: _static/test_legs_tutorial/default_extend.svg
     :align: center
 
 
@@ -147,7 +148,7 @@ by an exception will not trigger an error.
    :start-after: DOCS:default_exceptions_begins
    :end-before: DOCS:default_exceptions_ends
 
-.. image:: _static/default_exceptions.svg
+.. image:: _static/test_legs_tutorial/default_exceptions.svg
     :align: center
 
 
@@ -162,7 +163,7 @@ They can be called by name.
    :start-after: DOCS:nine_legs_begins
    :end-before: DOCS:nine_legs_ends
 
-.. image:: _static/default_linear_legs.svg
+.. image:: _static/test_legs_tutorial/default_linear_legs.svg
     :align: center
 
 
@@ -177,7 +178,7 @@ the order in which they appear above.
    :start-after: DOCS:n_col_begins
    :end-before: DOCS:n_col_ends
 
-.. image:: _static/default_6cols.svg
+.. image:: _static/test_legs_tutorial/default_6cols.svg
     :align: center
 
 
@@ -191,7 +192,7 @@ By default linear interpolation is used between the provided RGB.
    :start-after: DOCS:color_arr_begins
    :end-before: DOCS:color_arr_ends
 
-.. image:: _static/col_arr_demo.svg
+.. image:: _static/test_legs_tutorial/col_arr_demo.svg
     :align: center
 
 
@@ -205,7 +206,7 @@ The keyword **solid** is used for generating categorical palettes.
    :start-after: DOCS:solid_begins
    :end-before: DOCS:solid_ends
 
-.. image:: _static/solid_demo.svg
+.. image:: _static/test_legs_tutorial/solid_demo.svg
     :align: center
 
 
@@ -219,7 +220,7 @@ The keyword **dark_pos** is useful for making divergent palettes.
    :start-after: DOCS:dark_pos_begins
    :end-before: DOCS:dark_pos_ends
 
-.. image:: _static/dark_pos_demo.svg
+.. image:: _static/test_legs_tutorial/dark_pos_demo.svg
     :align: center
 
 Quantitative divergent color mappings can naturally be made using the **solid** keyword. 
@@ -229,7 +230,7 @@ Quantitative divergent color mappings can naturally be made using the **solid** 
    :start-after: DOCS:solid_divergent_begins
    :end-before: DOCS:solid_divergent_ends
 
-.. image:: _static/solid_divergent.svg
+.. image:: _static/test_legs_tutorial/solid_divergent.svg
     :align: center
 
 
@@ -245,7 +246,7 @@ It can also be used to define color legs with different extents.
    :start-after: DOCS:unequal_range_begins
    :end-before: DOCS:unequal_range_ends
 
-.. image:: _static/different_ranges.svg
+.. image:: _static/test_legs_tutorial/different_ranges.svg
     :align: center
 
 
@@ -261,5 +262,5 @@ In this example, two color mappings are used first separately and then together.
    :start-after: DOCS:separate_begins
    :end-before: DOCS:separate_ends
 
-.. image:: _static/separate_data_palettes.svg
+.. image:: _static/test_legs_tutorial/separate_data_palettes.svg
     :align: center

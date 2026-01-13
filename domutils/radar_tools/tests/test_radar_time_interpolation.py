@@ -297,7 +297,7 @@ def test_time_interpolation():
     
             this_frame += 1
 
-    # DOCS:animation_frames_ends
+     DOCS:animation_frames_ends
 
     #compare image with saved reference
     fig_name = os.path.join(generated_figure_dir, '01_time_interpol_demo_plain.gif')
@@ -309,11 +309,13 @@ def test_time_interpolation():
 
     # DOCS:animated_gif_begins
     movie_name = os.path.join(generated_figure_dir, 'time_interpol_plain_movie.gif')
-    gif_list = sorted(glob.glob(generated_figure_dir+'*plain.gif'))   
+    gif_list = sorted(glob.glob(os.path.join(generated_figure_dir,'*plain.gif')))   
     cmd = ['convert', '-loop', '0', '-delay', '30']+gif_list+[movie_name]
     process = subprocess.Popen(cmd, stdout=subprocess.PIPE)
     output, error = process.communicate()
     # DOCS:animated_gif_ends
+
+    assert os.path.isfile(movie_name)
 
     # DOCS:accumulation_begins
     end_date = datetime.datetime(2022,5,21,21,40, tzinfo=datetime.timezone.utc)

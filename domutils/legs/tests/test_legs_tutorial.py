@@ -533,8 +533,14 @@ def test_solid_divergent(setup_values_and_palettes):
                                       pal_format='{:2.0f}')
     
     
-    generated_figure = os.path.join(generated_figure_dir, 'divergent_solid.svg')
+    generated_figure = os.path.join(generated_figure_dir, 'solid_divergent.svg')
+    plt.savefig(generated_figure)
     # DOCS:solid_divergent_ends
+
+    #compare image with saved reference
+    reference_figure = os.path.join(reference_figure_dir, os.path.basename(generated_figure))
+    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure)
+    assert images_are_similar
 
 
 def test_unequal_range(setup_values_and_palettes):

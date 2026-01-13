@@ -13,7 +13,7 @@ interpolation functionality. The basic idea is that data at intermediate timeste
 data is estimated as a weighted average of the forward advection of the 
 observations before and backward advection of the observations after. 
 
-.. image:: _static/nowcast_time_interpolation.svg
+.. image:: _static/illustrative/nowcast_time_interpolation.svg
     :align: center
     :width: 800px
 
@@ -93,7 +93,7 @@ Finally, an animated gif is constructed from the frames we just made,
    :start-after: DOCS:animation_frames_begins
    :end-before: DOCS:animation_frames_ends
 
-.. image:: _static/time_interpol_plain_movie.gif
+.. image:: _static/test_radar_time_interpolation/time_interpol_plain_movie.gif
     :align: center
 
 
@@ -110,19 +110,19 @@ to accumulations obtained from the time interpolated data.
    :start-after: DOCS:accumulation_begins
    :end-before: DOCS:accumulation_ends
 
-    The figure below shows 30 minutes precipitation accumulation computed from:
-     
-    - The source data every 10 minutes
-    - The filtered data every 10 minutes
-    - The time interpolated data every 1 minute
+The figure below shows 30 minutes precipitation accumulation computed from:
+ 
+- The source data every 10 minutes
+- The filtered data every 10 minutes
+- The time interpolated data every 1 minute
 
-    In the two panels on the right, the red arrows indicate artefacts 
-    that originate from the poor time resolution of the source data 
-    compared to the speed at which the bow echo propagates. 
+In the two panels on the right, the red arrows indicate artefacts 
+that originate from the poor time resolution of the source data 
+compared to the speed at which the bow echo propagates. 
 
-    The accumulation on the left is constructed from the time-interpolated 
-    values every minute and does not display the displacement artefacts.
+The accumulation on the left is constructed from the time-interpolated 
+values every minute and does not display the displacement artefacts.
 
-.. image:: _static/time_interpol_demo_accum_plain.svg
+.. image:: _static/test_radar_time_interpolation/time_interpol_demo_accum_plain.svg
     :align: center
 

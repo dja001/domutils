@@ -37,7 +37,7 @@ Baltrad ODIM H5
 
     Dark grey represents missing values, light grey represent the *undetect* value. 
 
-    .. image:: _static/original_reflectivity.svg
+    .. image:: _static/test_radar_tutorial/original_reflectivity.svg
         :align: center
 
     
@@ -52,7 +52,7 @@ MRMS precipitation rates in grib2 format
        :start-after: DOCS:mrms_grib2_begins
        :end-before: DOCS:mrms_grib2_ends
 
-    .. image:: _static/mrms_precip_rate.svg
+    .. image:: _static/test_radar_tutorial/mrms_precip_rate.svg
         :align: center
     
     
@@ -77,7 +77,7 @@ MRMS precipitation rates in grib2 format
        :start-after: DOCS:urp_4km_begins
        :end-before: DOCS:urp_4km_ends
 
-    .. image:: _static/URP4km_reflectivity.svg
+    .. image:: _static/test_radar_tutorial/URP4km_reflectivity.svg
         :align: center
     
     
@@ -121,7 +121,7 @@ Get precipitation rates (in mm/h) from reflectivity (in dBZ)
        :start-after: DOCS:wdssr_zr_begins
        :end-before: DOCS:wdssr_zr_ends
 
-    .. image:: _static/odimh5_reflectivity_300_1p4.svg
+    .. image:: _static/test_radar_tutorial/odimh5_reflectivity_300_1p4.svg
         :align: center
 
     Different Z-R relationships can be used by specifying the a and b coefficients
@@ -132,7 +132,7 @@ Get precipitation rates (in mm/h) from reflectivity (in dBZ)
        :start-after: DOCS:200_1.6_begins
        :end-before: DOCS:200_1.6_ends
 
-    .. image:: _static/odimh5_reflectivity_200_1p6.svg
+    .. image:: _static/test_radar_tutorial/odimh5_reflectivity_200_1p6.svg
         :align: center
 
 
@@ -149,7 +149,7 @@ Apply  a median filter to reduce speckle (noise)
        :start-after: DOCS:median_filter_begins
        :end-before: DOCS:median_filter_ends
 
-    .. image:: _static/speckle_filtered_reflectivity.svg
+    .. image:: _static/test_radar_tutorial/speckle_filtered_reflectivity.svg
         :align: center
 
 
@@ -167,6 +167,7 @@ Interpolation to a different grid
           This option tends to be slow.
         * Average all input within a certain radius of the center of the output grid tile. 
           This allows to perform smoothing at the same time as interpolation.
+
     .. literalinclude:: ../domutils/radar_tools/tests/test_radar_tutorial.py
        :language: python
        :start-after: DOCS:interpolation_setup_begins
@@ -181,7 +182,7 @@ Nearest neighbor
        :start-after: DOCS:nearest_neighbor_begins
        :end-before: DOCS:nearest_neighbor_ends
 
-    .. image:: _static/nearest_interpolation_reflectivity.svg
+    .. image:: _static/test_radar_tutorial/nearest_interpolation_reflectivity.svg
         :align: center
 
 
@@ -193,7 +194,7 @@ Average all inputs falling within a destination grid tile
        :start-after: DOCS:average_in_tile_begins
        :end-before: DOCS:average_in_tile_ends
 
-    .. image:: _static/average_interpolation_reflectivity.svg
+    .. image:: _static/test_radar_tutorial/average_interpolation_reflectivity.svg
         :align: center
 
 
@@ -208,7 +209,7 @@ Average all inputs within a radius
        :start-after: DOCS:average_in_radius_begins
        :end-before: DOCS:average_in_radius_ends
         
-    .. image:: _static/smooth_radius_interpolation_reflectivity.svg
+    .. image:: _static/test_radar_tutorial/smooth_radius_interpolation_reflectivity.svg
         :align: center
     
 
@@ -230,7 +231,7 @@ On-the-fly computation of precipitation accumulations
        :start-after: DOCS:compute_accumulation_begins
        :end-before: DOCS:compute_accumulation_ends
 
-    .. image:: _static/one_hour_accum_orig_grid.svg
+    .. image:: _static/test_radar_tutorial/one_hour_accum_orig_grid.svg
         :align: center
 
     The *get_accumulation* method is very similar to *get_instantaneous*.
@@ -245,7 +246,7 @@ On-the-fly computation of precipitation accumulations
        :start-after: DOCS:combine_options_begins
        :end-before: DOCS:combine_options_ends
 
-    .. image:: _static/one_hour_accum_interpolated.svg
+    .. image:: _static/test_radar_tutorial/one_hour_accum_interpolated.svg
         :align: center
 
 
@@ -273,7 +274,7 @@ Read one file and get lat/lon of the data grid
        :start-after: DOCS:stage_4_basic_begins
        :end-before: DOCS:stage_4_basic_ends
 
-    .. image:: _static/stageIV_six_hour_accum_orig_grid.svg
+    .. image:: _static/test_radar_tutorial/stageIV_six_hour_accum_orig_grid.svg
         :align: center
 
 Read one file, interpolate to a different grid, convert to average precipitation rate
@@ -290,7 +291,7 @@ Read one file, interpolate to a different grid, convert to average precipitation
        :start-after: DOCS:stage_4_manipulate_begins
        :end-before: DOCS:stage_4_manipulate_ends
 
-    .. image:: _static/stageIV_six_hour_pr_10km_grid.svg
+    .. image:: _static/test_radar_tutorial/stageIV_six_hour_pr_10km_grid.svg
         :align: center
 
 
@@ -308,7 +309,7 @@ Construct accumulation from several files
        :start-after: DOCS:stage_4_build_accum_begins
        :end-before: DOCS:stage_4_build_accum_ends
 
-    .. image:: _static/stageIV_3h_accum_10km_grid.svg
+    .. image:: _static/test_radar_tutorial/stageIV_3h_accum_10km_grid.svg
         :align: center
 
 

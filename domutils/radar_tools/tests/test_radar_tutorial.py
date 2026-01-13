@@ -818,7 +818,7 @@ def test_stage_4(setup_values_and_palettes, plot_img):
     #test fails if images are not similar
     assert images_are_similar
 
-    # DOCS:stage_4_maniputate_begins
+    # DOCS:stage_4_manipulate_begins
 
     #6h average precipitation rate on 10km grid
     # destination grid
@@ -846,7 +846,7 @@ def test_stage_4(setup_values_and_palettes, plot_img):
     plot_img(generated_figure, title, units, data, latitudes, longitudes,
              pr_color_map, equal_legs=True)
 
-    # DOCS:stage_4_maniputate_ends
+    # DOCS:stage_4_manipulate_ends
 
     #compare image with saved reference
     reference_figure = os.path.join(reference_figure_dir, os.path.basename(generated_figure))

@@ -10,7 +10,7 @@ Most of the action happens through the class :class:`ProjInds`.
 The following figure illustrates the convention for storring data in numpy arrays. 
 It is assumed that the first index (rows) represents x-y direction (longitudes):
 
-.. image:: _static/xy.svg
+.. image:: _static/illustrative/xy.svg
                 :align: center
 
 
@@ -131,7 +131,7 @@ class ProjInds():
                :start-after: DOCS:simple_projinds_example_begins
                :end-before: DOCS:simple_projinds_example_ends
 
-            .. image:: _static/test_projinds_simple_example.svg
+            .. image:: _static/test_geo_tools/test_projinds_simple_example.svg
                 :align: center
 
 
