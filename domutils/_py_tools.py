@@ -76,7 +76,7 @@ def convert(pic_name, img_type, del_orig=False, density=300, geometry='100%', de
             if del_eps and not img_type == 'eps' :
                 #ignore del_eps when desired fig type is eps
                 os.remove(eps_name)
-    elif shutil.which('cairosvg') is not None:
+    elif (shutil.which('cairosvg') is not None) and (file_extension == '.svg') :
         # cairosvg is available use it for conversion
         cmd = ['cairosvg', source_file, '-f', 'png', '-d', str(density), '-o', file_name +'.' + img_type]
         process = subprocess.Popen(cmd, stdout=subprocess.PIPE)
