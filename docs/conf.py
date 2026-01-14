@@ -15,7 +15,8 @@ import sys
 import subprocess
 sys.path.insert(0, os.path.abspath('..'))
 
-
+# location of customs patch to add images links on read thedocs
+sys.path.insert(0, os.path.abspath('_extensions'))
 
 
 
@@ -62,7 +63,8 @@ extensions = ['sphinx.ext.napoleon',
               'sphinx.ext.autosectionlabel',
               'sphinx_autodoc_typehints',
               'sphinxarg.ext',
-              'sphinx_gallery.gen_gallery']
+              'sphinx_gallery.gen_gallery',
+              'patch_gallery_images'] # in _extensions; adds image links to examples
 
 napoleon_include_private_with_doc = False
 
@@ -79,6 +81,7 @@ exclude_patterns = ['build', '_build', 'Thumbs.db', '.DS_Store']
 sphinx_gallery_conf = {
      'examples_dirs': '../examples',   # path to your example scripts
      'gallery_dirs': 'auto_examples',  # path where to save gallery generated examples
+     'plot_gallery': False,
 }
 
 
