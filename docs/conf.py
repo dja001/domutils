@@ -15,10 +15,10 @@ import sys
 import subprocess
 sys.path.insert(0, os.path.abspath('..'))
 
+on_rtd = os.environ.get('READTHEDOCS') == 'True'
+
 # location of customs patch to add images links on read thedocs
 sys.path.insert(0, os.path.abspath('_extensions'))
-
-
 
 
 # -- Project information -----------------------------------------------------
@@ -46,7 +46,7 @@ if not os.path.isdir('../test_data') :
         if not os.access(shell_script, os.X_OK):
             os.chmod(shell_script, 0o755)
         #run script to download _static directory from zenodo archive
-        subprocess.run([shell_script, '_static_only'])
+        subprocess.run([shell_script, 'figures_only'])
     except:
         raise RuntimeError('something went wrong downloading the test data')
 
@@ -81,7 +81,7 @@ exclude_patterns = ['build', '_build', 'Thumbs.db', '.DS_Store']
 sphinx_gallery_conf = {
      'examples_dirs': '../examples',   # path to your example scripts
      'gallery_dirs': 'auto_examples',  # path where to save gallery generated examples
-     'plot_gallery': False,
+     'plot_gallery': not on_rtd,
 }
 
 

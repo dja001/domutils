@@ -12,12 +12,12 @@ set -v
 record_number=10085283
 
 # this function takes one argument for downloading only the _static directory
-if [[ "$1" = "_static_only" ]] ; then
-  # download only the static directory
-  _static_only=true
+if [[ "$1" = "figures_only" ]] ; then
+    # download only the static directory
+    figures_only=true
 else
-  # download everything
-  _static_only=false
+    # download everything
+    figures_only=false
 fi
 
 function download 
@@ -31,31 +31,27 @@ function download
 mkdir -p test_data
 cd test_data
 
-#download images and put a copy in docs/
-download _static.tgz
-tar -xvf _static.tgz
-cp -rf _static ../docs/
-
-# the files necessary for the auto-examples examples
-file_list=(goes_gpm_data.pickle
-           pal_demo_data.pickle)
-for this_file in ${file_list[@]} ; do
-    download $this_file
-done
-arch_list=(odimh5_radar_volume_scans.tgz)
+# reference figures
+arch_list=(reference_figures.tgz)
 for this_file in ${arch_list[@]} ; do
     download $this_file
     tar -xvf $this_file
 done
 
+if [[ $figures_only = true ]] ; then
+  # copy reference figures to docs
+  rm -rf docs/_static
+  cp -rf test_data/reference_figures docs/_static
 
-if [[ $_static_only = false ]] ; then
+else
 
     #download files
     file_list=(hrdps_5p1_prp0.fst
                prepare_tgz_for_zenodo.sh
                tarsum.py
-               radar_continental_2.5km_2882x2032.pickle)
+               radar_continental_2.5km_2882x2032.pickle
+               goes_gpm_data.pickle
+               pal_demo_data.pickle)
     for this_file in ${file_list[@]} ; do
         download $this_file
     done
@@ -65,6 +61,7 @@ if [[ $_static_only = false ]] ; then
                sqlite_radar_volume_scans.tgz
                mrms_grib2.tgz
                stage4_composites.tgz
+               odimh5_radar_volume_scans.tgz
                std_radar_mosaics.tgz)
     for this_file in ${arch_list[@]} ; do
         download $this_file
