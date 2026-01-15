@@ -32,3 +32,20 @@ def copy_to_static():
 
     return _copy  # No yield needed if no teardown
 
+
+@pytest.fixture(scope="module")
+def reset_matplotlib():
+    """Reset matplotlib state at the beginning of each module"""
+    import os
+    import matplotlib.pyplot as plt
+    import matplotlib as mpl
+    import domutils
+
+    # load comitted mpl style file for reproducible results
+    plt.style.use('default')
+
+    yield
+    plt.close('all')  # Close all figures
+    plt.clf()  # Clear current figure
+    plt.cla()  # Clear current axes
+

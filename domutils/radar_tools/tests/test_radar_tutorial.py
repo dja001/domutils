@@ -13,7 +13,7 @@ import numpy as np
 
 
 @pytest.fixture(scope="module")
-def plot_img():
+def plot_img(reset_matplotlib):
     # DOCS:plot_img_begins
     def _plot_img(generated_figure, title, units, data, latitudes, longitudes,
                   colormap, equal_legs=False ):
@@ -273,7 +273,7 @@ def test_mrms_grib2(setup_values_and_palettes, plot_img):
     # DOCS:mrms_grib2_ends
 
     #compare image with saved reference
-    Reference_figure = os.path.join(reference_figure_dir, os.path.basename(generated_figure))
+    reference_figure = os.path.join(reference_figure_dir, os.path.basename(generated_figure))
     images_are_similar = py_tools.render_similarly(generated_figure, reference_figure)
 
     #test fails if images are not similar

@@ -243,7 +243,7 @@ def test_legs_excep_2():
                     [  0,   0,   0]])  #     6       black
     assert np.allclose(rgb_img, ans)
 
-def test_renders_in_non_geo_plots():
+def test_renders_in_non_geo_plots(reset_matplotlib):
 
     import os
     import numpy as np

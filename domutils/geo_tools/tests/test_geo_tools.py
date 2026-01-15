@@ -10,7 +10,7 @@
 import pytest
 
 @pytest.fixture(scope="module")
-def setup_values_and_palettes():
+def setup_values_and_palettes(reset_matplotlib):
 
     # DOCS:values_and_palette_begins
     import os 

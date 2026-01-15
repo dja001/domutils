@@ -7,7 +7,7 @@ import pytest
 import os
 import numpy as np
 
-def test_time_interpolation():
+def test_time_interpolation(reset_matplotlib):
     """ This test runs obs_process and generates images from the output files
 
     The docs is also copied and shown as an example in the documentation
@@ -297,7 +297,7 @@ def test_time_interpolation():
     
             this_frame += 1
 
-     DOCS:animation_frames_ends
+    # DOCS:animation_frames_ends
 
     #compare image with saved reference
     fig_name = os.path.join(generated_figure_dir, '01_time_interpol_demo_plain.gif')

@@ -4,7 +4,7 @@
 
 import pytest
 
-def test_obs_process():
+def test_obs_process(reset_matplotlib):
     ''' test funtion that writes a fst file from odim h5 mosaic file
 
     '''
@@ -71,7 +71,7 @@ def test_obs_process():
     assert images_are_similar
 
 
-def test_nowcast_time_interpol():
+def test_nowcast_time_interpol(reset_matplotlib):
     ''' Test temporal interpolation using nowcasts
 
     '''
