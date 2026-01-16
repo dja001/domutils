@@ -116,7 +116,7 @@ Data used in the examples and for running tests can be obtained by running
 
     .. code-block:: bash
     
-       ./download_test_data.sh       
+       ./scripts/download_test_data.sh       
 
 in the main directory of this package. This creates a *test_data/* directory 
 containing all the test data. 

@@ -24,7 +24,7 @@ Notes for me to remember steps involved in publishing this package
 - make modifications
 
 - if test_data is not in the root directory, get it with 
-  ./download_test_data.sh
+  ./scripts/download_test_data.sh
 
    On the science network, can link to dataset with:
    /home/dja001/shared_stuff/files/test_data_for_domutils_on_zenodo/v?.?.?
@@ -49,7 +49,7 @@ Notes for me to remember steps involved in publishing this package
 
      - Make sure that you start with the current version of test_data on zenodo
        cd /root/of/domutils/package/
-       ./download_test_data.sh
+       ./scripts/download_test_data.sh
 
      - run the tests, generated figures will be compared with reference figures in test_data
 
@@ -80,14 +80,14 @@ Notes for me to remember steps involved in publishing this package
      - get record number by clicking on new version
        eg  5497958
 
-     - adjust version and record number in download_test_data.sh
+     - adjust version and record number in scripts/download_test_data.sh
        - don't forget to add new files and .tgz if needed
 
 
   If the zenodo archive was changed, it must be tested
   rm -rf test_data test_results
   Updating the dataset version and file list will be necessary
-  ./download_test_data.sh
+  ./scripts/download_test_data.sh
 
   Run the tests with the new test_data directory if it got changed
 

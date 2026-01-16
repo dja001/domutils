@@ -9,7 +9,7 @@ set -v
 #DOI will be 10.5281/zenodo.${record_number}
 #
 #v1.0.11
-record_number=10085283
+record_number=18259838
 
 # this function takes one argument for downloading only the _static directory
 if [[ "$1" = "figures_only" ]] ; then
@@ -31,7 +31,7 @@ function download
 mkdir -p test_data
 cd test_data
 
-# reference figures
+# reference figures always get downloaded
 arch_list=(reference_figures.tgz)
 for this_file in ${arch_list[@]} ; do
     download $this_file
@@ -40,12 +40,13 @@ done
 
 if [[ $figures_only = true ]] ; then
   # copy reference figures to docs
-  rm -rf docs/_static
-  cp -rf test_data/reference_figures docs/_static
+  rm -rf ../docs/_static
+  cp -rf ../test_data/reference_figures ../docs/_static
 
 else
+    # download all files needed for running the tests
 
-    #download files
+    #download all files
     file_list=(hrdps_5p1_prp0.fst
                prepare_tgz_for_zenodo.sh
                tarsum.py

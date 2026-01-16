@@ -42,7 +42,7 @@ if not os.path.isdir('../test_data') :
         parent  = os.path.dirname(current)
         os.chdir(parent)
         #make script executable if it is not
-        shell_script = './download_test_data.sh'
+        shell_script = './scripts/download_test_data.sh'
         if not os.access(shell_script, os.X_OK):
             os.chmod(shell_script, 0o755)
         #run script to download _static directory from zenodo archive

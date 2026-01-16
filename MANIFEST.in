@@ -1,4 +1,4 @@
 include VERSION
-include download_test_data.sh
+include scripts/download_test_data.sh
 global-exclude docs/_static/*
 global-exclude test_data/*
