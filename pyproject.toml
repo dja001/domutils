@@ -24,4 +24,10 @@ version = { file = "VERSION" }
 where = ["."]
 include = ["*"]
 
+[tool.pytest.ini_options]
+markers = [
+  "doc_artifact: tests that generate artifacts used in the Sphinx documentation"
+]
+testpaths = ["domutils"]
+
 

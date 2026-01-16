@@ -9,7 +9,7 @@ def input_data(data_in):
                 +'something convertible to a numpy array.' + newline)
     if not isinstance(data_in, np.ndarray):
         try:
-            data_out = np.atleast_1d(np.asfarray(data_in))
+            data_out = np.atleast_1d(np.asarray(data_in, dtype=float))
         except:
             err_mess = ( newline+' '                          + newline
                         +'Problem: input data should be convertible to a numpy array.'

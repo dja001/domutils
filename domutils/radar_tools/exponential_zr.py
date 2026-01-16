@@ -8,7 +8,7 @@ def exponential_zr(data:        Any,
                    missing:     Optional[float]=-9999.,
                    undetect:    Optional[float]=-3333.):
 
-    """ Conversion between dBZ and precip rate (R) using exponential Z-R
+    r""" Conversion between dBZ and precip rate (R) using exponential Z-R
 
     The relation being used is
     Z = aR^b
@@ -30,8 +30,8 @@ def exponential_zr(data:        Any,
         :nowrap:
 
         \\begin{align*}
-            dBZ &= 10 \log_{10}(Z)                     \\\\
-                &= 10 \log_{10}(a) + 10 b \log_{10}(R) \\\\
+            dBZ &= 10 \log_{10}(Z)                     \\\\ 
+                &= 10 \log_{10}(a) + 10 b \log_{10}(R) \\\\ 
                 &=          U      +   V  \log_{10}(R)
         \\end{align*}
 

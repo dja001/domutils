@@ -1,9 +1,7 @@
 
 Command to create a development environment 
 
-cartopy .20 has a bug and cartopy 0.21 is noticeably slower than previous versions.... 
-
-mamba create -n dev_env_v3 attrdict cartopy=0.19.0.post1 matplotlib=3.3.4 pysteps conda-pack dask h5py pygrib packaging scipy sphinx sphinx-gallery sphinx_rtd_theme cairosvg sphinx-autodoc-typehints sphinx-argparse twine pytz pysteps -c conda-forge
+mamba create -n dev_env_v3 attrdict cartopy matplotlib pysteps conda-pack dask h5py pygrib packaging scipy sphinx sphinx-gallery sphinx_rtd_theme cairosvg sphinx-autodoc-typehints sphinx-argparse twine pytz pysteps -c conda-forge
 pip install -e ~/python/packages/domcmc_package
 pip install -e ~/python/packages/domutils_package
 
@@ -26,15 +24,15 @@ Notes for me to remember steps involved in publishing this package
 - make modifications
 
 - if test_data is not in the root directory, get it with 
-  ./download_test_data.sh
+  ./scripts/download_test_data.sh
 
    On the science network, can link to dataset with:
    /home/dja001/shared_stuff/files/test_data_for_domutils_on_zenodo/v?.?.?
 
 - run unit tests
-  python -m unittest discover
+  pytest -xv
 
-    This should find and run 129 tests
+    This should find and run ~150 tests
 
 - run doctests and make documentation
   cd docs/
@@ -51,15 +49,11 @@ Notes for me to remember steps involved in publishing this package
 
      - Make sure that you start with the current version of test_data on zenodo
        cd /root/of/domutils/package/
-       ./download_test_data.sh
+       ./scripts/download_test_data.sh
 
-     - Make new dirs, change file as required by new tests or examples
+     - run the tests, generated figures will be compared with reference figures in test_data
 
-     - don't forget to include "_static" if new images are generated
-       cp -rf docs/_static test_data/_static
-
-     - don't forget to include "test_results" if the have changed
-       rsync -auv --exclude={'make_radar_fst/*.fst','make_radar_fst/motion_vectors','make_radar_fst/processed','obs_process_t_interp','render_similarly', 't_interp_demo'} test_results test_data/test_results
+     - if needed, update the reference figures after making sure that the result is correct
 
      When you are happy with the changes, you have to update the Zenodo repository
 
@@ -70,9 +64,9 @@ Notes for me to remember steps involved in publishing this package
        cp -r  ~/python/packages/domutils_package/test_data v1.0.10
 
      - List differences with previous version and build .tgz for archive
-      cd v1.0.9
+      cd v1.0.9 (most recent version)
       chmod 755 prepare_tgz_for_zenodo.sh
-                                    name of previous version
+                                  name of previous version
       ./prepare_tgz_for_zenodo.sh v1.0.8 
 
      - Login on zenodo with @gmail.com account
@@ -86,14 +80,14 @@ Notes for me to remember steps involved in publishing this package
      - get record number by clicking on new version
        eg  5497958
 
-     - adjust version and record number in download_test_data.sh
+     - adjust version and record number in scripts/download_test_data.sh
        - don't forget to add new files and .tgz if needed
 
 
   If the zenodo archive was changed, it must be tested
   rm -rf test_data test_results
   Updating the dataset version and file list will be necessary
-  ./download_test_data.sh
+  ./scripts/download_test_data.sh
 
   Run the tests with the new test_data directory if it got changed
 
@@ -128,9 +122,6 @@ conda build conda_build/domutils
 
 and upload it to anaconda cloud
 
-- can test local build with :
-        conda install -c file:///home/ords/mrd/rpndat/dja001/python_miniconda3/envs/test1/conda-bld/ domutils
-
 - commit everything, push branch to github, open merge/pull request
 
 - check that documentation builds on RTD
@@ -153,10 +144,10 @@ and upload it to anaconda cloud
 
 
         
-        - test the conda package in a fresh conda environment with:
-        conda install -c dja001 domutils
+- test the conda package in a fresh conda environment with:
+conda install -c dja001 domutils
 
-        - upgrade domutils in an existing environment with:
-        conda upgrade -c dja001 domutils
+- upgrade domutils in an existing environment with:
+conda upgrade -c dja001 domutils
 
 

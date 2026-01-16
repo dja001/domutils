@@ -1,3 +1,7 @@
-sphinx-autodoc-typehints
-sphinx-gallery
+sphinx
 sphinx-rtd-theme
+sphinx-autodoc-typehints 
+sphinx-gallery
+sphinx-argparse
+numpy
+dask[complete]

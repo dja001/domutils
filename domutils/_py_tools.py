@@ -76,16 +76,13 @@ def convert(pic_name, img_type, del_orig=False, density=300, geometry='100%', de
             if del_eps and not img_type == 'eps' :
                 #ignore del_eps when desired fig type is eps
                 os.remove(eps_name)
+    elif (shutil.which('cairosvg') is not None) and (file_extension == '.svg') :
+        # cairosvg is available use it for conversion
+        cmd = ['cairosvg', source_file, '-f', 'png', '-d', str(density), '-o', file_name +'.' + img_type]
+        process = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+        output, error = process.communicate()
     else:
-        #try:
-        #    import cairosvg
-        #except ImportError:
-        #    warnings.warn('Both Inkscape and cairosvg not available on system, no conversion performed, you will have to live with matplotlibs conversions')
-        #
-        ## cairosvg is available use it for conversion
-        #cairosvg.svg2png(url=source_file, write_to=file_name +'.png', dpi=density)
-
-        #convert to gif using convert
+        # use convert as last resort
         cmd = ['convert', '-density', str(density), '-geometry', geometry, source_file, file_name +'.' + img_type]
         process = subprocess.Popen(cmd, stdout=subprocess.PIPE)
         output, error = process.communicate()
@@ -110,7 +107,7 @@ def info(var):
 
 
 def render_similarly(new_image_file, reference_image_file, 
-                      output_dir=None, tol=0.5, verbose=1):
+                     output_dir=None, tol=0.5, verbose=1, force_comparison_image=False):
     """ compare two raster images, returns True if they render similarly
 
     compute mean absolute difference between the RGB arrays of two images  
@@ -182,6 +179,11 @@ def render_similarly(new_image_file, reference_image_file,
     image1 = Image.open(new_file_cp)
     image2 = Image.open(ref_file_cp)
 
+    if extension_new == '.gif':
+        # gif are encoded differently and need to be decoded
+        image1 = image1.convert("RGB")
+        image2 = image2.convert("RGB")
+
     #if image size is not the same, then images are considered different
     if image1.size != image2.size:
         if verbose > 0 :
@@ -200,7 +202,7 @@ def render_similarly(new_image_file, reference_image_file,
         abs_err[err_flag[0], err_flag[1], kk] = 255
 
 
-    if mae < tol :
+    if mae < tol and (not force_comparison_image) :
         #images are close to one another
         os.remove(new_file_cp)
         os.remove(ref_file_cp)

@@ -4,7 +4,6 @@ def lat_lon_extend(lon1_in:   Any,
                    lat1_in:   Any,
                    lon2_in:   Any,
                    lat2_in:   Any,
-                   crs:       Any=None,
                    half_dist: bool=False,
                    predefined_theta=None) :
     """ Extends latitude and longitudes on a sphere
@@ -32,8 +31,6 @@ def lat_lon_extend(lon1_in:   Any,
             lat1_in:    (array like) latitude  of point 1
             lon2_in:    (array like) longitude of point 2
             lat2_in:    (array like) latitude  of point 2
-            crs:        Instance of Cartopy geoAxes in which pt coordinates are defined 
-                        (default is PlateCarree)
             half_dist:  If true, pt 3 will be located at half the distance between pt1 and pt2
             predefined_theta:  (array like) radians. If set, will determine distance between pt2 and pt3
 
@@ -69,30 +66,27 @@ def lat_lon_extend(lon1_in:   Any,
            ...      print(lon3)
            ...      print(lat3)
            [180. 180.  90.   0.]
-           [ 0.   0.   0.  59.8]
-           >>> #           ^
-           >>> #           Presumably not =60. because cartopy uses a spheroid
+           [ 0.  0.  0. 60.]
 
 
     """
 
     import numpy as np
-    import cartopy.crs as ccrs
     from .rotation_matrix  import rotation_matrix
+    from .lat_lon_to_xyz import latlon_to_unit_sphere_xyz
+    from .lat_lon_to_xyz import unit_sphere_xyz_to_latlon
+
 
 
     #ensure numpy type
-    lon1 = np.array(lon1_in, copy=True)
-    lat1 = np.array(lat1_in, copy=True)
-    lon2 = np.array(lon2_in, copy=True)
-    lat2 = np.array(lat2_in, copy=True)
+    lon1 = np.asarray(lon1_in).flatten()
+    lat1 = np.asarray(lat1_in).flatten()
+    lon2 = np.asarray(lon2_in).flatten()
+    lat2 = np.asarray(lat2_in).flatten()
 
     #convert lat_lon to xyz
-    if crs is None:
-        crs = ccrs.PlateCarree()
-    geo_cent = crs.as_geocentric()
-    xyz_pt1 = geo_cent.transform_points(crs, lon1, lat1)
-    xyz_pt2 = geo_cent.transform_points(crs, lon2, lat2)
+    xyz_pt1 = latlon_to_unit_sphere_xyz(lon1, lat1, combined=True)
+    xyz_pt2 = latlon_to_unit_sphere_xyz(lon2, lat2, combined=True)
 
     #tmp storage vectors for xyz
     xyz_arr = np.zeros([lon1.size,3])
@@ -104,7 +98,13 @@ def lat_lon_extend(lon1_in:   Any,
         if predefined_theta is not None:
             theta = predefined_theta
         else:
-            theta = np.arccos( np.sum(v1*v2) / (np.linalg.norm(v1)*np.linalg.norm(v2)) )
+            # Normalize vectors 
+            v1_norm = v1 / np.linalg.norm(v1)
+            v2_norm = v2 / np.linalg.norm(v2)
+            
+            # Use atan2 for numerical stability
+            theta = np.arctan2(np.linalg.norm(np.cross(v1_norm, v2_norm)), np.dot(v1_norm, v2_norm))
+
         if half_dist :
             theta /= 2.
 
@@ -123,8 +123,6 @@ def lat_lon_extend(lon1_in:   Any,
     #endfor
 
     #output in lat/lon
-    lonlat = crs.transform_points(geo_cent, xyz_arr[:,0], xyz_arr[:,1], xyz_arr[:,2])
-    lon3 = lonlat[:,0]
-    lat3 = lonlat[:,1]
+    lon3, lat3 = unit_sphere_xyz_to_latlon(xyz_arr, combined=True)
 
     return lon3, lat3

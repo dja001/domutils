@@ -45,14 +45,17 @@ def _find_nearest(source_lon:  Any,
 
     """
 
+    import time
     import numpy as np
     import scipy.spatial
     import cartopy.crs as ccrs
 
     from .lat_lon_extend import lat_lon_extend
+    from .lat_lon_to_xyz import latlon_to_unit_sphere_xyz
+    from .lat_lon_to_xyz import unit_sphere_xyz_to_latlon
 
 
-    #insure numpy arrays
+    # ensure numpy arrays
     source_xx=np.asarray(source_lon)
     source_yy=np.asarray(source_lat)
     dest_xx=np.asarray(dest_lon)
@@ -94,33 +97,16 @@ def _find_nearest(source_lon:  Any,
         if extend_x or extend_y:
             raise ValueError('extension requires 2D inputs')
     
-    #everything to xyz coords - both source and destination
-    proj_ll = ccrs.Geodetic()
-    geo_cent = proj_ll.as_geocentric()
-    
-    #xyz of source grid 
-    if source_crs is None:
-        source_xyz = geo_cent.transform_points(proj_ll,
-                                               source_xx.flatten(),
-                                               source_yy.flatten())
-    else: 
-        source_xyz = geo_cent.transform_points(source_crs,
-                                               source_xx.flatten(),
-                                               source_yy.flatten())
-
-    #xyz of destination grid
-    if dest_crs is None:
-        dest_xyz = geo_cent.transform_points(proj_ll,
-                                             dest_xx.flatten(),
-                                             dest_yy.flatten())
-    else: 
-        dest_xyz = geo_cent.transform_points(dest_crs,
-                                             dest_xx.flatten(),
-                                             dest_yy.flatten())
+    # everything to xyz coords 
+    source_xyz = latlon_to_unit_sphere_xyz(source_xx.flatten(), source_yy.flatten(), combined=True)
+    dest_xyz   = latlon_to_unit_sphere_xyz(  dest_xx.flatten(),   dest_yy.flatten(), combined=True)
 
     #indices for nearest neighbor of each pt in image grid to data grid
-    kdtree = scipy.spatial.cKDTree(source_xyz, balanced_tree=False)
-
+    kdtree = scipy.spatial.cKDTree( source_xyz,
+                                    leafsize=64,
+                                    balanced_tree=False,
+                                    compact_nodes=True
+                                  )
 
     if smooth_radius is not None :
         #for smooth radius, finding nearest pts is done within
@@ -135,7 +121,7 @@ def _find_nearest(source_lon:  Any,
     dest_xyz_on_earth = dest_xyz[inds_all_finite]
 
     #search neighbors using the tree
-    _, indices_on_earth = kdtree.query(dest_xyz_on_earth, k=1)
+    _, indices_on_earth = kdtree.query(dest_xyz_on_earth, k=1, workers=-1)
 
     #set all missing values to 0, they will not be used but unravel_index will be much happier
     indices = np.zeros((dest_xyz.shape[0],), dtype=int)

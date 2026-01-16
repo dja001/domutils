@@ -33,7 +33,7 @@ def exceptions(excep_val=None, excep_tol=None, excep_col=None,default_excep_col=
     if excep_val is not None:
         #generate excep_val_np
         try: 
-            excep_val_np = np.atleast_1d(np.asfarray(excep_val))
+            excep_val_np = np.atleast_1d(np.asarray(excep_val, dtype=float))
         except:
             err_mess = ( newline+' '                             + newline
                         +'Problem with the keyword "excep_val"'  + newline
@@ -49,7 +49,7 @@ def exceptions(excep_val=None, excep_tol=None, excep_col=None,default_excep_col=
             excep_tol_np = np.full(n_excep, default_excep_tol)
         else:
             try: 
-                excep_tol_np = np.atleast_1d(np.asfarray(excep_tol))
+                excep_tol_np = np.atleast_1d(np.asarray(excep_tol, dtype=float))
             except:
                 err_mess = ( newline+' '                             + newline
                             +'Problem with the keyword "excep_tol"'  + newline
@@ -117,7 +117,7 @@ def exceptions(excep_val=None, excep_tol=None, excep_col=None,default_excep_col=
         
     else:
         #no exceptions specified
-        n_excep = np.array([0.])
+        n_excep = 0
         excep_val_np =None
         excep_tol_np =None
         excep_col_rgb=None

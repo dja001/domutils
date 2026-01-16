@@ -10,13 +10,72 @@ Most of the action happens through the class :class:`ProjInds`.
 The following figure illustrates the convention for storring data in numpy arrays. 
 It is assumed that the first index (rows) represents x-y direction (longitudes):
 
-.. image:: _static/xy.svg
+.. image:: _static/illustrative/xy.svg
                 :align: center
 
 
 """
 
 from typing import Callable, Iterator, Union, Optional, List, Iterable, MutableMapping, Any
+
+def normalize_longitudes(lons):
+    """
+    Normalizes an array of longitudes to the range [-180, 180).
+    """
+    import numpy as np
+
+    
+
+    return np.mod(np.asarray(lons) + 180, 360) - 180
+
+
+def geographic_extent_to_rotated(extent_geo, rotated_crs):
+    """
+    Convert a geographic (PlateCarree) extent into rotated-pole coordinates.
+
+    Parameters
+    ----------
+    extent_geo : list or tuple
+        [lon_min, lon_max, lat_min, lat_max] in true geographic coords.
+    rotated_crs : cartopy.crs.RotatedPole
+        The rotated pole CRS you want to convert into.
+
+    Returns
+    -------
+    extent_rot : list
+        [rot_lon_min, rot_lon_max, rot_lat_min, rot_lat_max] in rotated coords.
+    """
+
+    import numpy as np
+    import cartopy.crs as ccrs
+
+    lon_min, lon_max, lat_min, lat_max = extent_geo
+    
+    # Four corner points of the geographic box
+    geo_corners = np.array([
+        [lon_min, lat_min],
+        [lon_min, lat_max],
+        [lon_max, lat_min],
+        [lon_max, lat_max],
+    ])
+
+    pc = ccrs.PlateCarree()
+
+    # Transform to rotated CRS
+    rot_corners = rotated_crs.transform_points(
+        pc, geo_corners[:, 0], geo_corners[:, 1]
+    )
+
+    rot_lon = rot_corners[:, 0]
+    rot_lat = rot_corners[:, 1]
+
+    return [
+        float(rot_lon.min()),
+        float(rot_lon.max()),
+        float(rot_lat.min()),
+        float(rot_lat.max()),
+    ]
+
 
 class ProjInds():
     """ A class for making, keeping record of, and applying projection indices.
@@ -52,7 +111,7 @@ class ProjInds():
                            data to a coarser grid.
                            Weighted averages can be obtained by providing weights to the *project_data*
                            method.
-            smooth_radius: Boxcar averaging with a circular area of a given radius.
+            smooth_radius: Boxcar averaging with a circular area of a given radius given in kilometer.
                            This option allows to perform smoothing at the same time as interpolation.
                            For each point in the destination grid, all source data points within
                            a radius given by *smooth_radius* will be averaged together.
@@ -66,256 +125,33 @@ class ProjInds():
             Simple example showing how to project and display data.
             Rotation of points on the globe is also demonstrated
 
-            >>> import numpy as np
-            >>> import matplotlib as mpl
-            >>> import matplotlib.pyplot as plt
-            >>> import cartopy.crs as ccrs
-            >>> import cartopy.feature as cfeature
-            >>> import domutils.legs as legs
-            >>> import domutils.geo_tools as geo_tools
-            >>>
-            >>> # make mock data and coordinates
-            >>> # note that there is some regularity to the grid 
-            >>> # but that it does not conform to any particular projection
-            >>> regular_lons =     [ [-91. , -91  , -91   ],
-            ...                      [-90. , -90  , -90   ],
-            ...                      [-89. , -89  , -89   ] ]
-            >>> regular_lats =     [ [ 44  ,  45  ,  46   ],
-            ...                      [ 44  ,  45  ,  46   ],
-            ...                      [ 44  ,  45  ,  46   ] ]
-            >>> data_vals =        [ [  6.5,   3.5,    .5 ],
-            ...                      [  7.5,   4.5,   1.5 ],
-            ...                      [  8.5,   5.5,   2.5 ] ]
-            >>> missing = -9999.
-            >>>
-            >>> #pixel resolution of image that will be shown in the axes
-            >>> img_res = (800,600)
-            >>> #point density for entire figure
-            >>> mpl.rcParams['figure.dpi'] = 800
-            >>>
-            >>> #projection and extent of map being displayed
-            >>> proj_aea = ccrs.AlbersEqualArea(central_longitude=-94.,
-            ...                                 central_latitude=35.,
-            ...                                 standard_parallels=(30.,40.))
-            >>> map_extent=[-94.8,-85.2,43,48.]
-            >>>
-            >>> #-------------------------------------------------------------------
-            >>> #regular lat/lons are boring, lets rotate the coordinate system about
-            >>> # the central data point
-            >>> 
-            >>> #use cartopy transforms to get xyz coordinates
-            >>> proj_ll = ccrs.Geodetic()
-            >>> geo_cent = proj_ll.as_geocentric()
-            >>> xyz = geo_cent.transform_points(proj_ll, np.asarray(regular_lons),
-            ...                                          np.asarray(regular_lats))
-            >>>
-            >>> #lets rotate points by 45 degrees counter clockwise
-            >>> theta = np.pi/4
-            >>> rotation_matrix = geo_tools.rotation_matrix([xyz[1,1,0], #x
-            ...                                              xyz[1,1,1], #y
-            ...                                              xyz[1,1,2]],#z
-            ...                                              theta)
-            >>> rotated_xyz = np.zeros((3,3,3))
-            >>> for ii, (lat_arr, lon_arr) in enumerate(zip(regular_lats, regular_lons)):
-            ...     for jj, (this_lat, this_lon) in enumerate(zip(lat_arr, lat_arr)):
-            ...         rotated_xyz[ii,jj,:] = np.matmul(rotation_matrix,[xyz[ii,jj,0], #x
-            ...                                                           xyz[ii,jj,1], #y
-            ...                                                           xyz[ii,jj,2]])#z
-            >>>
-            >>> #from xyz to lat/lon
-            >>> rotated_latlon = proj_ll.transform_points(geo_cent, rotated_xyz[:,:,0],
-            ...                                                     rotated_xyz[:,:,1],
-            ...                                                     rotated_xyz[:,:,2])
-            >>> rotatedLons = rotated_latlon[:,:,0]
-            >>> rotatedLats = rotated_latlon[:,:,1]
-            >>> # done rotating
-            >>> #-------------------------------------------------------------------
-            >>> 
-            >>> #larger characters
-            >>> mpl.rcParams.update({'font.size': 15})
-            >>>
-            >>> #instantiate figure
-            >>> fig = plt.figure(figsize=(7.5,6.))
-            >>> 
-            >>> #instantiate object to handle geographical projection of data
-            >>> # onto geoAxes with this specific crs and extent
-            >>> ProjInds = geo_tools.ProjInds(rotatedLons, rotatedLats,extent=map_extent, dest_crs=proj_aea,
-            ...                               image_res=img_res)
-            >>> 
-            >>> #axes for this plot
-            >>> ax = fig.add_axes([.01,.1,.8,.8], projection=proj_aea)
-            >>> ax.set_extent(map_extent)
-            >>> 
-            >>> # Set up colormapping object 
-            >>> color_mapping = legs.PalObj(range_arr=[0.,9.],
-            ...                              color_arr=['brown','blue','green','orange',
-            ...                                         'red','pink','purple','yellow','b_w'],
-            ...                              solid='col_dark',
-            ...                              excep_val=missing, excep_col='grey_220')
-            >>> 
-            >>> #geographical projection of data into axes space
-            >>> proj_data = ProjInds.project_data(data_vals)
-            >>> 
-            >>> #plot data & palette
-            >>> color_mapping.plot_data(ax=ax,data=proj_data,
-            ...                         palette='right', pal_units='[unitless]', 
-            ...                         pal_format='{:4.0f}')   #palette options
-            >>> 
-            >>> #add political boundaries
-            >>> dum = ax.add_feature(cfeature.STATES.with_scale('50m'), 
-            ...                      linewidth=0.5, edgecolor='0.2',zorder=1)
-            >>> 
-            >>> #plot border and mask everything outside model domain
-            >>> ProjInds.plot_border(ax, mask_outside=False, linewidth=2.)
-            >>> 
-            >>> #uncomment to save figure
-            >>> plt.savefig('_static/projection_demo.svg')
 
-            .. image:: _static/projection_demo.svg
+            .. literalinclude:: ../domutils/geo_tools/tests/test_geo_tools.py
+               :language: python
+               :start-after: DOCS:simple_projinds_example_begins
+               :end-before: DOCS:simple_projinds_example_ends
+
+            .. image:: _static/test_geo_tools/test_projinds_simple_example.svg
                 :align: center
 
 
             Example showing how ProjInds can also be used for nearest neighbor interpolation
 
-            >>> import numpy as np
-            >>> 
-            >>> # Source data on a very simple grid
-            >>> src_lon =     [ [-90.1 , -90.1  ],
-            ...                 [-89.1 , -89.1  ] ]
-            >>> 
-            >>> src_lat =     [ [ 44.1  , 45.1  ],
-            ...                 [ 44.1  , 45.1  ] ]
-            >>> 
-            >>> data    =     [ [  3    ,  1    ],
-            ...                 [  4    ,  2    ] ]
-            >>> 
-            >>> # destination grid where we want data
-            >>> # Its larger than the source grid and slightly offset
-            >>> dest_lon =     [ [-91. , -91  , -91 , -91  ],
-            ...                  [-90. , -90  , -90 , -90  ],
-            ...                  [-89. , -89  , -89 , -89  ],
-            ...                  [-88. , -88  , -88 , -88  ] ]
-            >>> 
-            >>> dest_lat =     [ [ 43  ,  44  ,  45 ,  46 ],
-            ...                  [ 43  ,  44  ,  45 ,  46 ],
-            ...                  [ 43  ,  44  ,  45 ,  46 ],
-            ...                  [ 43  ,  44  ,  45 ,  46 ] ]
-            >>>
-            >>> #instantiate object to handle interpolation
-            >>> ProjInds = geo_tools.ProjInds(data_xx=src_lon,   data_yy=src_lat,
-            ...                               dest_lon=dest_lon, dest_lat=dest_lat,
-            ...                               missing=-99.)
-            >>> #interpolate data with "project_data"
-            >>> interpolated = ProjInds.project_data(data)
-            >>> #nearest neighbor output, pts outside the domain are set to missing
-            >>> #Interpolation with border detection in all directions
-            >>> print(interpolated)
-            [[-99. -99. -99. -99.]
-             [-99.   3.   1. -99.]
-             [-99.   4.   2. -99.]
-             [-99. -99. -99. -99.]]
-            >>>
-            >>>
-            >>> #on some domain, border detection is not desirable, it can be turned off
-            >>> #
-            >>> # extend_x here refers to the dimension in data space (longitudes) that are
-            >>> # represented along rows of python array.
-            >>>
-            >>> # for example:
-            >>> 
-            >>> # Border detection in Y direction (latitudes) only
-            >>> proj_inds_ext_y = geo_tools.ProjInds(data_xx=src_lon,   data_yy=src_lat,
-            ...                                      dest_lon=dest_lon, dest_lat=dest_lat,
-            ...                                      missing=-99.,
-            ...                                      extend_x=False)
-            >>> interpolated_ext_y = proj_inds_ext_y.project_data(data)
-            >>> print(interpolated_ext_y)
-            [[-99.   3.   1. -99.]
-             [-99.   3.   1. -99.]
-             [-99.   4.   2. -99.]
-             [-99.   4.   2. -99.]]
-            >>> #
-            >>> # Border detection in X direction (longitudes) only
-            >>> proj_inds_ext_x = geo_tools.ProjInds(data_xx=src_lon,   data_yy=src_lat,
-            ...                                      dest_lon=dest_lon, dest_lat=dest_lat,
-            ...                                      missing=-99.,
-            ...                                      extend_y=False)
-            >>> interpolated_ext_x = proj_inds_ext_x.project_data(data)
-            >>> print(interpolated_ext_x)
-            [[-99. -99. -99. -99.]
-             [  3.   3.   1.   1.]
-             [  4.   4.   2.   2.]
-             [-99. -99. -99. -99.]]
-            >>> # 
-            >>> # no border detection
-            >>> proj_inds_no_b = geo_tools.ProjInds(data_xx=src_lon,   data_yy=src_lat,
-            ...                                     dest_lon=dest_lon, dest_lat=dest_lat,
-            ...                                     missing=-99.,
-            ...                                     extend_x=False, extend_y=False)
-            >>> interpolated_no_b = proj_inds_no_b.project_data(data)
-            >>> print(interpolated_no_b)
-            [[3. 3. 1. 1.]
-             [3. 3. 1. 1.]
-             [4. 4. 2. 2.]
-             [4. 4. 2. 2.]]
+            .. literalinclude:: ../domutils/geo_tools/tests/test_geo_tools.py
+               :language: python
+               :start-after: DOCS:simple_nearest_neighbor_interpolation_begins
+               :end-before: DOCS:simple_nearest_neighbor_interpolation_ends
 
             Interpolation to coarser grids can be done with the *nearest* keyword. 
             With this flag, all high-resoution data falling within a tile of the 
             destination grid will be averaged together. 
             Border detection works as in the example above.
 
-            >>> import numpy as np
-            >>> # source data on a very simple grid
-            >>> src_lon =     [ [-88.2 , -88.2  ],
-            ...                 [-87.5 , -87.5  ] ]
-            >>> 
-            >>> src_lat =     [ [ 43.5  , 44.1  ],
-            ...                 [ 43.5  , 44.1  ] ]
-            >>> 
-            >>> data    =     [ [  3    ,  1    ],
-            ...                 [  4    ,  2    ] ]
-            >>> 
-            >>> # coarser destination grid where we want data
-            >>> dest_lon =     [ [-92. , -92  , -92 , -92  ],
-            ...                  [-90. , -90  , -90 , -90  ],
-            ...                  [-88. , -88  , -88 , -88  ],
-            ...                  [-86. , -86  , -86 , -86  ] ]
-            >>> 
-            >>> dest_lat =     [ [ 42  ,  44  ,  46 ,  48 ],
-            ...                  [ 42  ,  44  ,  46 ,  48 ],
-            ...                  [ 42  ,  44  ,  46 ,  48 ],
-            ...                  [ 42  ,  44  ,  46 ,  48 ] ]
-            >>> 
-            >>> #instantiate object to handle interpolation
-            >>> #Note the average keyword set to true
-            >>> ProjInds = geo_tools.ProjInds(data_xx=src_lon,   data_yy=src_lat,
-            ...                               dest_lon=dest_lon, dest_lat=dest_lat,
-            ...                               average=True, missing=-99.)
-            >>> 
-            >>> #interpolate data with "project_data"
-            >>> interpolated = ProjInds.project_data(data)
-            >>> 
-            >>> #Since all high resolution data falls into one of the output 
-            >>> #grid tile, they are all aaveraged togetherL:  (1+2+3+4)/4 = 2.5 
-            >>> print(interpolated)
-            [[-99.  -99.  -99.  -99. ]
-             [-99.  -99.  -99.  -99. ]
-             [-99.    2.5 -99.  -99. ]
-             [-99.  -99.  -99.  -99. ]]
-            >>>
-            >>> #weighted average can be obtained by providing weights for each data pt 
-            >>> #being averaged
-            >>> weights   =     [ [  0.5   ,  1.    ],
-            ...                   [  1.    ,  0.25  ] ]
-            >>> 
-            >>> weighted_avg = ProjInds.project_data(data, weights=weights)
-            >>> #result is a weighted average:  
-            >>> # (1.*1 + 0.25*2 + 0.5*3 + 1.*4) / (1.+0.25+0.5+1.) = 7.0/2.75 = 2.5454
-            >>> print(weighted_avg)
-            [[-99.         -99.         -99.         -99.        ]
-             [-99.         -99.         -99.         -99.        ]
-             [-99.           2.54545455 -99.         -99.        ]
-             [-99.         -99.         -99.         -99.        ]]
+            .. literalinclude:: ../domutils/geo_tools/tests/test_geo_tools.py
+               :language: python
+               :start-after: DOCS:averaging_interpolation_begins
+               :end-before: DOCS:averaging_interpolation_ends
+
 
             Sometimes, it is useful to smooth data during the interpolation process.
             For example when comparing radar measurement against model output, smoothing
@@ -325,50 +161,14 @@ class ProjInds():
             Use the *smoooth_radius* to average all source data point within a certain radius
             (in km) of the destination grid tiles. 
 
-            >>> # source data on a very simple grid
-            >>> src_lon =     [ [-88.2 , -88.2  ],
-            ...                 [-87.5 , -87.5  ] ]
-            >>> 
-            >>> src_lat =     [ [ 43.5  , 44.1  ],
-            ...                 [ 43.5  , 44.1  ] ]
-            >>> 
-            >>> data    =     [ [  3    ,  1    ],
-            ...                 [  4    ,  2    ] ]
-            >>> 
-            >>> # coarser destination grid where we want data
-            >>> dest_lon =     [ [-92. , -92  , -92 , -92  ],
-            ...                  [-90. , -90  , -90 , -90  ],
-            ...                  [-88. , -88  , -88 , -88  ],
-            ...                  [-86. , -86  , -86 , -86  ] ]
-            >>> 
-            >>> dest_lat =     [ [ 42  ,  44  ,  46 ,  48 ],
-            ...                  [ 42  ,  44  ,  46 ,  48 ],
-            ...                  [ 42  ,  44  ,  46 ,  48 ],
-            ...                  [ 42  ,  44  ,  46 ,  48 ] ]
-            >>> 
-            >>> #instantiate object to handle interpolation
-            >>> #All source data points found within 300km of each destination 
-            >>> #grid tiles will be averaged together
-            >>> ProjInds = geo_tools.ProjInds(data_xx=src_lon,    data_yy=src_lat,
-            ...                               dest_lat=dest_lat,  dest_lon=dest_lon,
-            ...                               smooth_radius=300., missing=-99.)
-            >>> 
-            >>> #interpolate and smooth data with "project_data"
-            >>> interpolated = ProjInds.project_data(data)
-            >>> 
-            >>> #output is smoother than data source
-            >>> print(interpolated)
-            [[-99.         -99.         -99.         -99.        ]
-             [  2.66666667   2.5          1.5        -99.        ]
-             [  2.5          2.5          2.5        -99.        ]
-             [  2.5          2.5          1.5        -99.        ]]
-
-
-
-
-             
+            .. literalinclude:: ../domutils/geo_tools/tests/test_geo_tools.py
+               :language: python
+               :start-after: DOCS:smooth_radius_interpolation_begins
+               :end-before: DOCS:smooth_radius_interpolation_ends
 
     """
+
+    
     def __init__(self,
                  data_xx:       Optional[Any]=None,
                  data_yy:       Optional[Any]=None,
@@ -403,42 +203,35 @@ class ProjInds():
         #check specification of destination grid
         if (dest_lon is not None) and (dest_lat is not None):
             #destination lat/lon are provided by user, use those
-            dest_lon = np.asarray(dest_lon)
+            dest_lon = normalize_longitudes(dest_lon)
             dest_lat = np.asarray(dest_lat)
+            rotated_extent = None
 
         elif (dest_crs is not None) :
-            #we are projecting data onto an image, get destination grid from Cartopy
-            delete_dummy_fig = False
-            if fig is None:
-                dummy_fig = plt.figure()
-                delete_dummy_fig = True
-            else:
-                dummy_fig = fig
-            dummy_ax = dummy_fig.add_axes([0.,0.,1.,1.], projection=dest_crs)
-            if extent is not None:
-                dummy_ax.set_extent(extent)
-
-            #No axes contour line
-            if version.parse(cartopy.__version__) >= version.parse("0.18.0"):
-                dummy_ax.spines['geo'].set_linewidth(0)
-            else:
-                dummy_ax.outline_patch.set_linewidth(0) 
+            # we are projecting data onto a given projection extent in cartopy
             
             if extent is not None:
-                #get corners of image in data space
-                transform_data_to_axes = dummy_ax.transData + dummy_ax.transAxes.inverted()
-                transform_axes_to_data = transform_data_to_axes.inverted()
-                pts = ((0.,0.),(1.,1.))
-                pt1, pt2 = transform_axes_to_data.transform(pts)
-        
-                #get regular grid of pts in projected figure    units of dest_lon and dest_lat are in dataspace
-                #                                                                W-E              S-NE     see explanation below
-                dest_lon, dest_lat, extent = cimgt.mesh_projection(dest_crs, int(image_res[0]), int(image_res[1]),
-                                                                   x_extents=[pt1[0],pt2[0]], y_extents=[pt1[1],pt2[1]])
+                # we assume lat/lon extent
+                # check that values passed are compatible
+                # this expression works even if extent is passed as a tuple
+                extent = (*normalize_longitudes(extent[:2]), *extent[2:])
 
+                if ((extent[0] > 180.) or (extent[0] < -180.) or
+                    (extent[1] > 180.) or (extent[1] < -180.) or
+                    (extent[2] >  90.) or (extent[2] <  -90.) or
+                    (extent[3] >  90.) or (extent[3] <  -90.)):
+                    raise ValueError(f'We assume lat/lon extent. The values provided are not compatible: {extent}')
+
+                # get extent in the provided crs
+                rotated_extent = geographic_extent_to_rotated(extent, dest_crs)
+
+                xx = np.linspace(rotated_extent[0], rotated_extent[1], image_res[0])
+                yy = np.linspace(rotated_extent[2], rotated_extent[3], image_res[1])
+                dest_xx, dest_yy = np.meshgrid(xx, yy)
             else:
                 #use default extent for this projection
-                dest_lon, dest_lat, extent = cimgt.mesh_projection(dest_crs, int(image_res[0]), int(image_res[1]))
+                rotated_extent = None
+                dest_xx, dest_yy, extent = cimgt.mesh_projection(dest_crs, int(image_res[0]), int(image_res[1]))
 
             #Image returned by Cartopy is of shape (ny,nx) so that nx corresponds to S-N
             # with orientation
@@ -452,9 +245,14 @@ class ProjInds():
             #   S   
             #
             #the following transformation does that. 
+            dest_xx = np.flipud(dest_xx)
+            dest_yy = np.flipud(dest_yy)
 
-            dest_lon = np.rot90(np.transpose(dest_lon))
-            dest_lat = np.rot90(np.transpose(dest_lat))
+            #get lat/lon from data coords
+            proj_ll = cartopy.crs.PlateCarree()
+            out = proj_ll.transform_points(dest_crs, dest_xx, dest_yy)
+            dest_lon = out[:,:,0]
+            dest_lat = out[:,:,1]
 
             ##took me a long while to figure the  nx,ny -> ny,nx + transpose/rotation above 
             ##lets keep debugging code around for a little while...  
@@ -495,23 +293,23 @@ class ProjInds():
 
         
         #insure input coords are numpy arrays
-        np_xx = np.asarray(src_lon)
-        np_yy = np.asarray(src_lat)
+        src_lon = normalize_longitudes(src_lon)
+        src_lat = np.asarray(src_lat)
         
         #only necessary for plotting border
         # borders make no sense for continuous grids such as global grids
         # set either extend_x or extend_y = False to skip computation of borders
         if extend_x and extend_y:
             #get lat/lon at the border of the domain        Note the half dist in the call to lat_lon_extend
-            border_lat2d = np.zeros(np.asarray(np_yy.shape)+2)
-            border_lon2d = np.zeros(np.asarray(np_xx.shape)+2)
+            border_lat2d = np.zeros(np.asarray(src_lat.shape)+2)
+            border_lon2d = np.zeros(np.asarray(src_lon.shape)+2)
             #center contains data lat/lon
-            border_lat2d[1:-1,1:-1] = np_yy
-            border_lon2d[1:-1,1:-1] = np_xx
+            border_lat2d[1:-1,1:-1] = src_lat
+            border_lon2d[1:-1,1:-1] = src_lon
             #extend left side
-            border_lon2d[1:-1,0], border_lat2d[1:-1,0] = lat_lon_extend(np_xx[:,1],np_yy[:,1],np_xx[:,0],np_yy[:,0], half_dist=True)
+            border_lon2d[1:-1,0], border_lat2d[1:-1,0] = lat_lon_extend(src_lon[:,1],src_lat[:,1],src_lon[:,0],src_lat[:,0], half_dist=True)
             #extend right side
-            border_lon2d[1:-1,-1], border_lat2d[1:-1,-1] = lat_lon_extend(np_xx[:,-2],np_yy[:,-2],np_xx[:,-1],np_yy[:,-1], half_dist=True)
+            border_lon2d[1:-1,-1], border_lat2d[1:-1,-1] = lat_lon_extend(src_lon[:,-2],src_lat[:,-2],src_lon[:,-1],src_lat[:,-1], half_dist=True)
             #extend top
             border_lon2d[0,:], border_lat2d[0,:] = lat_lon_extend(border_lon2d[2,:],border_lat2d[2,:],border_lon2d[1,:],border_lat2d[1,:], half_dist=True)
             #extend bottom
@@ -533,9 +331,13 @@ class ProjInds():
         
         #find proj_ind using _find_nearest
         if smooth_radius is not None:
+
+            radius_earth = 6371. # km
+            smooth_radius_unit = smooth_radius / radius_earth
+
             #when using a smoothing radius, the tree will be used in project_data
             kdtree, dest_xyz = _find_nearest(src_lon, src_lat, dest_lon, dest_lat,
-                                             smooth_radius=smooth_radius,
+                                             smooth_radius=smooth_radius_unit,
                                              extend_x=False, extend_y=False, missing=missing,
                                              source_crs=source_crs, dest_crs=dest_crs)
         elif average:
@@ -551,33 +353,28 @@ class ProjInds():
         
         #save needed data
         #data needed for projecting data
-        self.data_shape = np_xx.shape
+        self.data_shape = src_lon.shape
         self.dest_shape = dest_lon.shape
         self.min_hits = min_hits
         self.missing = missing
+        self.rotated_extent = rotated_extent
 
         if smooth_radius is not None:
-            #crs space in meters
-            self.smooth_radius_m = smooth_radius * 1e3
+            # distances along unit sphere
+            self.smooth_radius_unit = smooth_radius_unit
             self.kdtree = kdtree
             self.dest_xyz = dest_xyz
             self.average = True     #uses the averaging mechanism during smoothing
             self.destLon = dest_lon  #need those in project_data when smoothing
             self.destLat = dest_lat
         else:
-            self.smooth_radius_m = None
+            self.smooth_radius_unit = None
             self.proj_ind  = proj_ind
             self.average   = average
         
         #data needed for plotting border
         self.border_lons = border_lons
         self.border_lats = border_lats
-        
-        #cleanup
-        if dest_crs:
-            dummy_ax.remove()
-            if delete_dummy_fig :
-                plt.close(dummy_fig)
 
 
 
@@ -619,7 +416,7 @@ class ProjInds():
         #ensure numpy
         np_data = np.asarray(data)
 
-        if self.smooth_radius_m is None :
+        if self.smooth_radius_unit is None :
             #make sure data is of the right shape
             if (np_data.shape != self.data_shape) :
                 raise ValueError((f"data is not of the same shape as the coordinates used "  +
@@ -652,7 +449,7 @@ class ProjInds():
                     raise ValueError("Weights should have the same shape as data")
             weights_flat = weights_np.ravel()
 
-            if self.smooth_radius_m is not None:
+            if self.smooth_radius_unit is not None:
                 #smooth all data found within distance specified by smooth_radius
                 #
                 #  Note for future optimisation work
@@ -660,7 +457,7 @@ class ProjInds():
                 #  kdtree call takes ~15s while loop runs in ~60s
 
                 #KDtree call
-                good_pts_list = self.kdtree.query_ball_point(self.dest_xyz, self.smooth_radius_m)
+                good_pts_list = self.kdtree.query_ball_point(self.dest_xyz, self.smooth_radius_unit)
                 for ind, good_pts in enumerate(good_pts_list):
 
                     this_data    = data_flat[good_pts]
@@ -746,19 +543,11 @@ class ProjInds():
         if ax is None:
             raise ValueError('The "ax" keyword must be provided')
 
-        #assume data is defined by latitude/longigude
-        if crs is None :
-            proj_ll = ccrs.Geodetic()
-
         #clip pixels outside of domain
-        if self.smooth_radius_m is None:
+        if self.smooth_radius_unit is None:
             if mask_outside :
                 #get corners of image in data space
-                transform_data_to_axes = ax.transData + ax.transAxes.inverted()
-                transform_axes_to_data = transform_data_to_axes.inverted()
-                pts = ((0.,0.),(1.,1.))
-                pt1, pt2 = transform_axes_to_data.transform(pts)
-                extent_data_space = [pt1[0],pt2[0],pt1[1],pt2[1]]
+                extent_data_space = ax.get_extent()
             
                 rgb   = np.full(self.dest_shape + (3,), 1., dtype='float32')
                 alpha = np.full(self.dest_shape + (1,), 0., dtype='float32')
@@ -792,7 +581,7 @@ class ProjInds():
 
         #plot border
         ax.plot(self.border_lons, self.border_lats,
-                color='.1', linewidth=linewidth, transform=proj_ll, zorder=zorder)
+                color='.1', linewidth=linewidth, transform=ccrs.PlateCarree(), zorder=zorder)
 
 
 

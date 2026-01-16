@@ -51,7 +51,7 @@ def make_panel(fig, pos, img_res, map_extent, missing,
                                         image_res=img_res, missing=missing)
     
     ax = fig.add_axes(pos, projection=proj_mil)
-    ax.set_extent(map_extent)
+    ax.set_extent(proj_inds_goes.rotated_extent, crs=proj_mil)
     
     #geographical projection of data into axes space
     proj_data_pr   = proj_inds_dpr.project_data(dpr_pr)

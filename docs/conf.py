@@ -15,9 +15,10 @@ import sys
 import subprocess
 sys.path.insert(0, os.path.abspath('..'))
 
+on_rtd = os.environ.get('READTHEDOCS') == 'True'
 
-
-
+# location of customs patch to add images links on read thedocs
+sys.path.insert(0, os.path.abspath('_extensions'))
 
 
 # -- Project information -----------------------------------------------------
@@ -41,11 +42,11 @@ if not os.path.isdir('../test_data') :
         parent  = os.path.dirname(current)
         os.chdir(parent)
         #make script executable if it is not
-        shell_script = './download_test_data.sh'
+        shell_script = './scripts/download_test_data.sh'
         if not os.access(shell_script, os.X_OK):
             os.chmod(shell_script, 0o755)
         #run script to download _static directory from zenodo archive
-        subprocess.run([shell_script, '_static_only'])
+        subprocess.run([shell_script, 'figures_only'])
     except:
         raise RuntimeError('something went wrong downloading the test data')
 
@@ -62,7 +63,8 @@ extensions = ['sphinx.ext.napoleon',
               'sphinx.ext.autosectionlabel',
               'sphinx_autodoc_typehints',
               'sphinxarg.ext',
-              'sphinx_gallery.gen_gallery']
+              'sphinx_gallery.gen_gallery',
+              'patch_gallery_images'] # in _extensions; adds image links to examples
 
 napoleon_include_private_with_doc = False
 
@@ -79,6 +81,7 @@ exclude_patterns = ['build', '_build', 'Thumbs.db', '.DS_Store']
 sphinx_gallery_conf = {
      'examples_dirs': '../examples',   # path to your example scripts
      'gallery_dirs': 'auto_examples',  # path where to save gallery generated examples
+     'plot_gallery': not on_rtd,
 }
 
 
@@ -95,20 +98,3 @@ html_theme_path = ["_themes", ]
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
-
-
-
-
-# No longer using LFD on github due to paywall restrictions
-# I am keeping this as a reference
-#
-### Workaround to install and execute git-lfs on Read the Docs
-### from https://github.com/readthedocs/readthedocs.org/issues/1846
-### may not be needed in the future
-##on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
-##if on_rtd :
-##    os.system('wget https://github.com/git-lfs/git-lfs/releases/download/v2.7.1/git-lfs-linux-amd64-v2.7.1.tar.gz')
-##    os.system('tar xvfz git-lfs-linux-amd64-v2.7.1.tar.gz')
-##    os.system('./git-lfs install')  # make lfs available in current repository
-##    os.system('./git-lfs fetch')    # download content from remote
-##    os.system('./git-lfs checkout') # make local files to have the real content on them
