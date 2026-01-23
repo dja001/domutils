@@ -5,16 +5,8 @@ mamba create -n dev_env_v3 attrdict cartopy matplotlib pysteps conda-pack dask h
 pip install -e ~/python/packages/domcmc_package
 pip install -e ~/python/packages/domutils_package
 
-+ go change silent_import in the pysteps config file
+to avoid noisy outputs you may want to change silent_import in the pysteps config file
 /fs/site5/eccc/mrd/rpndat/dja001/mambaforge/envs/dev_env_v3/lib/python3.9/site-packages/pysteps/pystepsrc
-
-dasverif 
-docutils
-domcmc
-gridded-obs
-radvelso
-
-
 
 
 Notes for me to remember steps involved in publishing this package
@@ -30,7 +22,7 @@ Notes for me to remember steps involved in publishing this package
    /home/dja001/shared_stuff/files/test_data_for_domutils_on_zenodo/v?.?.?
 
 - run unit tests
-  pytest -xv
+  pytest -xvs
 
     This should find and run ~150 tests
 
@@ -39,6 +31,9 @@ Notes for me to remember steps involved in publishing this package
   make clean
   make doctest
   make html
+
+Before publication of a new version, run tests against multipls python+matplotlib+cartopy combinations
+- scripts/run_tox_tests.sh
 
 
 - If the test makes a figure or that new test data is required
@@ -73,6 +68,7 @@ Notes for me to remember steps involved in publishing this package
        - go on domutils repo, click update
        - delete files that are modified
        - upload new and modified files
+         - don't forget to add new files and .tgz if needed
        - change publication date
        - change version
        - publish
@@ -81,7 +77,6 @@ Notes for me to remember steps involved in publishing this package
        eg  5497958
 
      - adjust version and record number in scripts/download_test_data.sh
-       - don't forget to add new files and .tgz if needed
 
 
   If the zenodo archive was changed, it must be tested
@@ -93,43 +88,22 @@ Notes for me to remember steps involved in publishing this package
 
 - adjust version number in VERSION
 
-- adjust version number in 
-     conda_build/domutils/meta.yaml  I need to find a way to automate this
-
 - describe changes in CHANGELOG
 
 - make bundle by running:
 
-    - You probably want to cleanup
+    -  cleanup
     rm -rf dist
+
+    - build
     python -m build
 
-        Optionnal
-        - upload to TEST pypi
-        twine upload --repository-url https://test.pypi.org/legacy/ dist/*
-
-- upload to official pypi repo
-    pypi API is specified in ~/.pypirc
-twine upload dist/*
-
-- from the root of the repo from somewhere with internet connexion
-    To load in environment if not already done:
-        mamba activate base
-        mamba install anaconda-client conda-build conda-verify
-
-mamba activate base
-conda build conda_build/domutils 
-
-and upload it to anaconda cloud
-
+    - upload to official pypi repo (pypi API is specified in ~/.pypirc)
+    twine upload dist/*
+    
 - commit everything, push branch to github, open merge/pull request
 
-- check that documentation builds on RTD
-  In admin settings, change default to latest and select new branch
-  "latest" will be built from that branch
-  check if docs renders well
-    https://readthedocs.org/projects/domutils
-
+- check that documentation builds on RTD, by loggin in and verifying status
 
 - when all the above worked, 
   add version tag and push to github

@@ -42,19 +42,10 @@ def read_fst_composite(fst_file:   str=None,
 
     Example:
 
-           >>> #read fst file
-           >>> import os, inspect
-           >>> import domutils.radar_tools as radar_tools
-           >>> currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-           >>> parentdir = os.path.dirname(currentdir) #directory where this package lives
-           >>> out_dict = radar_tools.read_fst_composite(parentdir + '/test_data/std_radar_mosaics/2019103116_30ref_4.0km.stnd')
-           >>> reflectivity        = out_dict['reflectivity']
-           >>> total_quality_index = out_dict['total_quality_index']
-           >>> valid_date          = out_dict['valid_date']
-           >>> print(reflectivity.shape)
-           (1650, 1500)
-           >>> print(valid_date)
-           2019-10-31 16:30:00+00:00
+        .. literalinclude:: ../domutils/radar_tools/tests/test_radar_tools.py
+           :language: python
+           :start-after: DOCS:fst_composites_begins
+           :end-before: DOCS:fst_composite_ends
 
 
     """

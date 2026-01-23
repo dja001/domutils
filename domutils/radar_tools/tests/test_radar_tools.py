@@ -4,7 +4,31 @@
 
 import pytest
 
-def test_obs_process(reset_matplotlib):
+@pytest.mark.rpnpy
+def test_fst_composite(setup_test_paths):
+    ''' test funtion that reads a fst file composite
+
+    '''
+    test_data_dir    = setup_test_paths['test_data_dir']
+    test_results_dir = setup_test_paths['test_results_dir']
+
+    # DOCS:fst_composite_begins
+    import os
+    import domutils.radar_tools as radar_tools
+
+    fst_file = os.path.join(test_data_dir, 'std_radar_mosaics' , '2019103116_30ref_4.0km.stnd')
+    out_dict = radar_tools.read_fst_composite(fst_file)
+    reflectivity        = out_dict['reflectivity']
+    total_quality_index = out_dict['total_quality_index']
+    valid_date          = out_dict['valid_date']
+
+    assert reflectivity.shape == (1650, 1500)
+    assert str(valid_date) == '2019-10-31 16:30:00+00:00'
+
+    # DOCS:fst_composite_ends
+
+@pytest.mark.rpnpy
+def test_obs_process(setup_test_paths):
     ''' test funtion that writes a fst file from odim h5 mosaic file
 
     '''
@@ -16,7 +40,6 @@ def test_obs_process(reset_matplotlib):
     import cartopy.crs as ccrs
     import cartopy.feature as cfeature
     import matplotlib.pyplot as plt
-    import domutils
     import domutils.legs as legs
     import domutils.geo_tools as geo_tools
     import domcmc.fst_tools as fst_tools
@@ -24,19 +47,19 @@ def test_obs_process(reset_matplotlib):
     import domutils._py_tools as py_tools
 
     #setting up directories
-    domutils_dir = os.path.dirname(domutils.__file__)
-    package_dir  = os.path.dirname(domutils_dir)
-    test_data_dir = os.path.join(package_dir, 'test_data')
-    test_results_dir = os.path.join(package_dir, 'test_results', 'generated_files', 'test_radar_tools')
-    test_figure_dir = os.path.join(package_dir, 'test_results', 'generated_figures', 'test_radar_tools')
+    test_data_dir    = setup_test_paths['test_data_dir']
+    test_results_dir = setup_test_paths['test_results_dir']
 
-    py_tools.parallel_mkdir(test_results_dir)
-    py_tools.parallel_mkdir(test_figure_dir)
+    generated_files_dir  = os.path.join(test_results_dir, 'generated_files',   'test_radar_tools')
+    generated_figure_dir = os.path.join(test_results_dir, 'generated_figures', 'test_radar_tools')
+
+    py_tools.parallel_mkdir(generated_files_dir)
+    py_tools.parallel_mkdir(generated_figure_dir)
 
     #a small class that mimics the output of argparse
     class FstArgs():
-        input_data_dir = package_dir+'/test_data/odimh5_radar_composites/'
-        output_dir = test_results_dir
+        input_data_dir = os.path.join(test_data_dir, 'odimh5_radar_composites/')
+        output_dir = generated_files_dir
         input_t0 = '201910311600'
         input_tf = '201910311600'
         input_dt = 10
@@ -47,7 +70,7 @@ def test_obs_process(reset_matplotlib):
         sample_pr_file = os.path.join(test_data_dir, 'hrdps_5p1_prp0.fst')
         ncores = 1
         complete_dataset = 'False'
-        figure_dir = test_figure_dir
+        figure_dir = generated_figure_dir
         figure_format = 'svg'
         log_level = 'INFO'
 
@@ -57,21 +80,23 @@ def test_obs_process(reset_matplotlib):
     radar_tools.obs_process(args)
 
     #the name of a figure we just generated figure
-    generated_figure = os.path.join(test_figure_dir, 
+    generated_figure = os.path.join(generated_figure_dir, 
                                     '20191031_1600.svg')
 
     #pre saved figure for what the results should be
-    reference_figure = os.path.join(package_dir, 'test_data', 'reference_figures', 'test_radar_tools',
+    reference_figure = os.path.join(test_data_dir, 'reference_figures', 'test_radar_tools',
                                     os.path.basename(generated_figure))
 
     #compare image with saved reference
-    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure)
+    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure,
+                                                   output_dir=os.path.join(test_results_dir, 'render_similarly'))
 
     #test fails if images are not similar
     assert images_are_similar
 
 
-def test_nowcast_time_interpol(reset_matplotlib):
+@pytest.mark.rpnpy
+def test_nowcast_time_interpol(setup_test_paths):
     ''' Test temporal interpolation using nowcasts
 
     '''
@@ -91,19 +116,19 @@ def test_nowcast_time_interpol(reset_matplotlib):
     import domutils._py_tools as py_tools
 
     #setting up directories
-    domutils_dir = os.path.dirname(domutils.__file__)
-    package_dir  = os.path.dirname(domutils_dir)
-    test_data_dir = os.path.join(package_dir, 'test_data/')
-    test_results_dir = os.path.join(package_dir, 'test_results', 'generated_files', 'test_radar_tools')
-    test_figure_dir = os.path.join(package_dir, 'test_results', 'generated_figures', 'test_radar_tools')
+    test_data_dir    = setup_test_paths['test_data_dir']
+    test_results_dir = setup_test_paths['test_results_dir']
 
-    py_tools.parallel_mkdir(test_results_dir)
-    py_tools.parallel_mkdir(test_figure_dir)
+    generated_files_dir  = os.path.join(test_results_dir, 'generated_files',   'test_radar_tools')
+    generated_figure_dir = os.path.join(test_results_dir, 'generated_figures', 'test_radar_tools')
+
+    py_tools.parallel_mkdir(generated_files_dir)
+    py_tools.parallel_mkdir(generated_figure_dir)
 
     #a small class that mimics the output of argparse
     class FstArgs():
         input_data_dir = os.path.join(test_data_dir, 'odimh5_radar_composites')
-        output_dir = test_results_dir
+        output_dir = generated_files_dir
         input_t0  = '201910311540'
         input_tf  = '201910311610'
         input_dt  = 10
@@ -117,7 +142,7 @@ def test_nowcast_time_interpol(reset_matplotlib):
         sample_pr_file = os.path.join(test_data_dir, 'hrdps_5p1_prp0.fst')
         ncores = 1
         complete_dataset = 'True'
-        figure_dir = test_figure_dir
+        figure_dir = generated_figure_dir
         figure_format = 'svg'
         log_level = 'INFO'
 
@@ -127,20 +152,21 @@ def test_nowcast_time_interpol(reset_matplotlib):
     radar_tools.obs_process(args)
 
     #the name of a figure we just generated figure
-    generated_figure = os.path.join(test_figure_dir, '20191031_1603.svg')
+    generated_figure = os.path.join(generated_figure_dir, '20191031_1603.svg')
 
     #pre saved figure for what the results should be
-    reference_figure = os.path.join(package_dir, 'test_data', 'reference_figures', 'test_radar_tools',
+    reference_figure = os.path.join(test_data_dir, 'reference_figures', 'test_radar_tools',
                                     os.path.basename(generated_figure))
 
     #compare image with saved reference
-    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure)
+    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure,
+                                                   output_dir=os.path.join(test_results_dir, 'render_similarly'))
 
     #test fails if images are not similar
     assert images_are_similar
 
 
-def test_read_odim_vol():
+def test_read_odim_vol(setup_test_paths):
     """ test funtion that reads volume scans in ODIM H5 format
     """
     import os
@@ -150,11 +176,10 @@ def test_read_odim_vol():
     import datetime
 
     #setting up directories
-    domutils_dir = os.path.dirname(domutils.__file__)
-    package_dir  = os.path.dirname(domutils_dir)
-    test_data_dir = os.path.join(package_dir, 'test_data', 'odimh5_radar_volume_scans')
+    test_data_dir = setup_test_paths['test_data_dir']
 
-    sample_file = os.path.join(test_data_dir, '2019071120_24_ODIMH5_PVOL6S_VOL.qc.casbv.h5')
+    sample_file = os.path.join(test_data_dir, 'odimh5_radar_volume_scans', 
+                               '2019071120_24_ODIMH5_PVOL6S_VOL.qc.casbv.h5')
 
     res = radar_tools.read_h5_vol(odim_file=sample_file, 
                                   elevations=[0.4], 
@@ -187,7 +212,7 @@ def test_read_odim_vol():
 
 
 
-def test_read_stageiv():
+def test_read_stageiv(setup_test_paths):
     """ test funtion that reads a stageIV
 
     Created on Mon Sep 14 20:35:03 2020
@@ -202,10 +227,8 @@ def test_read_stageiv():
     import datetime
 
     #setting up directories
-    domutils_dir = os.path.dirname(domutils.__file__)
-    package_dir  = os.path.dirname(domutils_dir)
-    test_data_dir = os.path.join(package_dir, 'test_data', 'stage4_composites')
-
+    test_data_dir = setup_test_paths['test_data_dir']
+    stage4_data_dir = os.path.join(test_data_dir, 'stage4_composites')
 
     #example 1
     # get a 6-h accumulation from a 6-hour accumulation file 
@@ -214,7 +237,7 @@ def test_read_stageiv():
 
     out_dict_acc_ex1 = radar_tools.get_accumulation(end_date=datetime.datetime(2019,10,31,18),
                                                     duration=360.,  #6h in minutes
-                                                    data_path=test_data_dir,
+                                                    data_path=stage4_data_dir,
                                                     data_recipe=data_recipe,
                                                     desired_quantity="accumulation",
                                                     latlon=True)
@@ -234,7 +257,7 @@ def test_read_stageiv():
 
     out_dict_acc_ex2 = radar_tools.get_accumulation(end_date=datetime.datetime(2019,10,31,23),
                                                     duration=180.,    #3h in minutes
-                                                    data_path=test_data_dir,
+                                                    data_path=stage4_data_dir,
                                                     data_recipe=data_recipe,
                                                     desired_quantity="accumulation",
                                                     latlon=True)
@@ -246,7 +269,7 @@ def test_read_stageiv():
     assert np.isclose(sum_precip, 346221.57)
 
 
-def test_read_mrms():
+def test_read_mrms(setup_test_paths):
     """ test funtion that reads mrms data
 
     """
@@ -258,9 +281,8 @@ def test_read_mrms():
     import datetime
 
     #setting up directories
-    domutils_dir = os.path.dirname(domutils.__file__)
-    package_dir  = os.path.dirname(domutils_dir)
-    test_data_dir = os.path.join(package_dir, 'test_data', 'mrms_grib2')
+    test_data_dir = setup_test_paths['test_data_dir']
+    mrms_data_dir = os.path.join(test_data_dir, 'mrms_grib2')
 
     #
     #
@@ -269,7 +291,7 @@ def test_read_mrms():
     data_recipe      = 'PrecipRate_00.00_%Y%m%d-%H%M%S.grib2'
 
     out_dict_pr = radar_tools.get_instantaneous(valid_date=datetime.datetime(2019,10,31,16,30,0),
-                                                data_path=test_data_dir,
+                                                data_path=mrms_data_dir,
                                                 data_recipe=data_recipe,
                                                 desired_quantity="precip_rate",
                                                 latlon=True)
@@ -289,7 +311,7 @@ def test_read_mrms():
 
     out_dict_acc_ex2 = radar_tools.get_accumulation(end_date=datetime.datetime(2019,10,31,16,30,0),
                                                     duration=30.,    #minutes
-                                                    data_path=test_data_dir,
+                                                    data_path=mrms_data_dir,
                                                     data_recipe=data_recipe,
                                                     desired_quantity="accumulation",
                                                     latlon=True)
@@ -301,7 +323,7 @@ def test_read_mrms():
     assert np.isclose(sum_precip, 1186789.0932664848)
 
 
-def test_coeff_ab():
+def test_coeff_ab(setup_test_paths):
     """ test that coef_a and coefb have an impact when use by get_accumulations
 
     """
@@ -313,15 +335,14 @@ def test_coeff_ab():
     import datetime
 
     #setting up directories
-    domutils_dir = os.path.dirname(domutils.__file__)
-    package_dir  = os.path.dirname(domutils_dir)
-    test_data_dir = os.path.join(package_dir, 'test_data', 'odimh5_radar_composites')
+    test_data_dir = setup_test_paths['test_data_dir']
+    odim_composite_dir = os.path.join(test_data_dir, 'odimh5_radar_composites')
 
     duration = 60.  #duration of accumulation in minutes
     data_recipe = '%Y/%m/%d/qcomp_%Y%m%d%H%M.h5'
     dat_dict = radar_tools.get_accumulation(end_date=datetime.datetime(2019, 10, 31, 16, 30, 0),
                                             duration=duration,
-                                            data_path=test_data_dir,
+                                            data_path=odim_composite_dir,
                                             data_recipe=data_recipe)
 
     #the accumulation we just read
@@ -329,7 +350,7 @@ def test_coeff_ab():
 
     dat_dict = radar_tools.get_accumulation(end_date=datetime.datetime(2019, 10, 31, 16, 30, 0),
                                             duration=duration,
-                                            data_path=test_data_dir,
+                                            data_path=odim_composite_dir,
                                             data_recipe=data_recipe, 
                                             coef_a=200, coef_b=1.6)
 
@@ -341,7 +362,7 @@ def test_coeff_ab():
     assert np.isclose(sum_precip, 35628.67517835721)
     
     
-def test_read_sqlite_vol():
+def test_read_sqlite_vol(setup_test_paths):
     """ test funtion that reads volume scans in sqlite format
     """
     import os
@@ -351,11 +372,9 @@ def test_read_sqlite_vol():
     import datetime
 
     #setting up directories
-    domutils_dir = os.path.dirname(domutils.__file__)
-    package_dir  = os.path.dirname(domutils_dir)
-    test_data_dir = os.path.join(package_dir, 'test_data', 'sqlite_radar_volume_scans')
+    test_data_dir = setup_test_paths['test_data_dir']
     
-    sample_file = os.path.join(test_data_dir, '2019070206_ra')
+    sample_file = os.path.join(test_data_dir, 'sqlite_radar_volume_scans', '2019070206_ra')
 
     #get everything in file
     this_date = datetime.datetime(2019,7,2,3,6,0)

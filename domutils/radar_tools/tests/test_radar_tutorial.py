@@ -1,7 +1,3 @@
-# to run only one test
-#
-# pytest -vs  test_geo_tools.py::test_projinds_simple_example 
-
 
 import pytest
 import os
@@ -11,9 +7,8 @@ import numpy as np
 # Tutorial setup
 # -----------------------------------------------------------------------------
 
-
 @pytest.fixture(scope="module")
-def plot_img(reset_matplotlib):
+def plot_img():
     # DOCS:plot_img_begins
     def _plot_img(generated_figure, title, units, data, latitudes, longitudes,
                   colormap, equal_legs=False ):
@@ -38,7 +33,7 @@ def plot_img(reset_matplotlib):
             'figure.dpi': dpi,
             'savefig.dpi': dpi,
             })
-    
+
         #pixel density of image to plot
         ratio = .8
         hpix = 600.       #number of horizontal pixels
@@ -103,7 +98,7 @@ def plot_img(reset_matplotlib):
     return _plot_img
 
 @pytest.fixture(scope="module")
-def setup_values_and_palettes():
+def setup_values_and_palettes(setup_test_paths):
 
     # DOCS:values_and_palette_begins
     import os 
@@ -112,11 +107,11 @@ def setup_values_and_palettes():
     import domutils._py_tools as py_tools
 
     # where is the data
-    domutils_dir = os.path.dirname(domutils.__file__)
-    package_dir  = os.path.dirname(domutils_dir)
+    test_data_dir    = setup_test_paths['test_data_dir']
+    test_results_dir = setup_test_paths['test_results_dir']
 
-    generated_figure_dir = os.path.join(package_dir, 'test_results', 'generated_figures', 'test_radar_tutorial')
-    reference_figure_dir = os.path.join(package_dir, 'test_data',    'reference_figures', 'test_radar_tutorial')
+    reference_figure_dir = os.path.join(test_data_dir,    'reference_figures', 'test_radar_tutorial')
+    generated_figure_dir = os.path.join(test_results_dir, 'generated_figures', 'test_radar_tutorial')
 
     py_tools.parallel_mkdir(generated_figure_dir)
     
@@ -153,7 +148,8 @@ def setup_values_and_palettes():
 
     return (undetect, missing, 
             ref_color_map, pr_color_map, acc_color_map, 
-            package_dir, generated_figure_dir, reference_figure_dir)
+            test_data_dir, test_results_dir, 
+            generated_figure_dir, reference_figure_dir)
 
 # -----------------------------------------------------------------------------
 # Baltrad ODIM H5
@@ -163,7 +159,8 @@ def test_baltrad_odim_h5(setup_values_and_palettes, plot_img):
     # comon test data
     (undetect, missing, 
      ref_color_map, pr_color_map, acc_color_map, 
-     package_dir, generated_figure_dir, reference_figure_dir) = setup_values_and_palettes
+     test_data_dir, test_results_dir, 
+     generated_figure_dir, reference_figure_dir) = setup_values_and_palettes
 
     # DOCS:baltrad_odim_h5_begins
     import os
@@ -175,7 +172,7 @@ def test_baltrad_odim_h5(setup_values_and_palettes, plot_img):
     this_date = datetime.datetime(2019, 10, 31, 16, 30, 0, tzinfo=datetime.timezone.utc)
     
     # where is the data
-    data_path = os.path.join(package_dir, 'test_data', 'odimh5_radar_composites')
+    data_path = os.path.join(test_data_dir, 'odimh5_radar_composites')
     
     # how to construct filename. 
     #   See documentation for the *strftime* method in the datetime module
@@ -210,7 +207,8 @@ def test_baltrad_odim_h5(setup_values_and_palettes, plot_img):
 
     #compare image with saved reference
     reference_figure = os.path.join(reference_figure_dir, os.path.basename(generated_figure))
-    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure)
+    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure,
+                                                   output_dir=os.path.join(test_results_dir, 'render_similarly'))
 
     #test fails if images are not similar
     assert images_are_similar
@@ -222,7 +220,8 @@ def test_baltrad_odim_h5(setup_values_and_palettes, plot_img):
 def test_mrms_grib2(setup_values_and_palettes, plot_img):
     (undetect, missing, 
      ref_color_map, pr_color_map, acc_color_map, 
-     package_dir, generated_figure_dir, reference_figure_dir) = setup_values_and_palettes
+     test_data_dir, test_results_dir, 
+     generated_figure_dir, reference_figure_dir) = setup_values_and_palettes
     # DOCS:mrms_grib2_begins
 
     import os
@@ -234,7 +233,7 @@ def test_mrms_grib2(setup_values_and_palettes, plot_img):
     this_date = datetime.datetime(2019, 10, 31, 16, 30, 0, tzinfo=datetime.timezone.utc)
     
     # where is the data
-    data_path = os.path.join(package_dir, 'test_data', 'mrms_grib2/')
+    data_path = os.path.join(test_data_dir, 'mrms_grib2/')
     
     #how to construct filename. 
     #   See documentation for the *strftime* method in the datetime module
@@ -274,7 +273,8 @@ def test_mrms_grib2(setup_values_and_palettes, plot_img):
 
     #compare image with saved reference
     reference_figure = os.path.join(reference_figure_dir, os.path.basename(generated_figure))
-    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure)
+    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure,
+                                                   output_dir=os.path.join(test_results_dir, 'render_similarly'))
 
     #test fails if images are not similar
     assert images_are_similar
@@ -284,10 +284,12 @@ def test_mrms_grib2(setup_values_and_palettes, plot_img):
 # 4-km mosaics from URP
 # -----------------------------------------------------------------------------
 
+@pytest.mark.rpnpy
 def test_urp_4km(setup_values_and_palettes, plot_img):
     (undetect, missing, 
      ref_color_map, pr_color_map, acc_color_map, 
-     package_dir, generated_figure_dir, reference_figure_dir) = setup_values_and_palettes
+     test_data_dir, test_results_dir, 
+     generated_figure_dir, reference_figure_dir) = setup_values_and_palettes
     # DOCS:urp_4km_begins
 
     import os
@@ -299,7 +301,7 @@ def test_urp_4km(setup_values_and_palettes, plot_img):
     this_date = datetime.datetime(2019, 10, 31, 16, 30, 0, tzinfo=datetime.timezone.utc)
 
     #URP 4km reflectivity mosaics
-    data_path = os.path.join(package_dir , 'test_data', 'std_radar_mosaics/')
+    data_path = os.path.join(test_data_dir, 'std_radar_mosaics/')
     #note the *.stnd* extension specifying that a standard file will be read
     data_recipe = '%Y%m%d%H_%Mref_4.0km.stnd'
     
@@ -329,7 +331,8 @@ def test_urp_4km(setup_values_and_palettes, plot_img):
 
     #compare image with saved reference
     reference_figure = os.path.join(reference_figure_dir, os.path.basename(generated_figure))
-    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure)
+    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure,
+                                                   output_dir=os.path.join(test_results_dir, 'render_similarly'))
 
     #test fails if images are not similar
     assert images_are_similar
@@ -341,7 +344,8 @@ def test_urp_4km(setup_values_and_palettes, plot_img):
 def test_none_and_nearest(setup_values_and_palettes):
     (undetect, missing, 
      ref_color_map, pr_color_map, acc_color_map, 
-     package_dir, generated_figure_dir, reference_figure_dir) = setup_values_and_palettes
+     test_data_dir, test_results_dir, 
+     generated_figure_dir, reference_figure_dir) = setup_values_and_palettes
     # DOCS:return_none_begins
     import os
     import datetime
@@ -349,7 +353,7 @@ def test_none_and_nearest(setup_values_and_palettes):
 
     #set time at 16h35 where no mosaic file exists
     this_date = datetime.datetime(2019, 10, 31, 16, 35, 0, tzinfo=datetime.timezone.utc)
-    data_path = package_dir + '/test_data/odimh5_radar_composites/'
+    data_path = os.path.join(test_data_dir, 'odimh5_radar_composites')
     data_recipe = '%Y/%m/%d/qcomp_%Y%m%d%H%M.h5'
     dat_dict = radar_tools.get_instantaneous(valid_date=this_date,
                                              data_path=data_path,
@@ -375,7 +379,8 @@ def test_none_and_nearest(setup_values_and_palettes):
 def test_precip_rate(setup_values_and_palettes, plot_img):
     (undetect, missing, 
      ref_color_map, pr_color_map, acc_color_map, 
-     package_dir, generated_figure_dir, reference_figure_dir) = setup_values_and_palettes
+     test_data_dir, test_results_dir, 
+     generated_figure_dir, reference_figure_dir) = setup_values_and_palettes
 
     # DOCS:wdssr_zr_begins
     import os
@@ -384,7 +389,7 @@ def test_precip_rate(setup_values_and_palettes, plot_img):
     import domutils._py_tools as py_tools
 
     this_date = datetime.datetime(2019, 10, 31, 16, 30, 0, tzinfo=datetime.timezone.utc)
-    data_path = package_dir + '/test_data/odimh5_radar_composites/'
+    data_path = os.path.join(test_data_dir, 'odimh5_radar_composites')
     data_recipe = '%Y/%m/%d/qcomp_%Y%m%d%H%M.h5'
      
     #require precipitation rate in the output
@@ -409,7 +414,8 @@ def test_precip_rate(setup_values_and_palettes, plot_img):
 
     #compare image with saved reference
     reference_figure = os.path.join(reference_figure_dir, os.path.basename(generated_figure))
-    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure)
+    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure,
+                                                   output_dir=os.path.join(test_results_dir, 'render_similarly'))
 
     #test fails if images are not similar
     assert images_are_similar
@@ -422,7 +428,8 @@ def test_precip_rate(setup_values_and_palettes, plot_img):
 def test_zr(setup_values_and_palettes, plot_img):
     (undetect, missing, 
      ref_color_map, pr_color_map, acc_color_map, 
-     package_dir, generated_figure_dir, reference_figure_dir) = setup_values_and_palettes
+     test_data_dir, test_results_dir, 
+     generated_figure_dir, reference_figure_dir) = setup_values_and_palettes
 
     # DOCS:wdssr_zr_begins
     import os
@@ -431,7 +438,7 @@ def test_zr(setup_values_and_palettes, plot_img):
     import domutils._py_tools as py_tools
 
     this_date = datetime.datetime(2019, 10, 31, 16, 30, 0, tzinfo=datetime.timezone.utc)
-    data_path = package_dir + '/test_data/odimh5_radar_composites/'
+    data_path = os.path.join(test_data_dir, 'odimh5_radar_composites')
     data_recipe = '%Y/%m/%d/qcomp_%Y%m%d%H%M.h5'
      
     #require precipitation rate in the output
@@ -456,7 +463,8 @@ def test_zr(setup_values_and_palettes, plot_img):
 
     #compare image with saved reference
     reference_figure = os.path.join(reference_figure_dir, os.path.basename(generated_figure))
-    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure)
+    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure,
+                                                   output_dir=os.path.join(test_results_dir, 'render_similarly'))
 
     #test fails if images are not similar
     assert images_are_similar
@@ -486,7 +494,8 @@ def test_zr(setup_values_and_palettes, plot_img):
 
     #compare image with saved reference
     reference_figure = os.path.join(reference_figure_dir, os.path.basename(generated_figure))
-    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure)
+    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure,
+                                                   output_dir=os.path.join(test_results_dir, 'render_similarly'))
 
     #test fails if images are not similar
     assert images_are_similar
@@ -497,7 +506,8 @@ def test_zr(setup_values_and_palettes, plot_img):
 def test_median_filter(setup_values_and_palettes, plot_img):
     (undetect, missing, 
      ref_color_map, pr_color_map, acc_color_map, 
-     package_dir, generated_figure_dir, reference_figure_dir) = setup_values_and_palettes
+     test_data_dir, test_results_dir, 
+     generated_figure_dir, reference_figure_dir) = setup_values_and_palettes
 
     # DOCS:median_filter_begins
     import os
@@ -506,7 +516,7 @@ def test_median_filter(setup_values_and_palettes, plot_img):
     import domutils._py_tools as py_tools
 
     this_date = datetime.datetime(2019, 10, 31, 16, 30, 0, tzinfo=datetime.timezone.utc)
-    data_path = package_dir + '/test_data/odimh5_radar_composites/'
+    data_path = os.path.join(test_data_dir, 'odimh5_radar_composites')
     data_recipe = '%Y/%m/%d/qcomp_%Y%m%d%H%M.h5'
      
     #Apply median filter by setting *median_filt=3* meaning that a 3x3 boxcar
@@ -532,7 +542,8 @@ def test_median_filter(setup_values_and_palettes, plot_img):
 
     #compare image with saved reference
     reference_figure = os.path.join(reference_figure_dir, os.path.basename(generated_figure))
-    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure)
+    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure,
+                                                   output_dir=os.path.join(test_results_dir, 'render_similarly'))
 
     #test fails if images are not similar
     assert images_are_similar
@@ -543,7 +554,8 @@ def test_median_filter(setup_values_and_palettes, plot_img):
 def test_interpolation(setup_values_and_palettes, plot_img):
     (undetect, missing, 
      ref_color_map, pr_color_map, acc_color_map, 
-     package_dir, generated_figure_dir, reference_figure_dir) = setup_values_and_palettes
+     test_data_dir, test_results_dir, 
+     generated_figure_dir, reference_figure_dir) = setup_values_and_palettes
     # DOCS:interpolation_setup_begins
 
     import os
@@ -555,13 +567,14 @@ def test_interpolation(setup_values_and_palettes, plot_img):
     #let our destination grid be at 10 km resolution in the middle of the US
     #this is a grid where I often perform integration with the GEM atmospheric model
     #recover previously prepared data
-    with open(package_dir + '/test_data/pal_demo_data.pickle', 'rb') as f:
+    pickle_file = os.path.join(test_data_dir, 'pal_demo_data.pickle')
+    with open(pickle_file, 'rb') as f:
         data_dict = pickle.load(f)
     gem_lon = data_dict['longitudes']    #2D longitudes [deg]
     gem_lat = data_dict['latitudes']     #2D latitudes  [deg]
 
     this_date = datetime.datetime(2019, 10, 31, 16, 30, 0, tzinfo=datetime.timezone.utc)
-    data_path = package_dir + '/test_data/odimh5_radar_composites/'
+    data_path = os.path.join(test_data_dir, 'odimh5_radar_composites')
     data_recipe = '%Y/%m/%d/qcomp_%Y%m%d%H%M.h5'
     # DOCS:interpolation_setup_ends
 
@@ -588,7 +601,8 @@ def test_interpolation(setup_values_and_palettes, plot_img):
 
     #compare image with saved reference
     reference_figure = os.path.join(reference_figure_dir, os.path.basename(generated_figure))
-    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure)
+    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure,
+                                                   output_dir=os.path.join(test_results_dir, 'render_similarly'))
 
     #test fails if images are not similar
     assert images_are_similar
@@ -619,7 +633,8 @@ def test_interpolation(setup_values_and_palettes, plot_img):
 
     #compare image with saved reference
     reference_figure = os.path.join(reference_figure_dir, os.path.basename(generated_figure))
-    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure)
+    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure,
+                                                   output_dir=os.path.join(test_results_dir, 'render_similarly'))
 
     #test fails if images are not similar
     assert images_are_similar
@@ -653,7 +668,8 @@ def test_interpolation(setup_values_and_palettes, plot_img):
 
     #compare image with saved reference
     reference_figure = os.path.join(reference_figure_dir, os.path.basename(generated_figure))
-    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure)
+    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure,
+                                                   output_dir=os.path.join(test_results_dir, 'render_similarly'))
 
     #test fails if images are not similar
     assert images_are_similar
@@ -666,7 +682,8 @@ def test_interpolation(setup_values_and_palettes, plot_img):
 def test_accumulation(setup_values_and_palettes, plot_img):
     (undetect, missing, 
      ref_color_map, pr_color_map, acc_color_map, 
-     package_dir, generated_figure_dir, reference_figure_dir) = setup_values_and_palettes
+     test_data_dir, test_results_dir, 
+     generated_figure_dir, reference_figure_dir) = setup_values_and_palettes
 
     # DOCS:compute_accumulation_begins
 
@@ -680,7 +697,7 @@ def test_accumulation(setup_values_and_palettes, plot_img):
     end_date = datetime.datetime(2019, 10, 31, 16, 30, 0, tzinfo=datetime.timezone.utc)
     duration = 60.  #duration of accumulation in minutes
 
-    data_path = package_dir + '/test_data/odimh5_radar_composites/'
+    data_path = os.path.join(test_data_dir, 'odimh5_radar_composites')
     data_recipe = '%Y/%m/%d/qcomp_%Y%m%d%H%M.h5'
     dat_dict = radar_tools.get_accumulation(end_date=end_date,
                                             duration=duration,
@@ -702,7 +719,8 @@ def test_accumulation(setup_values_and_palettes, plot_img):
 
     #compare image with saved reference
     reference_figure = os.path.join(reference_figure_dir, os.path.basename(generated_figure))
-    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure)
+    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure,
+                                                   output_dir=os.path.join(test_results_dir, 'render_similarly'))
 
     #test fails if images are not similar
     assert images_are_similar
@@ -710,7 +728,8 @@ def test_accumulation(setup_values_and_palettes, plot_img):
     # DOCS:combine_options_begins
 
     # destination grid
-    with open(package_dir + '/test_data/pal_demo_data.pickle', 'rb') as f:
+    pickle_file = os.path.join(test_data_dir, 'pal_demo_data.pickle')
+    with open(pickle_file, 'rb') as f:
         data_dict = pickle.load(f)
     gem_lon = data_dict['longitudes']    #2D longitudes [deg]
     gem_lat = data_dict['latitudes']     #2D latitudes  [deg]
@@ -765,7 +784,8 @@ def test_accumulation(setup_values_and_palettes, plot_img):
 
     #compare image with saved reference
     reference_figure = os.path.join(reference_figure_dir, os.path.basename(generated_figure))
-    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure)
+    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure,
+                                                   output_dir=os.path.join(test_results_dir, 'render_similarly'))
 
     #test fails if images are not similar
     assert images_are_similar
@@ -778,7 +798,8 @@ def test_accumulation(setup_values_and_palettes, plot_img):
 def test_stage_4(setup_values_and_palettes, plot_img):
     (undetect, missing, 
      ref_color_map, pr_color_map, acc_color_map, 
-     package_dir, generated_figure_dir, reference_figure_dir) = setup_values_and_palettes
+     test_data_dir, test_results_dir, 
+     generated_figure_dir, reference_figure_dir) = setup_values_and_palettes
     # DOCS:stage_4_basic_begins
 
     import os
@@ -791,7 +812,7 @@ def test_stage_4(setup_values_and_palettes, plot_img):
     end_date = datetime.datetime(2019, 10, 31, 18, 0, tzinfo=datetime.timezone.utc)
     duration = 360.  #duration of accumulation in minutes here 6h
 
-    data_path = package_dir + '/test_data/stage4_composites/'
+    data_path = os.path.join(test_data_dir, 'stage4_composites')
     data_recipe = 'ST4.%Y%m%d%H.06h' #note the '06h' for a 6h accumulation file
     dat_dict = radar_tools.get_accumulation(end_date=end_date,
                                             duration=duration,
@@ -813,7 +834,8 @@ def test_stage_4(setup_values_and_palettes, plot_img):
 
     #compare image with saved reference
     reference_figure = os.path.join(reference_figure_dir, os.path.basename(generated_figure))
-    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure)
+    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure,
+                                                   output_dir=os.path.join(test_results_dir, 'render_similarly'))
 
     #test fails if images are not similar
     assert images_are_similar
@@ -822,7 +844,8 @@ def test_stage_4(setup_values_and_palettes, plot_img):
 
     #6h average precipitation rate on 10km grid
     # destination grid
-    with open(package_dir + '/test_data/pal_demo_data.pickle', 'rb') as f:
+    pickle_file = os.path.join(test_data_dir, 'pal_demo_data.pickle')
+    with open(pickle_file, 'rb') as f:
         data_dict = pickle.load(f)
     gem_lon = data_dict['longitudes']    #2D longitudes [deg]
     gem_lat = data_dict['latitudes']     #2D latitudes  [deg]
@@ -850,7 +873,8 @@ def test_stage_4(setup_values_and_palettes, plot_img):
 
     #compare image with saved reference
     reference_figure = os.path.join(reference_figure_dir, os.path.basename(generated_figure))
-    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure)
+    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure,
+                                                   output_dir=os.path.join(test_results_dir, 'render_similarly'))
 
     #test fails if images are not similar
     assert images_are_similar
@@ -883,7 +907,8 @@ def test_stage_4(setup_values_and_palettes, plot_img):
 
     #compare image with saved reference
     reference_figure = os.path.join(reference_figure_dir, os.path.basename(generated_figure))
-    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure)
+    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure,
+                                                   output_dir=os.path.join(test_results_dir, 'render_similarly'))
 
     #test fails if images are not similar
     assert images_are_similar

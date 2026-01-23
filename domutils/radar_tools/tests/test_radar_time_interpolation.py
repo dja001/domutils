@@ -7,7 +7,8 @@ import pytest
 import os
 import numpy as np
 
-def test_time_interpolation(reset_matplotlib):
+@pytest.mark.rpnpy
+def test_time_interpolation(setup_test_paths):
     """ This test runs obs_process and generates images from the output files
 
     The docs is also copied and shown as an example in the documentation
@@ -27,7 +28,6 @@ def test_time_interpolation(reset_matplotlib):
     import matplotlib.pyplot as plt
     import cartopy.crs as ccrs
     import cartopy.feature as cfeature
-    import domutils
     import domutils.legs as legs
     import domutils.geo_tools as geo_tools
     import domutils.radar_tools as radar_tools
@@ -35,12 +35,12 @@ def test_time_interpolation(reset_matplotlib):
     import domutils._py_tools as py_tools
     
     #setting up directories
-    domutils_dir = os.path.dirname(domutils.__file__)
-    package_dir  = os.path.dirname(domutils_dir)
-    test_data_dir = os.path.join(package_dir, 'test_data')
-    generated_files_dir = os.path.join(package_dir,  'test_results', 'generated_files',   'test_radar_time_interpolation')
-    generated_figure_dir = os.path.join(package_dir, 'test_results', 'generated_figures', 'test_radar_time_interpolation')
-    reference_figure_dir = os.path.join(package_dir, 'test_data',    'reference_figures', 'test_radar_time_interpolation')
+    test_data_dir    = setup_test_paths['test_data_dir']
+    test_results_dir = setup_test_paths['test_results_dir']
+
+    generated_files_dir  = os.path.join(test_results_dir, 'generated_files',   'test_radar_time_interpolation')
+    generated_figure_dir = os.path.join(test_results_dir, 'generated_figures', 'test_radar_time_interpolation')
+    reference_figure_dir = os.path.join(test_data_dir,    'reference_figures', 'test_radar_time_interpolation')
 
     py_tools.parallel_mkdir(generated_files_dir)
     py_tools.parallel_mkdir(generated_figure_dir)
@@ -302,7 +302,8 @@ def test_time_interpolation(reset_matplotlib):
     #compare image with saved reference
     fig_name = os.path.join(generated_figure_dir, '01_time_interpol_demo_plain.gif')
     reference_figure = os.path.join(reference_figure_dir, os.path.basename(fig_name))
-    images_are_similar = py_tools.render_similarly(fig_name, reference_figure, tol=1.)
+    images_are_similar = py_tools.render_similarly(fig_name, reference_figure,
+                                                   output_dir=os.path.join(test_results_dir, 'render_similarly'))
 
     #test fails if images are not similar
     assert images_are_similar
@@ -384,7 +385,8 @@ def test_time_interpolation(reset_matplotlib):
 
     #compare image with saved reference
     reference_figure = os.path.join(reference_figure_dir, os.path.basename(fig_name))
-    images_are_similar = py_tools.render_similarly(fig_name, reference_figure)
+    images_are_similar = py_tools.render_similarly(fig_name, reference_figure,
+                                                   output_dir=os.path.join(test_results_dir, 'render_similarly'))
 
     #test fails if images are not similar
     assert images_are_similar
