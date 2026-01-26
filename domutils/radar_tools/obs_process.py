@@ -711,16 +711,16 @@ def obs_process(args=None):
       .. code-block:: bash
 
           python -m domutils.radar_tools.obs_process
-                    --input_data_dir   /space/hall4/sitestore/eccc/mrd/rpndat/dja001/data/radar_h5_composites/v8/ 
-                    --output_dir       /home/dja001/python/obs_process/outdir/                       
-                    --figure_dir       /home/dja001/python/obs_process/figdir/                       
+                    --input_data_dir   .../data/radar_h5_composites/v8/ 
+                    --output_dir       .../python/obs_process/outdir/                       
+                    --figure_dir       .../python/obs_process/figdir/                       
                     --fst_file_struc   %Y/%m/%d/%Y%m%d%H%M_mosaic.fst                                             
                     --input_file_struc %Y/%m/%d/qcomp_%Y%m%d%H%M.h5                                               
-                    --h5_latlon_file   /home/dja001/shared_stuff/files/radar_continental_2.5km_2882x2032.pickle   
+                    --h5_latlon_file   .../files/radar_continental_2.5km_2882x2032.pickle   
                     --t0               ${t_start}                                                                 
                     --tf               ${t_stop}                                                                  
                     --input_dt         10                                                                         
-                    --sample_pr_file   /space/hall4/sitestore/eccc/mrd/rpndat/dja001/domains/hrdps_5p1_prp0.fst   
+                    --sample_pr_file   .../domains/hrdps_5p1_prp0.fst   
                     --ncores           40                                                                         
                     --complete_dataset True                                                                       
                     --median_filt      3                                                                          

@@ -243,7 +243,7 @@ def test_legs_excep_2():
                     [  0,   0,   0]])  #     6       black
     assert np.allclose(rgb_img, ans)
 
-def test_renders_in_non_geo_plots(reset_matplotlib):
+def test_renders_in_non_geo_plots(setup_test_paths):
 
     import os
     import numpy as np
@@ -251,15 +251,14 @@ def test_renders_in_non_geo_plots(reset_matplotlib):
     import matplotlib.pyplot as plt
     import matplotlib as mpl
     import domutils.legs as legs
-    import domutils
     import domutils._py_tools as py_tools
 
     #setting up directories
-    domutils_dir = os.path.dirname(domutils.__file__)
-    package_dir  = os.path.dirname(domutils_dir)
+    test_data_dir    = setup_test_paths['test_data_dir']
+    test_results_dir = setup_test_paths['test_results_dir']
 
-    generated_figure_dir = os.path.join(package_dir, 'test_results', 'generated_figures', 'test_legs')
-    reference_figure_dir = os.path.join(package_dir, 'test_data',    'reference_figures', 'test_legs')
+    reference_figure_dir = os.path.join(test_data_dir,    'reference_figures', 'test_legs')
+    generated_figure_dir = os.path.join(test_results_dir, 'generated_figures', 'test_legs')
 
     py_tools.parallel_mkdir(generated_figure_dir)
     
@@ -278,8 +277,9 @@ def test_renders_in_non_geo_plots(reset_matplotlib):
     gauss_bulge_with_exceptions[388:488,275:375] = -3333.
     
     # figure properties
-    mpl.rcParams.update({'font.size': 15})
-    fig_w, fig_h = 5.6, 5.#size of figure
+    mpl.rcParams.update({'font.size': 18})
+    mpl.rcParams.update({'font.family':'Latin Modern Roman'})
+    fig_w, fig_h = 5.6, 5. #size of figure
     fig = plt.figure(figsize=(fig_w, fig_h))
 
     rec_w = 4.           #size of axes
@@ -311,7 +311,8 @@ def test_renders_in_non_geo_plots(reset_matplotlib):
 
     #compare image with saved reference
     reference_figure = os.path.join(reference_figure_dir, os.path.basename(generated_figure))
-    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure)
+    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure,
+                                                   output_dir=os.path.join(test_results_dir, 'render_similarly'))
 
     #test fails if images are not similar
     assert images_are_similar

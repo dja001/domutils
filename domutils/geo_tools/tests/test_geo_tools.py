@@ -10,29 +10,30 @@
 import pytest
 
 @pytest.fixture(scope="module")
-def setup_values_and_palettes(reset_matplotlib):
+def setup_values_and_palettes(setup_test_paths):
 
     # DOCS:values_and_palette_begins
     import os 
-    import domutils
     import domutils.legs as legs
     import domutils._py_tools as py_tools
 
     # where is the data
-    domutils_dir = os.path.dirname(domutils.__file__)
-    package_dir  = os.path.dirname(domutils_dir)
+    test_data_dir    = setup_test_paths['test_data_dir']
+    test_results_dir = setup_test_paths['test_results_dir']
 
-    generated_figure_dir = os.path.join(package_dir, 'test_results', 'generated_figures', 'test_geo_tools')
-    reference_figure_dir = os.path.join(package_dir, 'test_data',    'reference_figures', 'test_geo_tools')
+    generated_figure_dir = os.path.join(test_results_dir, 'generated_figures', 'test_geo_tools')
+    reference_figure_dir = os.path.join(test_data_dir,    'reference_figures', 'test_geo_tools')
 
     py_tools.parallel_mkdir(generated_figure_dir)
 
     # DOCS:values_and_palette_ends
 
-    return (package_dir, generated_figure_dir, reference_figure_dir)
+    return (test_data_dir, test_results_dir, 
+            generated_figure_dir, reference_figure_dir)
 
 def test_projinds_simple_example(setup_values_and_palettes):
-    (package_dir, generated_figure_dir, reference_figure_dir) = setup_values_and_palettes
+    (test_data_dir, test_results_dir, 
+     generated_figure_dir, reference_figure_dir) = setup_values_and_palettes
 
     # DOCS:simple_projinds_example_begins
     import os
@@ -40,7 +41,6 @@ def test_projinds_simple_example(setup_values_and_palettes):
     import matplotlib as mpl
     import matplotlib.pyplot as plt
     import cartopy
-    import domutils
     import domutils.legs as legs
     import domutils.geo_tools as geo_tools
     import domutils._py_tools as py_tools
@@ -149,7 +149,8 @@ def test_projinds_simple_example(setup_values_and_palettes):
 
     # the testing needs not be included in docs
     reference_figure = os.path.join(reference_figure_dir, os.path.basename(generated_figure))
-    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure)
+    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure, 
+                                                   output_dir=os.path.join(test_results_dir, 'render_similarly'))
 
     #test fails if images are not similar
     assert images_are_similar
@@ -354,7 +355,8 @@ def test_smooth_radius_interpolation():
     
 
 def test_no_extent_in_cartopy_projection(setup_values_and_palettes):
-    (package_dir, generated_figure_dir, reference_figure_dir) = setup_values_and_palettes
+    (test_data_dir, test_results_dir, 
+     generated_figure_dir, reference_figure_dir) = setup_values_and_palettes
     '''
     make sure ProjInds works with projections requiring no extent
     '''
@@ -365,7 +367,6 @@ def test_no_extent_in_cartopy_projection(setup_values_and_palettes):
     import cartopy
     import matplotlib as mpl
     import matplotlib.pyplot as plt
-    import domutils
     import domutils.legs as legs
     import domutils.geo_tools as geo_tools
     import domutils._py_tools as py_tools
@@ -424,11 +425,7 @@ def test_no_extent_in_cartopy_projection(setup_values_and_palettes):
               extent=[x1,x2,y1,y2], origin='upper')
     ax.coastlines(resolution='110m', linewidth=0.3, edgecolor='0.3',zorder=10)
     color_map.plot_palette(data_ax=ax)
-    domutils_dir = os.path.dirname(domutils.__file__)
-    package_dir  = os.path.dirname(domutils_dir)
-    test_results_dir = package_dir+'/test_results/'
-    if not os.path.isdir(test_results_dir):
-        os.mkdir(test_results_dir)
+
     generated_figure = os.path.join(generated_figure_dir, 'test_no_extent_in_cartopy_projection.svg')
 
     plt.savefig(generated_figure, dpi=500)
@@ -436,14 +433,16 @@ def test_no_extent_in_cartopy_projection(setup_values_and_palettes):
 
     # compare with reference figure
     reference_figure = os.path.join(reference_figure_dir, os.path.basename(generated_figure))
-    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure)
+    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure,
+                                                   output_dir=os.path.join(test_results_dir, 'render_similarly'))
 
     #test fails if images are not similar
     assert images_are_similar
 
     
 def test_general_lam_projection(setup_values_and_palettes):
-    (package_dir, generated_figure_dir, reference_figure_dir) = setup_values_and_palettes
+    (test_data_dir, test_results_dir, 
+     generated_figure_dir, reference_figure_dir) = setup_values_and_palettes
 
     import os
     import pickle
@@ -451,15 +450,14 @@ def test_general_lam_projection(setup_values_and_palettes):
     import matplotlib as mpl
     import matplotlib.pyplot as plt
     import cartopy
-    import domutils
     import domutils._py_tools as py_tools
     
     # In your scripts use something like :
     import domutils.legs as legs
     import domutils.geo_tools as geo_tools
 
-    source_file  = os.path.join(package_dir, 'test_data', 'pal_demo_data.pickle')
-    with open(source_file, 'rb') as f:
+    pickle_file  = os.path.join(test_data_dir, 'pal_demo_data.pickle')
+    with open(pickle_file, 'rb') as f:
         data_dict = pickle.load(f)
     longitudes     = data_dict['longitudes']    #2D longitudes [deg]
     latitudes      = data_dict['latitudes']     #2D latitudes  [deg]
@@ -536,7 +534,8 @@ def test_general_lam_projection(setup_values_and_palettes):
 
     #compare image with saved reference
     reference_figure = os.path.join(reference_figure_dir, os.path.basename(generated_figure))
-    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure)
+    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure, 
+                                                   output_dir=os.path.join(test_results_dir, 'render_similarly'))
 
     #test fails if images are not similar
     assert images_are_similar
@@ -550,7 +549,6 @@ def test_basic_projection():
     import os
     import numpy as np
     import matplotlib.pyplot as plt
-    import domutils
     import domutils.legs as legs
     import domutils.geo_tools as geo_tools
 
@@ -596,7 +594,6 @@ def test_1d_inputs():
     import os
     import numpy as np
     import matplotlib.pyplot as plt
-    import domutils
     import domutils.legs as legs
     import domutils.geo_tools as geo_tools
 
@@ -640,7 +637,8 @@ def test_1d_inputs():
 def test_hrdps_projection_in_reasonable_time(setup_values_and_palettes):
     """ Test fails if it takes too long to generate projections
     """
-    (package_dir, generated_figure_dir, reference_figure_dir) = setup_values_and_palettes
+    (test_data_dir, test_results_dir, 
+     generated_figure_dir, reference_figure_dir) = setup_values_and_palettes
 
     import os
     import pickle
@@ -649,7 +647,6 @@ def test_hrdps_projection_in_reasonable_time(setup_values_and_palettes):
     import matplotlib as mpl
     import matplotlib.pyplot as plt
     import cartopy
-    import domutils
     import domutils._py_tools as py_tools
     
     # In your scripts use something like :
@@ -657,8 +654,8 @@ def test_hrdps_projection_in_reasonable_time(setup_values_and_palettes):
     import domutils.geo_tools as geo_tools
 
     #recover previously prepared data
-    source_file  = os.path.join(package_dir, 'test_data', 'radar_continental_2.5km_2882x2032.pickle')
-    with open(source_file, 'rb') as f:
+    pickle_file  = os.path.join(test_data_dir, 'radar_continental_2.5km_2882x2032.pickle')
+    with open(pickle_file, 'rb') as f:
         data_dict = pickle.load(f)
     longitudes     = data_dict['lon']    #2D longitudes [deg]
     latitudes      = data_dict['lat']     #2D latitudes  [deg]

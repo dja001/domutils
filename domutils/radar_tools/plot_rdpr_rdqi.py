@@ -110,10 +110,6 @@ def plot_rdpr_rdqi(fst_file:   str=None,
         'savefig.dpi': dpi,
         })
 
-    # Use this for editable text in svg
-    mpl.rcParams['text.usetex']  = False
-    mpl.rcParams['svg.fonttype'] = 'none'
-
     # pretty font in figures
     # instantiate figure
     fig = plt.figure(figsize=(fig_w, fig_h), constrained_layout=False)

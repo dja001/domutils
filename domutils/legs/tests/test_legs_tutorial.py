@@ -3,7 +3,7 @@ import pytest
 
 
 @pytest.fixture(scope="module")
-def setup_values_and_palettes(reset_matplotlib):
+def setup_values_and_palettes(setup_test_paths):
 
     # DOCS:setup_begins
 
@@ -12,16 +12,15 @@ def setup_values_and_palettes(reset_matplotlib):
     import scipy.signal
     import matplotlib.pyplot as plt
     import matplotlib as mpl
-    import domutils
     import domutils.legs as legs
     import domutils._py_tools as py_tools
 
-    # where is the data
-    domutils_dir = os.path.dirname(domutils.__file__)
-    package_dir  = os.path.dirname(domutils_dir)
+    #setting up directories
+    test_data_dir    = setup_test_paths['test_data_dir']
+    test_results_dir = setup_test_paths['test_results_dir']
 
-    generated_figure_dir = os.path.join(package_dir, 'test_results', 'generated_figures', 'test_legs_tutorial')
-    reference_figure_dir = os.path.join(package_dir, 'test_data',    'reference_figures', 'test_legs_tutorial')
+    reference_figure_dir = os.path.join(test_data_dir,    'reference_figures', 'test_legs_tutorial')
+    generated_figure_dir = os.path.join(test_results_dir, 'generated_figures', 'test_legs_tutorial')
 
     py_tools.parallel_mkdir(generated_figure_dir)
     
@@ -48,7 +47,8 @@ def setup_values_and_palettes(reset_matplotlib):
                           * 62. )
     
     # figure properties
-    mpl.rcParams.update({'font.size': 15})
+    mpl.rcParams.update({'font.size': 18})
+    mpl.rcParams.update({'font.family':'Latin Modern Roman'})
     rec_w = 4.           #size of axes
     rec_h = 4.           #size of axes
     sp_w  = 2.           #horizontal space between axes
@@ -69,6 +69,7 @@ def setup_values_and_palettes(reset_matplotlib):
     return (os, np, plt, mpl, legs, py_tools, 
             format_axes, gauss_bulge, reflectivity_like,
             rec_w, rec_h, sp_w, sp_h, 
+            test_results_dir, 
             generated_figure_dir, reference_figure_dir)
 
 
@@ -76,6 +77,7 @@ def test_default_cm(setup_values_and_palettes):
     (os, np, plt, mpl, legs, py_tools, 
      format_axes, gauss_bulge, reflectivity_like,
      rec_w, rec_h, sp_w, sp_h, 
+     test_results_dir, 
      generated_figure_dir, reference_figure_dir) = setup_values_and_palettes
 
     # DOCS:default_cm_begins
@@ -102,7 +104,8 @@ def test_default_cm(setup_values_and_palettes):
 
     #compare image with saved reference
     reference_figure = os.path.join(reference_figure_dir, os.path.basename(generated_figure))
-    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure)
+    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure,
+                                                   output_dir=os.path.join(test_results_dir, 'render_similarly'))
     assert images_are_similar
 
 
@@ -121,6 +124,7 @@ def test_extend_demo(setup_values_and_palettes):
     (os, np, plt, mpl, legs, py_tools, 
      format_axes, gauss_bulge, reflectivity_like,
      rec_w, rec_h, sp_w, sp_h, 
+     test_results_dir, 
      generated_figure_dir, reference_figure_dir) = setup_values_and_palettes
 
     # same as in previous test
@@ -128,7 +132,7 @@ def test_extend_demo(setup_values_and_palettes):
 
     #----------------------------------------
     # DOCS:extend_demo_begins
-    fig_w, fig_h = 11.6, 10.
+    fig_w, fig_h = 12., 10.
     fig = plt.figure(figsize=(fig_w, fig_h))
     
     
@@ -179,18 +183,20 @@ def test_extend_demo(setup_values_and_palettes):
 
     #compare image with saved reference
     reference_figure = os.path.join(reference_figure_dir, os.path.basename(generated_figure))
-    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure)
+    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure, 
+                                                   output_dir=os.path.join(test_results_dir, 'render_similarly'))
     assert images_are_similar
 
 def test_default_exceptions(setup_values_and_palettes):
     (os, np, plt, mpl, legs, py_tools, 
      format_axes, gauss_bulge, reflectivity_like,
      rec_w, rec_h, sp_w, sp_h, 
+     test_results_dir, 
      generated_figure_dir, reference_figure_dir) = setup_values_and_palettes
 
     # DOCS:default_exceptions_begins
 
-    fig_w, fig_h = 11.6, 5.#size of figure
+    fig_w, fig_h = 12., 5.#size of figure
     fig = plt.figure(figsize=(fig_w, fig_h))
     
     
@@ -240,20 +246,22 @@ def test_default_exceptions(setup_values_and_palettes):
 
     #compare image with saved reference
     reference_figure = os.path.join(reference_figure_dir, os.path.basename(generated_figure))
-    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure)
+    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure,
+                                                   output_dir=os.path.join(test_results_dir, 'render_similarly'))
     assert images_are_similar
 
 def test_default_exceptions(setup_values_and_palettes):
     (os, np, plt, mpl, legs, py_tools, 
      format_axes, gauss_bulge, reflectivity_like,
      rec_w, rec_h, sp_w, sp_h, 
+     test_results_dir, 
      generated_figure_dir, reference_figure_dir) = setup_values_and_palettes
 
     # DOCS:nine_legs_begins
 
     pal_w  = .25     #width of palette
     pal_sp = 1.2     #space between palettes
-    fig_w, fig_h = 13.6, 5.  #size of figure
+    fig_w, fig_h = 14., 5.  #size of figure
     fig = plt.figure(figsize=(fig_w, fig_h))
     supported_colors = ['brown','blue','green','orange',
                         'red','pink','purple','yellow', 'b_w']
@@ -272,7 +280,8 @@ def test_default_exceptions(setup_values_and_palettes):
 
     #compare image with saved reference
     reference_figure = os.path.join(reference_figure_dir, os.path.basename(generated_figure))
-    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure)
+    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure,
+                                                   output_dir=os.path.join(test_results_dir, 'render_similarly'))
     assert images_are_similar
 
 
@@ -280,6 +289,7 @@ def test_n_col(setup_values_and_palettes):
     (os, np, plt, mpl, legs, py_tools, 
      format_axes, gauss_bulge, reflectivity_like,
      rec_w, rec_h, sp_w, sp_h, 
+     test_results_dir, 
      generated_figure_dir, reference_figure_dir) = setup_values_and_palettes
 
     # DOCS:n_col_begins
@@ -302,18 +312,20 @@ def test_n_col(setup_values_and_palettes):
 
     #compare image with saved reference
     reference_figure = os.path.join(reference_figure_dir, os.path.basename(generated_figure))
-    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure)
+    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure,
+                                                   output_dir=os.path.join(test_results_dir, 'render_similarly'))
     assert images_are_similar
 
 def test_color_arr(setup_values_and_palettes):
     (os, np, plt, mpl, legs, py_tools, 
      format_axes, gauss_bulge, reflectivity_like,
      rec_w, rec_h, sp_w, sp_h, 
+     test_results_dir, 
      generated_figure_dir, reference_figure_dir) = setup_values_and_palettes
 
     # DOCS:color_arr_begins
 
-    fig_w, fig_h = 11.6, 5.#size of figure
+    fig_w, fig_h = 12., 5.#size of figure
     fig = plt.figure(figsize=(fig_w, fig_h))
     
     
@@ -361,18 +373,20 @@ def test_color_arr(setup_values_and_palettes):
 
     #compare image with saved reference
     reference_figure = os.path.join(reference_figure_dir, os.path.basename(generated_figure))
-    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure)
+    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure,
+                                                   output_dir=os.path.join(test_results_dir, 'render_similarly'))
     assert images_are_similar
 
 def test_solid(setup_values_and_palettes):
     (os, np, plt, mpl, legs, py_tools, 
      format_axes, gauss_bulge, reflectivity_like,
      rec_w, rec_h, sp_w, sp_h, 
+     test_results_dir, 
      generated_figure_dir, reference_figure_dir) = setup_values_and_palettes
 
     # DOCS:solid_begins
 
-    fig_w, fig_h = 11.6, 10.
+    fig_w, fig_h = 12., 10.
     fig = plt.figure(figsize=(fig_w, fig_h))
     
     
@@ -440,17 +454,19 @@ def test_solid(setup_values_and_palettes):
 
     #compare image with saved reference
     reference_figure = os.path.join(reference_figure_dir, os.path.basename(generated_figure))
-    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure)
+    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure,
+                                                   output_dir=os.path.join(test_results_dir, 'render_similarly'))
     assert images_are_similar
 
 def test_dark_pos(setup_values_and_palettes):
     (os, np, plt, mpl, legs, py_tools, 
      format_axes, gauss_bulge, reflectivity_like,
      rec_w, rec_h, sp_w, sp_h, 
+     test_results_dir, 
      generated_figure_dir, reference_figure_dir) = setup_values_and_palettes
     # DOCS:dark_pos_begins
 
-    fig_w, fig_h = 11.6, 5.#size of figure
+    fig_w, fig_h = 12., 5.#size of figure
     fig = plt.figure(figsize=(fig_w, fig_h))
     
     
@@ -494,18 +510,20 @@ def test_dark_pos(setup_values_and_palettes):
 
     #compare image with saved reference
     reference_figure = os.path.join(reference_figure_dir, os.path.basename(generated_figure))
-    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure)
+    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure,
+                                                   output_dir=os.path.join(test_results_dir, 'render_similarly'))
     assert images_are_similar
 
 def test_solid_divergent(setup_values_and_palettes):
     (os, np, plt, mpl, legs, py_tools, 
      format_axes, gauss_bulge, reflectivity_like,
      rec_w, rec_h, sp_w, sp_h, 
+     test_results_dir, 
      generated_figure_dir, reference_figure_dir) = setup_values_and_palettes
 
     # DOCS:solid_divergent_begins
 
-    fig_w, fig_h = 11.6, 5.#size of figure
+    fig_w, fig_h = 12., 5.#size of figure
     fig = plt.figure(figsize=(fig_w, fig_h))
     
     
@@ -541,7 +559,8 @@ def test_solid_divergent(setup_values_and_palettes):
 
     #compare image with saved reference
     reference_figure = os.path.join(reference_figure_dir, os.path.basename(generated_figure))
-    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure)
+    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure,
+                                                   output_dir=os.path.join(test_results_dir, 'render_similarly'))
     assert images_are_similar
 
 
@@ -549,6 +568,7 @@ def test_unequal_range(setup_values_and_palettes):
     (os, np, plt, mpl, legs, py_tools, 
      format_axes, gauss_bulge, reflectivity_like,
      rec_w, rec_h, sp_w, sp_h, 
+     test_results_dir, 
      generated_figure_dir, reference_figure_dir) = setup_values_and_palettes
 
     # DOCS:unequal_range_begins
@@ -582,18 +602,20 @@ def test_unequal_range(setup_values_and_palettes):
 
     #compare image with saved reference
     reference_figure = os.path.join(reference_figure_dir, os.path.basename(generated_figure))
-    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure)
+    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure,
+                                                   output_dir=os.path.join(test_results_dir, 'render_similarly'))
     assert images_are_similar
 
 def test_separate(setup_values_and_palettes):
     (os, np, plt, mpl, legs, py_tools, 
      format_axes, gauss_bulge, reflectivity_like,
      rec_w, rec_h, sp_w, sp_h, 
+     test_results_dir, 
      generated_figure_dir, reference_figure_dir) = setup_values_and_palettes
 
     # DOCS:separate_begins
 
-    fig_w, fig_h = 11.6, 10.
+    fig_w, fig_h = 12., 10.
     fig = plt.figure(figsize=(fig_w, fig_h))
     
     
@@ -670,6 +692,7 @@ def test_separate(setup_values_and_palettes):
 
     #compare image with saved reference
     reference_figure = os.path.join(reference_figure_dir, os.path.basename(generated_figure))
-    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure)
+    images_are_similar = py_tools.render_similarly(generated_figure, reference_figure,
+                                                   output_dir=os.path.join(test_results_dir, 'render_similarly'))
     assert images_are_similar
 

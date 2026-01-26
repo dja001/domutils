@@ -168,11 +168,9 @@ def main():
 
     #point density for figure
     mpl.rcParams['figure.dpi'] = 100.   #crank this up for high def images
-    # Use this for editable text in svg (eg with Inkscape)
-    mpl.rcParams['text.usetex']  = False
-    mpl.rcParams['svg.fonttype'] = 'none'
-    #larger characters
+
     mpl.rcParams.update({'font.size': 25})
+    mpl.rcParams.update({'font.family':'Latin Modern Roman'})
 
 
     # dimensions for figure panels and spaces

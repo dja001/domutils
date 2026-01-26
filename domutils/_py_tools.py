@@ -6,18 +6,6 @@ More work would be needed to make them generally usable
 """
 
 
-def lmroman(pic_name):
-    """
-    horrible hack to use LMRoman typeface in svg figure    
-    
-    Never got it to work with  plt.rcParams["font.family"] = "LMRoman10"
-    """
-
-    import subprocess
-    cmd = ['sed', '-i', r's/DejaVu\ Sans/LMRoman10/', pic_name]
-    process = subprocess.Popen(cmd, stdout=subprocess.PIPE)
-    output, error = process.communicate()
-
 def convert(pic_name, img_type, del_orig=False, density=300, geometry='100%', del_eps=True):
 
     #convert figure to gif, png, ... while preserving hack for lmRoman typeface
@@ -154,16 +142,16 @@ def render_similarly(new_image_file, reference_image_file,
     #default dir is 'test_results'
     if output_dir is None:
         domutils_dir = os.path.dirname(domutils.__file__)
-        output_dir   = os.path.dirname(domutils_dir)+'/test_results/render_similarly/'
-        if not os.path.isdir(output_dir):
-            os.mkdir(output_dir)
+        output_dir   = os.path.join(os.path.dirname(domutils_dir),'test_results', 'render_similarly')
+    # make sure output dir is there
+    py_tools.parallel_mkdir(output_dir)
 
     #make a copy of each image in output_dir
     basename_new = os.path.basename(bname_new)
-    new_file_cp = output_dir+basename_new+'_new'+extension_new
+    new_file_cp = os.path.join(output_dir, basename_new+'_new'+extension_new)
     shutil.copyfile(new_image_file, new_file_cp)
     basename_ref = os.path.basename(bname_ref)
-    ref_file_cp = output_dir+basename_ref+'_ref'+extension_ref
+    ref_file_cp = os.path.join(output_dir, basename_ref+'_ref'+extension_ref)
     shutil.copyfile(reference_image_file, ref_file_cp)
 
     #ensure raster images

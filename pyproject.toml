@@ -13,6 +13,40 @@ authors = [
 ]
 requires-python = ">=3.7"
 
+dependencies = [
+    "numpy>=1.20",
+    "scipy",
+    "attrdict",
+    "cartopy", 
+    "matplotlib",
+    "dask[complete]", 
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest",
+    "pytest-timeout",
+    "pytest-cov", 
+    "domcmc",
+    "pysteps", 
+    "h5py", 
+    "pygrib", 
+    "cairosvg", 
+]
+
+docs = [
+    "sphinx",
+    "sphinx-rtd-theme",
+    "sphinx-gallery",
+    "sphinx-autodoc-typehints",
+    "sphinx-argparse",
+]
+
+build = [
+    "packaging",
+    "twine"
+]
+
 [project.urls]
 Homepage = "https://github.com/dja001/domutils"
 Repository = "https://github.com/dja001/domutils.git"
@@ -26,8 +60,9 @@ include = ["*"]
 
 [tool.pytest.ini_options]
 markers = [
-  "doc_artifact: tests that generate artifacts used in the Sphinx documentation"
+  "rpnpy: tests that require the use of rpnpy activated by SSM"
 ]
+
 testpaths = ["domutils"]
 
 

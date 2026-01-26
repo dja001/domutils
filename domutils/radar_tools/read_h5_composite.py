@@ -111,9 +111,9 @@ def read_h5_composite(odim_file:   str=None,
         ##old way from a standard file
         #ll_dict = fst_tools.getData(fileName=latlon_file, varName='MSKC', latlon=True)
 
-        ##code to make pickle file  --> actually takes longer
+        ##code to make pickle file  
         #pickleDict = {'lat':ll_dict['lat'], 'lon':ll_dict['lon']}
-        #pickle.dump( pickleDict, open( "/home/ords/mrd/rpndat/dja001/shared_stuff/files/radar_continental_2.5km_2882x2032.pickle", "wb" ) )
+        #pickle.dump( pickleDict, open( ".../shared_stuff/files/radar_continental_2.5km_2882x2032.pickle", "wb" ) )
 
         with open(latlon_file, "rb") as pfile:
             ll_dict = pickle.load(pfile)
