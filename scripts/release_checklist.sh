@@ -169,6 +169,14 @@ while true; do
 done
 
 
+# -------------  beyond this point, everything must be commited --------------------
+status=$(git status --porcelain)
+if [[ -n "$status" ]]; then
+    echo "Working tree is not clean. Commit before releasing."
+      fail "Stoping here"
+fi
+
+
 
 # ---------- step 7: build + upload ----------
 

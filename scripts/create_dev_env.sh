@@ -14,8 +14,9 @@ mamba create -n ${env_name} -y \
     pysteps h5py pygrib cairosvg \
     sphinx sphinx_rtd_theme sphinx-gallery \
     sphinx-autodoc-typehints sphinx-argparse \
-    packaging twine -c conda-forge
+    build packaging twine -c conda-forge
 
+mamba run -n ${env_name} pip install build
 mamba run -n ${env_name} pip install -e ../domcmc_package
 mamba run -n ${env_name} pip install -e .
 
