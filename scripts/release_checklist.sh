@@ -144,26 +144,30 @@ pause
 
 # ---------- step 6b: ensure version + changelog are committed ----------
 
-header "Step 6b: Verify VERSION and CHANGELOG are committed"
+header "Step 6b: Verify VERSION and CHANGELOG.md are committed"
 
 # Ensure files exist
 [[ -f VERSION ]] || fail "VERSION file not found"
-[[ -f CHANGELOG ]] || fail "CHANGELOG file not found"
+[[ -f CHANGELOG.md ]] || fail "CHANGELOG.md file not found"
 
 # Check if either file is modified or untracked
-dirty_files=$(git status --porcelain VERSION CHANGELOG)
+while true; do
+    dirty_files=$(git status --porcelain VERSION CHANGELOG.md)
+    
+    if [[ -n "$dirty_files" ]]; then
+        echo
+        echo "The following release files are not committed:"
+        echo
+        echo "$dirty_files"
+        echo
+        echo "Commit VERSION and CHANGELOG before continuing."
+        pause
+    else
+        echo "✔ VERSION and CHANGELOG are committed"
+        break
+    fi
+done
 
-if [[ -n "$dirty_files" ]]; then
-    echo
-    echo "The following release files are not committed:"
-    echo
-    echo "$dirty_files"
-    echo
-    fail "Commit VERSION and CHANGELOG before continuing."
-fi
-
-echo "✔ VERSION and CHANGELOG are committed"
-pause
 
 
 # ---------- step 7: build + upload ----------
