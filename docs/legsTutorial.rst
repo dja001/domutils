@@ -72,15 +72,15 @@ The following code will fail and give you suggestions as to what to do.
 .. code-block:: bash
 
     Traceback (most recent call last):
-      File "/fs/site3/eccc/mrd/rpndat/dja001/python_miniconda3/envs/domutils_dev/lib/python3.7/doctest.py", line 1330, in __run
+      File ".../envs/domutils_dev/lib/python3.7/doctest.py", line 1330, in __run
         compileflags, 1), test.globs)
       File "<doctest legsTutorial.rst[35]>", line 2, in <module>
         palette='right', pal_format='{:2.0f}')
-      File "/fs/homeu1/eccc/mrd/ords/rpndat/dja001/python/packages/domutils_package/domutils/legs/legs.py", line 405, in plot_data
+      File ".../python/packages/domutils_package/domutils/legs/legs.py", line 405, in plot_data
         out_rgb = self.to_rgb(rdata)
-      File "/fs/homeu1/eccc/mrd/ords/rpndat/dja001/python/packages/domutils_package/domutils/legs/legs.py", line 473, in to_rgb
+      File ".../python/packages/domutils_package/domutils/legs/legs.py", line 473, in to_rgb
         validate.no_unmapped(data_flat, action_record, self.lows, self.highs)
-      File "/fs/homeu1/eccc/mrd/ords/rpndat/dja001/python/packages/domutils_package/domutils/legs/validation_tools/no_unmapped.py", line 103, in no_unmapped
+      File ".../python/packages/domutils_package/domutils/legs/validation_tools/no_unmapped.py", line 103, in no_unmapped
         raise RuntimeError(err_mess)
     RuntimeError: 
 

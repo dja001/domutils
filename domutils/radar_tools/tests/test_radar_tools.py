@@ -12,7 +12,7 @@ def test_fst_composite(setup_test_paths):
     test_data_dir    = setup_test_paths['test_data_dir']
     test_results_dir = setup_test_paths['test_results_dir']
 
-    # DOCS:fst_composite_begins
+    # DOCS:fst_composites_begins
     import os
     import domutils.radar_tools as radar_tools
 
@@ -25,7 +25,7 @@ def test_fst_composite(setup_test_paths):
     assert reflectivity.shape == (1650, 1500)
     assert str(valid_date) == '2019-10-31 16:30:00+00:00'
 
-    # DOCS:fst_composite_ends
+    # DOCS:fst_composites_ends
 
 @pytest.mark.rpnpy
 def test_obs_process(setup_test_paths):

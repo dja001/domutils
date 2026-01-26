@@ -35,11 +35,27 @@ if [[ "$branch" == "master" || "$branch" == "main" ]]; then
 fi
 
 if [[ -n "$status" ]]; then
-    fail "Working tree is not clean. Commit or stash changes before releasing."
+    echo "Working tree is not clean. Commit or stash changes before releasing."
+    read -p "type y/yes to skip this check for now: " skip
+    if [[ "${skip}" == 'y' ]] || [[ "${skip}" == 'yes' ]] ; then
+      echo "continuing..."
+    else
+      fail "Stoping here"
+    fi
+else
+    echo "✔ The working tree on dev branch is clean"
 fi
 
-echo "✔ Clean working tree on dev branch"
+
+# ---------- step 1b: Check if a conda environment is activated --------
+header "Step 1b: Development environment"
+echo "Make sure you are in a development environment with all the dependencies"
+echo ""
+echo "To create such a conda environment, run:"
+echo "  make env"
 pause
+
+
 
 # ---------- step 2: run local tests ----------
 
@@ -49,6 +65,7 @@ echo "Please run:"
 echo "  make test"
 echo
 echo "This should run ~150 tests and exit cleanly."
+echo 
 pause
 
 # ---------- step 3: docs + doctests ----------
@@ -79,6 +96,7 @@ header "Step 5: Test data / Zenodo (ONLY if needed)"
 
 echo "If this release changes:"
 echo "  - reference figures"
+echo "  - example figures"
 echo "  - test datasets"
 echo
 echo "Then you MUST:"

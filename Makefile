@@ -10,27 +10,21 @@ help:
 	@echo "  make release    Build + upload to PyPI"
 
 env:
-	mamba create -n dev_env_v3 \
-	    numpy scipy attrdict cartopy matplotlib dask \
-	    pytest pytest-timeout pytest-cov \
-	    pysteps h5py pygrib cairosvg \
-	    sphinx sphinx_rtd_theme sphinx-gallery \
-	    sphinx-autodoc-typehints sphinx-argparse \
-	    packaging twine -c conda-forge
-	pip install -e ../domcmc_package
-	pip install -e .
+	./scripts/create_dev_env.sh dev_env_20260126
 
 test:
 	pytest -xvs
 
 docs:
-	cd docs && make clean && make doctest && make html
+	rm -rf ./docs/auto_examples
+	./scripts/copy_reference_images_to_static.sh
+	cd docs && make clean && make doctest && make html 
 
 tox:
 	./scripts/run_tox_tests.sh
 
 clean:
-	rm -rf dist build *.egg-info
+	rm -rf dist build *.egg-info 
 
 release: clean
 	python -m build

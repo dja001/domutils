@@ -30,22 +30,22 @@ def read_fst_composite(fst_file:   str=None,
 
         or a dictionary containing:
 
-            'reflectivity':       (ndarray) 2D reflectivity
+            'reflectivity':        (ndarray) 2D reflectivity
 
-            'total_quality_index':  (ndarray) 2D quality index
+            'total_quality_index': (ndarray) 2D quality index
 
             'valid_date':          (python datetime object) date of validity
 
-            'latitudes':          (ndarray) 2d latitudes  of data (conditional on latlon = True)
+            'latitudes':           (ndarray) 2d latitudes  of data (conditional on latlon = True)
 
-            'longitudes':         (ndarray) 2d longitudes of data (conditional on latlon = True)
+            'longitudes':          (ndarray) 2d longitudes of data (conditional on latlon = True)
 
     Example:
 
         .. literalinclude:: ../domutils/radar_tools/tests/test_radar_tools.py
            :language: python
            :start-after: DOCS:fst_composites_begins
-           :end-before: DOCS:fst_composite_ends
+           :end-before: DOCS:fst_composites_ends
 
 
     """

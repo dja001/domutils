@@ -1,12 +1,18 @@
 import pytest
 
 # runs before anything else
-def pytest_sessionstart(session):
+def pytest_sessionstart(scope='session', autouse=True):
 
     import os
     import shutil
     import glob
+    import domutils
     from matplotlib import font_manager
+
+    # figure out font paths
+    domutils_dir = os.path.dirname(domutils.__file__)
+    package_dir  = os.path.dirname(domutils_dir)
+    font_path = os.path.join(package_dir, 'fonts')
 
     # for results consistency, we flush matplotlib's cache
     home_dir = os.environ.get('HOME')
@@ -25,18 +31,13 @@ def pytest_sessionstart(session):
         )
     ]
 
-    font_path = os.environ.get('LM_FONT_DIR')
-    if not font_path:
-        font_path = '/home/dja001/python/install_lm_fonts_in_conda_env/lm_otf/'
-        print(f'System variable LM_FONT_PATH is not set, we use {font_path}')
-    if font_path:
-        if os.path.isdir(font_path):
-            font_files = glob.glob(os.path.join(font_path, '*.otf'))
-            for font_file in font_files: 
-                if 'lmroman9-regular' in font_file:
-                    font_manager.fontManager.addfont(font_file)
-        else:
-            print(f'Invalid font directory: {font_dir}')
+    if os.path.isdir(font_path):
+        font_files = glob.glob(os.path.join(font_path, '*.otf'))
+        for font_file in font_files: 
+            if 'lmroman9-regular' in font_file:
+                font_manager.fontManager.addfont(font_file)
+    else:
+        raise ValueError(f'Invalid font directory: {font_path}')
 
 
 @pytest.fixture(scope="module", autouse=True)

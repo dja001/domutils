@@ -3,19 +3,8 @@
 Installation
 ----------------------
 
-- Conda installation is probbly the easiest.
 
-  .. code-block:: bash
-  
-     conda install -c dja001 domutils 
-
-  Recent versions of cartopy have got super slow, I recommend the following combination
-  for decent speed. 
-
-    * cartopy=0.19.0.post1 
-    * matplotlib=3.3.4
-
-- Pip installation should also work
+- Pip installation is recommended
 
   .. code-block:: bash
   
@@ -27,5 +16,4 @@ Installation
   >>> import domutils.legs as legs            #doctest:+SKIP 
   >>> import domutils.geo_tools as geo_tools  #doctest:+SKIP 
 
-
-
+- Conda installation is currently unavailable until I figure out conda forge...

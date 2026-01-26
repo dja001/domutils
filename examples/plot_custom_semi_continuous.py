@@ -46,7 +46,8 @@ def main():
     #point density for figure
     mpl.rcParams['figure.dpi'] = 400
     #larger characters
-    mpl.rcParams.update({'font.size': 15})
+    mpl.rcParams.update({'font.size': 18})
+    mpl.rcParams.update({'font.family':'Latin Modern Roman'})
 
     #instantiate figure
     fig = plt.figure(figsize=(7.5,6.))

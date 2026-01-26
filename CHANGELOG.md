@@ -8,6 +8,15 @@ Please use the following tags when editing this file:
 *Removed* for now removed features.
 *Fixed* for any bug fixes. 
 
+## [2.3.1] - 2026-01-10
+### Added 
+- release process is now largely automated with scripts and a Makefile
+- testing with tox for multiple python/matplotlib/cartopy combinations
+- reproducible results with matplotlib in tests with reset of its fonts
+- Latin modern fonts provided with the package for less headaches
+### Changed
+- latin modern fonts used in all figures now
+
 ## [2.3.0] - 2026-01-10
 ### Changed
 - geo_tools  points in space (say for a Robinson peojection) are now handled before being passed to kdtree

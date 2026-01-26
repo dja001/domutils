@@ -129,11 +129,10 @@ def main():
     vpix = ratio*hpix #number of vertical pixels   S-N
     img_res   = (int(hpix),int(vpix))
 
+    mpl.rcParams.update({'font.size': 18})
+    mpl.rcParams.update({'font.family':'Latin Modern Roman'})
+
     #point density for figure
-    mpl.rcParams.update({'font.size': 17})
-    #Use this to make text editable in svg files
-    mpl.rcParams['text.usetex'] = False
-    mpl.rcParams['svg.fonttype'] = 'none'
     #Hi def figure
     mpl.rcParams['figure.dpi'] = 400
 
