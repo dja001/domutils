@@ -202,8 +202,7 @@ def _parse_num(arg, dtype='int', deltat_seconds=False):
             elif arg[-1] == 'M':
                 num_str = float(arg[:-1]) * 60.
             else:
-                # mabe later I will require a time specification
-                num_str = float(arg[:-1]) * 60.
+                raise ValueError('please indicate if the number is in seconds or minutes wirh a S or M suffix')
         else:
             num_str = arg.lstrip('0').replace('p','.').replace('m','-')
             if num_str == '':
@@ -523,6 +522,7 @@ def _t_interp_at_one_time(out_time, args):
                                        'dt'     : dt,
                                        'weight' : weight
                                       })
+
     # if we are extrapolating, the last output data should always be part of the list
     last_input_time = args.input_date_list[-1]
     if out_time > last_input_time:
@@ -912,6 +912,12 @@ def obs_process(args=None):
         else:
             args.median_filt = _parse_num(args.median_filt)
 
+    if args.avg_n_motion_vect is not None :
+        if args.avg_n_motion_vect == 'None' :
+            args.avg_n_motion_vect = None
+        else:
+            args.avg_n_motion_vect = _parse_num(args.avg_n_motion_vect)
+
     if args.median_filt_before_mv is not None :
         if args.median_filt_before_mv == 'None' :
             args.median_filt_before_mv = None
@@ -1007,6 +1013,15 @@ def obs_process(args=None):
        logger.info(arg +' = '+ str(getattr(args, arg)))
     logger.info('')
     logger.info('')
+
+    if args.t_interp_method == 'nowcast':
+        min_time_necessary = (  args.output_t0 
+                              - datetime.timedelta(seconds=args.interp_max_dt)
+                              - ((args.avg_n_motion_vect+2) * datetime.timedelta(seconds=args.input_dt))
+                             )
+        # we want input time list to start earlier than output dt
+        while args.input_t0 > min_time_necessary:
+            args.input_t0 -= datetime.timedelta(seconds=args.input_dt)
 
     #make list of dates where input radar data is needed and add it to arguments
     t_len = (args.input_tf-args.input_t0) + datetime.timedelta(seconds=1)    #+ 1 second for inclusive end point
@@ -1118,6 +1133,7 @@ def _define_parser(only_arg_list=False):
           ('--output_dt'               , str,   'None',      "interval (minutes M or seconds S) between output radar mosaics"),
           ('--t_interp_method'         , str,   'None',      "time interpolation method"),
           ('--interp_max_dt'           , str,   'None',      "max interval (minutes M or seconds S) where data will contribute to nowcast interpolation"),
+          ('--avg_n_motion_vect'       , str,   'None',      "Number of motion vectors (separated by input_dt) to be averaged for more temporal consistency"),
           ('--sample_pr_file'          , str,   'None',      "File containing PR to establish the domain"),
           ('--output_file_format'      , str,   'npz',       "File format of processed files"),
           ('--ncores'                  , int,   1,           "number of cores for parallel execution"),
