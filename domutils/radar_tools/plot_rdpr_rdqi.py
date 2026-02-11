@@ -2,6 +2,7 @@ from typing import Callable, Iterator, Union, Optional, List, Iterable, MutableM
 
 def plot_rdpr_rdqi(fst_file:   str=None, 
                    this_date:  Any=None,
+                   info=None,
                    args=None            ):
     """ plot RDPR and RDQI from a rpn "standard" file 
 
@@ -120,6 +121,11 @@ def plot_rdpr_rdqi(fst_file:   str=None,
     ax.annotate(this_date.strftime('%Y-%m-%d %H:%M'), size=35,
                 xy=(0.015, 0.92), xycoords='figure fraction',
                 bbox=dict(boxstyle="round", fc=[1,1,1,.9], ec=[1,1,1,0]))
+
+    if info is not None:
+        ax.annotate(info, size=25,
+                    xy=(0.015, 0.82), xycoords='figure fraction',
+                    bbox=dict(boxstyle="round", fc=[1,1,1,.9], ec=[1,1,1,0]))
 
     if pr_dict is None:
         #data not found or not available at desired date
@@ -261,20 +267,11 @@ def plot_rdpr_rdqi(fst_file:   str=None,
     #save figure
     svg_name = fig_dir + this_date.strftime(fig_name_recipe)
 
-    if shutil.which('inkscape') is not None:
-        #inkscape is available, use it for conversion
-        logger.info('Saving figure:'+svg_name+', changing typeface and converting format if needed.')
-        plt.savefig(svg_name)
+    logger.info('Saving figure:'+svg_name)
+    plt.savefig(svg_name)
 
-        dpy.lmroman(svg_name)
-        if fig_format != 'svg':
-            dpy.convert(svg_name, fig_format, del_orig=True, density=500, geometry='50%')
-    else:
-        #inkscape not available
-        logger.info('Inkscape not available, will use matplotlibs conversion tools')
-        file_name, file_extension = os.path.splitext(svg_name)
-        plt.savefig(f'{file_name}.{fig_format}', format=fig_format, dpi=300)
-    logger.info(f'plot_rdpr_rdqi made figure: {svg_name}')
+    if fig_format != 'svg':
+        dpy.convert(svg_name, fig_format, del_orig=True, density=500, geometry='50%')
 
     #not sure what is accumulating but adding this garbage collection step 
     #prevents jobs from aborting when a large number of files are made 

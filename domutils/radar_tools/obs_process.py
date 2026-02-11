@@ -52,6 +52,75 @@ def _setup_logging(args, is_worker=False, sub_dir=''):
 
     return logger
 
+def perform_nowcast(args, t0, lead_time_s):
+
+    import datetime
+    import pysteps
+    from domutils import radar_tools
+
+    # advection method
+    extrapolate = pysteps.extrapolation.interface.get_method("semilagrangian")
+
+    # get pre-computed motion vectors and, potentially, average them
+    mv_offsets = np.arange(0., -1*args.avg_n_motion_vect, -1)
+    mv_avg = np.full((args.out_nx, args.out_ny, args.avg_n_motion_vect), np.nan)
+    for ii, this_offset in enumerate(mv_offsets):
+        mv_time = t0 + datetime.timedelta(seconds=(this_offset*args.input_dt))
+        wind_file = args.motion_vectors_dir + mv_time.strftime('%Y%m%d%H%M_end_window.npz')
+        raw_mv = np.load(wind_file)
+        if ii == 0:
+            mv_avg = raw_mv['uv_motion']
+        else:
+            mv_avg += raw_mv['uv_motion']
+    mv_avg /= args.avg_n_motion_vect
+
+    # scale motion vectors
+    scaling_factor = lead_time_s / args.input_dt
+    uv_scaled = _scale_wind(raw_mv['uv_motion'], scaling_factor)
+
+    # get precip and qi to extrapolate
+    #fst_file = args.processed_dir + t0.strftime(args.output_file_struc)
+     
+    #   from domcmc import fst_tools
+    #   fst_entry = fst_tools.get_data(file_name=fst_file, var_name='RDPR', datev=t0)
+    #   if fst_entry is None:
+    #       raise ValueError(f"Unable to get source precip in {fst_file}, at {item['vtime']}")
+    #   else:
+    #       precip_rate = np.transpose(fst_entry['values'])
+    #       np.where(precip_rate < 0., 0., precip_rate) #change -9999. to 0. for less problems when advecting
+    #    
+    #   fst_entry = fst_tools.get_data(file_name=fst_file, var_name='RDQI', datev=t0)
+    #   if fst_entry is None:
+    #       raise ValueError(f"Unable to get source quality index in {fst_file}, at {item['vtime']}")
+    #   else:
+    #       quality_index = np.transpose(fst_entry['values'])
+
+    # get, convert, interpolate and smooth ODIM Reflectivity mosaics
+    desired_quantity='precip_rate'
+    dat_dict = radar_tools.get_instantaneous(valid_date=t0,
+                                             desired_quantity=desired_quantity,
+                                             data_path=args.input_data_dir,
+                                             odim_latlon_file=args.h5_latlon_file,
+                                             data_recipe=args.input_file_struc,
+                                             dest_lon=args.out_lons,
+                                             dest_lat=args.out_lats,
+                                             median_filt=None,   #args.median_filt,
+                                             smooth_radius=None) #args.smooth_radius)
+    #if we got nothing, fill output with nodata and zeros
+    if dat_dict is None:
+        raise ValueError(f"Unable to get source precip in {args.processed_dir} at {t0}")
+    else:
+        precip_rate     = np.transpose(dat_dict[desired_quantity])
+        quality_index   = np.transpose(dat_dict['total_quality_index'])
+
+    # advect wind at appropriate time
+    advected_precip  = np.squeeze(np.transpose(extrapolate(precip_rate,   uv_scaled, 1, outval=np.nan)))
+    advected_quality = np.squeeze(np.transpose(extrapolate(quality_index, uv_scaled, 1, outval=np.nan)))
+
+    return advected_precip, advected_quality
+
+
+
 @dask.delayed
 def _dask_process_at_one_time(*args, **kwargs):
 
@@ -308,9 +377,9 @@ def _motion_vector_at_one_time(this_time, args):
     """
 
     import os
+    import pysteps 
     import domutils
     import domutils._py_tools as dpy
-    import pysteps
     from domcmc import fst_tools
 
     logger = _setup_logging(args)
@@ -341,23 +410,14 @@ def _motion_vector_at_one_time(this_time, args):
     # t0 - 2dt
     fst_file = args.output_dir+args.input_date_list[tt-2].strftime(args.output_file_struc)
     z_v = fst_tools.get_data(var_name='RDPR', file_name=fst_file, datev=args.input_date_list[tt-2])['values']
-    if args.median_filt_before_mv is not None:
-        median_inds = domutils.radar_tools.median_filter.get_inds(z_v, window=args.median_filt_before_mv)
-        z_v = domutils.radar_tools.median_filter.apply_inds(z_v, median_inds)
     z_acc[0,:,:] = np.transpose(domutils.radar_tools.exponential_zr(z_v, r_to_dbz=True))
     # t0 - 1dt
     fst_file = args.output_dir+args.input_date_list[tt-1].strftime(args.output_file_struc)
     z_v = fst_tools.get_data(var_name='RDPR', file_name=fst_file, datev=args.input_date_list[tt-1])['values']
-    if args.median_filt_before_mv is not None:
-        median_inds = domutils.radar_tools.median_filter.get_inds(z_v, window=args.median_filt_before_mv)
-        z_v = domutils.radar_tools.median_filter.apply_inds(z_v, median_inds)
     z_acc[1,:,:] = np.transpose(domutils.radar_tools.exponential_zr(z_v, r_to_dbz=True))
     # t0 
     fst_file = args.output_dir+args.input_date_list[tt].strftime(args.output_file_struc)
     z_v = fst_tools.get_data(var_name='RDPR', file_name=fst_file, datev=args.input_date_list[tt  ])['values']
-    if args.median_filt_before_mv is not None:
-        median_inds = domutils.radar_tools.median_filter.get_inds(z_v, window=args.median_filt_before_mv)
-        z_v = domutils.radar_tools.median_filter.apply_inds(z_v, median_inds)
     z_acc[2,:,:] = np.transpose(domutils.radar_tools.exponential_zr(z_v, r_to_dbz=True))
 
     # if data is missing in onf frame, make it missing in all frames
@@ -420,7 +480,7 @@ def _make_motion_vectors(args):
             this_result = _motion_vector_at_one_time(this_time, args)
             
             #shift before next round
-            big_arr[tt] = this_result
+            big_arr[tt] = np.squeeze(this_result)
 
     else:
         #parallel execution
@@ -533,78 +593,39 @@ def _t_interp_at_one_time(out_time, args):
                 break
         if not last_input_is_in_list:
             dt = (out_time - last_input_time).total_seconds()
-            weight = 1./(np.abs(dt)+100.)
+            weight = 1./(np.abs(dt))
             participating_list.append({'vtime'  : last_input_time,
                                        'dt'     : dt,
                                        'weight' : weight
                                       })
+    # info string
+    tot_weight=0.
+    for item in participating_list:
+        tot_weight += item['weight']
+    participating_string = ''
+    for item in participating_list:
+        participating_string += f'{item['weight']/tot_weight:5.4f}*{item['dt']} +'
             
     num_participants = len(participating_list)
     if num_participants == 0:
         raise RuntimeError(f'No input available for output at: {out_time}')
 
-    #initialize advection code
-    extrapolate = pysteps.extrapolation.interface.get_method("semilagrangian")
-
+    # output matrices
+    rr_arr      = np.full((args.out_nx, args.out_ny, num_participants), np.nan)
+    qi_arr      = np.full((args.out_nx, args.out_ny, num_participants), np.nan)
+    weights_arr = np.full((args.out_nx, args.out_ny, num_participants), np.nan)
     for pp, item in enumerate(participating_list):
 
-        ## get wind
-        #wind_file = args.motion_vectors_dir + item['vtime'].strftime('%Y%m%d%H%M_end_window.npz')
-        #try:
-        #    raw_mv = np.load(wind_file)
-        #except:
-        #    raise RuntimeError(f'Problem loading file: {wind_file}')
+        # the nowcasting step
+        advected_precip, advected_quality = perform_nowcast(args, item['vtime'], item['dt'])
 
-        # average mv at 3 timesteps for better temporal continuity
-        for ii, offset in enumerate([0,-1, -2]):
-            wind_file = args.motion_vectors_dir + (item['vtime'] + datetime.timedelta(seconds=(offset*args.input_dt))).strftime('%Y%m%d%H%M_end_window.npz')
-            raw_mv = np.load(wind_file)
-            if ii == 0:
-                mv_acc = raw_mv['uv_motion']
-            else:
-                mv_acc += raw_mv['uv_motion']
-        mv_acc /=3.
-
-
-
-
-        # first time around, init output matrices
-        if pp == 0:
-            ny, nx = raw_mv['uv_motion'][0,:,:].shape   # note ny,nx order ; mv data is already transposed
-            rr_arr      = np.full((nx, ny, num_participants), np.nan)
-            qi_arr      = np.full((nx, ny, num_participants), np.nan)
-            weights_arr = np.full((nx, ny, num_participants), np.nan)
-
-        # scale motion vectors
-        scaling_factor = item['dt'] / args.input_dt
-        uv_scaled = _scale_wind(raw_mv['uv_motion'], scaling_factor)
-
-        # get precip and qi to extrapolate
-        fst_file = args.processed_dir+item['vtime'].strftime(args.output_file_struc)
-         
-        fst_entry = fst_tools.get_data(file_name=fst_file, var_name='RDPR', datev=item['vtime'])
-        if fst_entry is None:
-            raise ValueError(f"Unable to get source precip in {fst_file}, at {item['vtime']}")
-        else:
-            precip_rate = np.transpose(fst_entry['values'])
-            np.where(precip_rate < 0., 0., precip_rate) #change -9999. to 0. for less problems when advecting
-         
-        fst_entry = fst_tools.get_data(file_name=fst_file, var_name='RDQI', datev=item['vtime'])
-        if fst_entry is None:
-            raise ValueError(f"Unable to get source quality index in {fst_file}, at {item['vtime']}")
-        else:
-            quality_index = np.transpose(fst_entry['values'])
-
-        # advect wind at appropriate time
-        advected_precip  = np.squeeze(np.transpose(extrapolate(precip_rate,   uv_scaled, 1, outval=np.nan)))
-        advected_quality = np.squeeze(np.transpose(extrapolate(quality_index, uv_scaled, 1, outval=np.nan)))
-         
         # save in output array and 
         # adjust missing values that could have been modified during advection
         rr_arr[:,:,pp] = np.where(advected_precip  < 0., np.nan, advected_precip)
         qi_arr[:,:,pp] = np.where(advected_quality < 0., np.nan, advected_quality)
-        weights_arr[:,:,pp] = item['weight']*qi_arr[:,:,pp]
 
+        # qi modulatoin of weights
+        weights_arr[:,:,pp] = item['weight']*qi_arr[:,:,pp]
 
     #normalize weight so that column sum is one everywhere
     norm_factor = np.nansum(weights_arr, axis=2, keepdims=True)
@@ -627,6 +648,7 @@ def _t_interp_at_one_time(out_time, args):
     if args.figure_dir is not None:
         radar_tools.plot_rdpr_rdqi(fst_file=fst_output_file, 
                                    this_date=out_time,
+                                   info=participating_string,
                                    args=args)
 
     logger.info(f'Done interpolating to: {out_time}')
@@ -859,6 +881,7 @@ def obs_process(args=None):
     import time
     import datetime
     import domutils._py_tools as dpy
+    from domcmc import fst_tools
 
     #keep track of runtime
     time_start = time.time()
@@ -993,6 +1016,14 @@ def obs_process(args=None):
     elif args.tinterpolated_file_struc == 'None':
         args.tinterpolated_file_struc = args.output_file_struc
 
+    # output size
+    fst_template = fst_tools.get_data(args.sample_pr_file, var_name='PR', latlon=True)
+    if fst_template is None:
+        raise ValueError('Problem getting PR from: ',args.sample_pr_file )
+    (args.out_nx, args.out_ny) = fst_template['lat'].shape
+    args.out_lats = fst_template['lat']
+    args.out_lons = fst_template['lon']
+
     # flush logs directory if it exists
     if os.path.isdir('logs'):
         os.system('rm -rf logs')
@@ -1053,7 +1084,7 @@ def obs_process(args=None):
     if args.ncores > 1:
         logger.info(f'Starting local dask cluster with {args.ncores} workers.')
 
-        tmp_dir = os.environ['BIG_TMPDIR']
+        tmp_dir = '/space/hall5/sitestore/eccc/mrd/rpndat/dja001/ten_minutes_time_interpolated/dask_tmp_dir'
         dask_client = dask.distributed.Client(processes=True, threads_per_worker=1, 
                                               n_workers=args.ncores, 
                                               local_directory=tmp_dir, 
@@ -1074,11 +1105,6 @@ def obs_process(args=None):
 
     elif args.t_interp_method == 'nowcast':
 
-        # three precip maps are needed for computation of wind vectors, input data must then be available 
-        # before the earliers output time
-        if args.output_date_list[0] < args.input_date_list[2] :
-            raise ValueError('For nowcast interpolation the earliest output time must be at least two input delta_t after the earliest input time')
-
         # don't comment these
         #
         # save final output destination for use after override
@@ -1093,14 +1119,15 @@ def obs_process(args=None):
         args.motion_vectors_dir = os.path.join(intermediate_files_dir, 'motion_vectors/')
 
 
-        # 1- Process input data and write output to files
-        #    override output dir since in this context these outputs are only intermediate results
-        args.output_dir = args.processed_dir
-        args.figure_dir = args.processed_figure_dir 
-        _process_a_bunch_of_times(args)
+        ## 1- Process input data and write output to files
+        ##    override output dir since in this context these outputs are only intermediate results
+        #args.output_dir = args.processed_dir
+        #args.figure_dir = args.processed_figure_dir 
+        #_process_a_bunch_of_times(args)
 
-        # 2- compute motion vectors associated with processed outputs computed at the step above
-        _make_motion_vectors(args)
+        ## 2- compute motion vectors associated with processed outputs computed at the step above
+        #args.output_dir = args.processed_dir
+        #_make_motion_vectors(args)
 
         # 3- use nowcast for time interpolation
         args.output_dir = final_output_dir 
