@@ -54,6 +54,7 @@ def _setup_logging(args, is_worker=False, sub_dir=''):
 
 def perform_nowcast(args, t0, lead_time_s):
 
+    import os
     import datetime
     import pysteps
     from domutils import radar_tools
@@ -63,10 +64,13 @@ def perform_nowcast(args, t0, lead_time_s):
 
     # get pre-computed motion vectors and, potentially, average them
     mv_offsets = np.arange(0., -1*args.avg_n_motion_vect, -1)
-    mv_avg = np.full((args.out_nx, args.out_ny, args.avg_n_motion_vect), np.nan)
     for ii, this_offset in enumerate(mv_offsets):
         mv_time = t0 + datetime.timedelta(seconds=(this_offset*args.input_dt))
         wind_file = args.motion_vectors_dir + mv_time.strftime('%Y%m%d%H%M_end_window.npz')
+        if not os.path.isfile(wind_file):
+            # dont do anything if wind file is not there
+            return None, None
+
         raw_mv = np.load(wind_file)
         if ii == 0:
             mv_avg = raw_mv['uv_motion']
@@ -74,28 +78,7 @@ def perform_nowcast(args, t0, lead_time_s):
             mv_avg += raw_mv['uv_motion']
     mv_avg /= args.avg_n_motion_vect
 
-    # scale motion vectors
-    scaling_factor = lead_time_s / args.input_dt
-    uv_scaled = _scale_wind(raw_mv['uv_motion'], scaling_factor)
-
     # get precip and qi to extrapolate
-    #fst_file = args.processed_dir + t0.strftime(args.output_file_struc)
-     
-    #   from domcmc import fst_tools
-    #   fst_entry = fst_tools.get_data(file_name=fst_file, var_name='RDPR', datev=t0)
-    #   if fst_entry is None:
-    #       raise ValueError(f"Unable to get source precip in {fst_file}, at {item['vtime']}")
-    #   else:
-    #       precip_rate = np.transpose(fst_entry['values'])
-    #       np.where(precip_rate < 0., 0., precip_rate) #change -9999. to 0. for less problems when advecting
-    #    
-    #   fst_entry = fst_tools.get_data(file_name=fst_file, var_name='RDQI', datev=t0)
-    #   if fst_entry is None:
-    #       raise ValueError(f"Unable to get source quality index in {fst_file}, at {item['vtime']}")
-    #   else:
-    #       quality_index = np.transpose(fst_entry['values'])
-
-    # get, convert, interpolate and smooth ODIM Reflectivity mosaics
     desired_quantity='precip_rate'
     dat_dict = radar_tools.get_instantaneous(valid_date=t0,
                                              desired_quantity=desired_quantity,
@@ -113,11 +96,24 @@ def perform_nowcast(args, t0, lead_time_s):
         precip_rate     = np.transpose(dat_dict[desired_quantity])
         quality_index   = np.transpose(dat_dict['total_quality_index'])
 
-    # advect wind at appropriate time
-    advected_precip  = np.squeeze(np.transpose(extrapolate(precip_rate,   uv_scaled, 1, outval=np.nan)))
-    advected_quality = np.squeeze(np.transpose(extrapolate(quality_index, uv_scaled, 1, outval=np.nan)))
+    lead_time_arr = np.atleast_1d(lead_time_s)
+    advected_precip  = np.full((args.out_nx, args.out_ny, lead_time_arr.size), np.nan)
+    advected_quality = np.full((args.out_nx, args.out_ny, lead_time_arr.size), np.nan)
+    for tt, this_leadtime in enumerate(lead_time_arr):
 
-    return advected_precip, advected_quality
+        # scale motion vectors
+        scaling_factor = this_leadtime / args.input_dt
+        uv_scaled = _scale_wind(mv_avg, scaling_factor)
+
+        # advect wind at appropriate time
+        advected_precip[:,:,tt]  = np.squeeze(np.transpose(extrapolate(precip_rate,   uv_scaled, 1, outval=np.nan)))
+        advected_quality[:,:,tt] = np.squeeze(np.transpose(extrapolate(quality_index, uv_scaled, 1, outval=np.nan)))
+
+    # adjust missing values that could have been wrongfully modified during advection
+    advected_precip  = np.where(advected_precip  < 0., np.nan, advected_precip)
+    advected_quality = np.where(advected_quality < 0., np.nan, advected_quality)
+
+    return np.squeeze(advected_precip), np.squeeze(advected_quality)
 
 
 
@@ -313,7 +309,6 @@ def _process_a_bunch_of_times(args):
     import os
     import datetime
     import glob
-    import signal
     import time
     from domcmc import fst_tools
 
@@ -453,7 +448,6 @@ def _make_motion_vectors(args):
 
     import time
     import glob
-    import signal
     import dask
     from domcmc import fst_tools
 
@@ -509,6 +503,8 @@ def _make_motion_vectors(args):
 def _scale_wind(uv, fact_before):
     """scale wind vector for mid timesteps
     """
+    import numpy as np
+    scaled_uv = np.zeros_like(uv)
 
     # conversion to rho theta (met angle convention)
     rho = np.sqrt(uv[0,:,:]**2. + uv[1,:,:]**2.)
@@ -516,11 +512,11 @@ def _scale_wind(uv, fact_before):
 
     # scale modulus
     rho *= fact_before
-    uv[0,:,:] = rho * np.sin(theta)
-    uv[1,:,:] = rho * np.cos(theta)
+    scaled_uv[0,:,:] = rho * np.sin(theta)
+    scaled_uv[1,:,:] = rho * np.cos(theta)
 
     # return scaled u and v components
-    return uv
+    return scaled_uv
 
 
 @dask.delayed
@@ -577,7 +573,7 @@ def _t_interp_at_one_time(out_time, args):
         if (input_time >= t_min) and (input_time <= t_max):
             dt = (out_time - input_time).total_seconds()
             # TODO determine a better weighting function for this
-            weight = 1./(np.abs(dt)+100.)
+            weight = 1./(np.abs(dt))
             participating_list.append({'vtime'  : input_time,
                                        'dt'     : dt,
                                        'weight' : weight
@@ -619,11 +615,6 @@ def _t_interp_at_one_time(out_time, args):
         # the nowcasting step
         advected_precip, advected_quality = perform_nowcast(args, item['vtime'], item['dt'])
 
-        # save in output array and 
-        # adjust missing values that could have been modified during advection
-        rr_arr[:,:,pp] = np.where(advected_precip  < 0., np.nan, advected_precip)
-        qi_arr[:,:,pp] = np.where(advected_quality < 0., np.nan, advected_quality)
-
         # qi modulatoin of weights
         weights_arr[:,:,pp] = item['weight']*qi_arr[:,:,pp]
 
@@ -654,6 +645,90 @@ def _t_interp_at_one_time(out_time, args):
     logger.info(f'Done interpolating to: {out_time}')
     return np.array([1], dtype=float)
 
+@dask.delayed
+def _dask_error_f_deltat_at_one_time(*args, **kwargs):
+
+    #setup logger for dask worker if not already done
+    command_line_args = args[2]
+    logger = _setup_logging(command_line_args, is_worker=True, sub_dir='error_f_deltat')
+
+    return _error_f_deltat_at_one_time(*args, **kwargs)
+
+def _error_f_deltat_at_one_time(start_time, deltat_max, args):
+    """nowcasting time interpolation using forward and backward advection
+    """
+
+    import os
+    import datetime
+    from domcmc import fst_tools
+    import domutils._py_tools as dpy
+    from domutils import radar_tools
+    import time
+    from scipy import stats
+    import sqlite3
+
+    missing = -9999.
+
+    # logging
+    logger = _setup_logging(args)
+
+    output_file = args.output_dir + start_time.strftime('%Y%m%d%H%M.sqlite')
+    logger.info(f'Working on: {os.path.basename(output_file)}')
+    if os.path.isfile(output_file) and args.complete_dataset:
+        logger.info(f'{output_file} exists, Skipping to the next.')
+        return np.array([1], dtype=float)
+    else:
+        #we will create a new file; before that make sure directory exists
+        dpy.parallel_mkdir(args.output_dir)
+
+
+    leadtimes = np.arange(0, deltat_max, args.input_dt)
+    # the nowcasting step
+    advected_precip, advected_quality = perform_nowcast(args, start_time, leadtimes)
+    if advected_precip is None:
+        logger.info(f'nothing to work with on {start_time}')
+        return np.array([1], dtype=float)
+
+
+    # --- open DB and prepare table ---
+    conn = sqlite3.connect(output_file)
+    cur = conn.cursor()
+    
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS scores (
+        leadtime REAL,
+        rmse REAL,
+        mae REAL,
+        fcst_eff REAL
+    )
+    """)
+
+    this_reference = advected_precip[:,:,0] 
+    for tt, this_leadtime in enumerate(leadtimes):
+        this_nowcast =   advected_precip[:,:,tt]
+
+        good_pts = np.isfinite(this_reference) & np.isfinite(this_nowcast)
+
+        rmse = np.sqrt(np.mean((this_reference[good_pts] - this_nowcast[good_pts])**2.))
+        mae  = np.mean(  np.abs(this_reference[good_pts] - this_nowcast[good_pts]))
+        corr_coeff, _ = stats.pearsonr(this_reference[good_pts], this_nowcast[good_pts])
+        fcst_eff = 100.*(1. - np.sqrt(1. - corr_coeff**2.))
+
+        cur.execute(
+            """
+            INSERT INTO scores (leadtime, rmse, mae, fcst_eff)
+            VALUES (?, ?, ?, ?)
+            """,
+            (float(this_leadtime), float(rmse), float(mae), float(fcst_eff))
+        )
+
+    # --- save and close ---
+    conn.commit()
+    conn.close()
+
+    logger.info(f'Done error_f_deltat for: {start_time}, {os.path.basename(output_file)} was written.')
+    return np.array([1], dtype=float)
+
 def _nowcast_t_interp(args):
     """ given precip estimates and motion vectors, do nowcasts as a mean of time interpolation
 
@@ -661,7 +736,6 @@ def _nowcast_t_interp(args):
 
     import time
     import glob
-    import signal
     import dask
     import dask.array as da
     from domcmc import fst_tools
@@ -687,6 +761,48 @@ def _nowcast_t_interp(args):
 
         #delayed list of results
         res_list = [dask.array.from_delayed(_dask_t_interp_at_one_time(this_date, delayed_args), (1,), float) for this_date in args.output_date_list ]
+
+        #what output do we want
+        res_stack = dask.array.stack(res_list)
+                
+        # computation happens here
+        big_arr = res_stack.compute()
+
+
+        tt2 = time.time()
+        logger.info(f'Parallel execution done; walltime: {tt2-tt1} seconds')
+
+def _error_f_deltat(args, deltat_max):
+    """ given evenly separated input radar data and motoin vectors
+        compute various error metrics as a function of deltat
+
+    """
+
+    import time
+    import dask
+    import dask.array as da
+
+    #logging
+    logger = _setup_logging(args)
+
+
+    if args.ncores == 1 :
+        #serial execution
+        logger.info('Launching SERIAL computation of nowcast error_f_deltat')
+
+        for start_time in args.input_date_list:
+            _error_f_deltat_at_one_time(start_time, deltat_max, args)
+    else:
+        #parallel execution
+        logger.info('Launching PARALLEL of nowcast error_f_deltat')
+
+        tt1 = time.time()
+
+        #delay input data 
+        delayed_args = dask.delayed(args)
+
+        #delayed list of results
+        res_list = [dask.array.from_delayed(_dask_error_f_deltat_at_one_time(start_time, deltat_max, args), (1,), float) for start_time in args.input_date_list ]
 
         #what output do we want
         res_stack = dask.array.stack(res_list)
@@ -1129,10 +1245,15 @@ def obs_process(args=None):
         #args.output_dir = args.processed_dir
         #_make_motion_vectors(args)
 
-        # 3- use nowcast for time interpolation
-        args.output_dir = final_output_dir 
-        args.figure_dir = args.output_figure_dir 
-        _nowcast_t_interp(args)
+        ## 3- use nowcast for time interpolation
+        #args.output_dir = final_output_dir 
+        #args.figure_dir = args.output_figure_dir 
+        #_nowcast_t_interp(args)
+
+        # Optionnal- characterize error as function of deltat
+        args.output_dir = '/space/hall5/sitestore/eccc/mrd/rpndat/dja001/ten_minutes_time_interpolated/error_f_deltat/'
+        deltat_max = 180.*60. # seconds
+        _error_f_deltat(args, deltat_max)
 
     else:
         raise ValueError('type of time interpolation not supported.')
