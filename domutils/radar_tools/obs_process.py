@@ -628,8 +628,8 @@ def _t_interp_at_one_time(args, out_time, proj_obj):
         weight = weight_fct(dt)
         if np.isclose(weight,0.):
             continue
-        if np.isclose(weight,1.):
-            dt = 0.
+        #if np.isclose(weight,1.):
+        #    dt = 0.
         participating_list.append({'vtime'  : input_time,
                                    'dt'     : dt,
                                    'weight' : weight
@@ -646,8 +646,8 @@ def _t_interp_at_one_time(args, out_time, proj_obj):
         if not last_input_is_in_list:
             dt = (out_time - last_input_time).total_seconds()
             weight = weight_fct(dt)
-            if np.isclose(weight,1.):
-                dt = 0.
+            #if np.isclose(weight,1.):
+            #    dt = 0.
             participating_list.append({'vtime'  : last_input_time,
                                        'dt'     : dt,
                                        'weight' : weight
