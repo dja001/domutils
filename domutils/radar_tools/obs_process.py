@@ -52,7 +52,7 @@ def _setup_logging(args, is_worker=False, sub_dir=''):
 
     return logger
 
-def perform_nowcast(args, t0, lead_time_s):
+def perform_nowcast(args, t0, lead_time_s, proj_obj=None):
 
     import os
     import datetime
@@ -87,8 +87,9 @@ def perform_nowcast(args, t0, lead_time_s):
                                              data_recipe=args.input_file_struc,
                                              dest_lon=args.out_lons,
                                              dest_lat=args.out_lats,
-                                             median_filt=None,   #args.median_filt,
-                                             smooth_radius=None) #args.smooth_radius)
+                                             input_proj_obj=proj_obj,
+                                             median_filt=args.nowcast_median_filt,
+                                             smooth_radius=args.nowcast_smooth_radius) 
     #if we got nothing, fill output with nodata and zeros
     if dat_dict is None:
         raise ValueError(f"Unable to get source precip in {args.processed_dir} at {t0}")
@@ -127,7 +128,7 @@ def _dask_process_at_one_time(*args, **kwargs):
     return _process_at_one_time(*args, **kwargs)
 
 
-def _process_at_one_time(valid_date, fst_template, args):
+def _process_at_one_time(valid_date, proj_obj, args):
     #output data to std file
 
     import os
@@ -161,24 +162,20 @@ def _process_at_one_time(valid_date, fst_template, args):
         this_fst_dir = os.path.dirname(output_file)
         dpy.parallel_mkdir(this_fst_dir)
     
-    #get destination grid from PR template
-    dest_lon = fst_template['lon']
-    dest_lat = fst_template['lat']
-
     #reading the data
     if args.accum_len is not None:
         desired_quantity='accumulation'
-        fst_var_name='PR'
         dat_dict = radar_tools.get_accumulation(end_date=valid_date,
                                                 duration=args.accum_len,
                                                 desired_quantity=desired_quantity,
                                                 data_path=args.input_data_dir,
                                                 odim_latlon_file=args.h5_latlon_file,
                                                 data_recipe=args.input_file_struc,
-                                                dest_lon=dest_lon,
-                                                dest_lat=dest_lat,
-                                                median_filt=args.median_filt,
-                                                smooth_radius=args.smooth_radius)
+                                                dest_lon=args.out_lons,
+                                                dest_lat=args.out_lats,
+                                                proj_obj=proj_obj,
+                                                median_filt=args.preproc_median_filt,
+                                                smooth_radius=args.preproc_smooth_radius)
 
         if desired_quantity == 'accumulation':
             logger.warning('!!!convert mm to m since PR quantity is outputted!!!')
@@ -189,23 +186,25 @@ def _process_at_one_time(valid_date, fst_template, args):
         #
         #if reflectivity is desired use:
         #desired_quantity='reflectivity'
-        #fst_var_name='RDBZ'
 
         #
         #for precipitation rates used in LHN use:
         desired_quantity='precip_rate'
-        fst_var_name='RDPR'
 
         #get, convert, interpolate and smooth ODIM Reflectivity mosaics
+        t1 = time.time()
         dat_dict = radar_tools.get_instantaneous(valid_date=valid_date,
                                                  desired_quantity=desired_quantity,
                                                  data_path=args.input_data_dir,
                                                  odim_latlon_file=args.h5_latlon_file,
                                                  data_recipe=args.input_file_struc,
-                                                 dest_lon=dest_lon,
-                                                 dest_lat=dest_lat,
-                                                 median_filt=args.median_filt,
-                                                 smooth_radius=args.smooth_radius)
+                                                 dest_lon=args.out_lons,
+                                                 dest_lat=args.out_lats,
+                                                 input_proj_obj=proj_obj,
+                                                 median_filt=args.preproc_median_filt,
+                                                 smooth_radius=args.preproc_smooth_radius)
+        t2 = time.time()
+        logger.info(f'Reading took: {t2-t1:4.2f}s')
         data_quantity_name  = desired_quantity
         data_date_name      = 'valid_date'
 
@@ -222,14 +221,14 @@ def _process_at_one_time(valid_date, fst_template, args):
         data_valid_date = dat_dict[data_date_name]
 
     #mettre etiket
-    if args.median_filt is None :
+    if args.preproc_median_filt is None :
         etiquette_median_filt = 0
     else:
-        etiquette_median_filt = args.median_filt
-    if args.smooth_radius is None :
+        etiquette_median_filt = args.preproc_median_filt
+    if args.preproc_smooth_radius is None :
         etiquette_smooth_radius = 0
     else:
-        etiquette_smooth_radius = args.smooth_radius
+        etiquette_smooth_radius = args.preproc_smooth_radius
     etiket = 'MED'+"{:1d}".format(etiquette_median_filt)+'SM'+"{:02d}".format(etiquette_smooth_radius)
 
     _write_fst_file(valid_date, precip_rate, quality_index, args, etiket=etiket)
@@ -311,15 +310,31 @@ def _process_a_bunch_of_times(args):
     import glob
     import time
     from domcmc import fst_tools
+    from domutils import radar_tools
 
 
     #logging
     logger = _setup_logging(args)
 
-    logger.info(f'getting output domain from: {args.sample_pr_file}')
-    fst_template = fst_tools.get_data(args.sample_pr_file, var_name='PR', latlon=True)
-    if fst_template is None:
-        raise ValueError('Problem getting PR from: ',args.sample_pr_file )
+    # pre-build projection object to accelerate reading
+    # note, median filter is not part of the projection object and need not be specified here
+    #       However, smooth radius and average are part of the projection object
+    logger.info('Preparing projection object for mv computation')
+    desired_quantity='precip_rate'
+    t1 = time.time()
+    valid_date = args.input_date_list[0]
+    dat_dict = radar_tools.get_instantaneous(valid_date=valid_date,
+                                             desired_quantity=desired_quantity,
+                                             data_path=args.input_data_dir,
+                                             odim_latlon_file=args.h5_latlon_file,
+                                             data_recipe=args.input_file_struc,
+                                             dest_lon=args.out_lons,
+                                             dest_lat=args.out_lats,
+                                             output_proj_obj=True,
+                                             smooth_radius=args.preproc_smooth_radius)
+    mv_compute_proj_obj = dat_dict['proj_obj']
+    t2 = time.time()
+    logger.info(f'Done in {t2-t1:4.2f}s')
 
     #if only 1 cpu, do serial execution in a for loop
     # makes for easier debugging 
@@ -327,7 +342,7 @@ def _process_a_bunch_of_times(args):
         #serial execution
         logger.info('Launching SERIAL execution of obs processing')
         for this_date in args.input_date_list:
-            _process_at_one_time(this_date, fst_template, args)
+            _process_at_one_time(this_date, mv_compute_proj_obj, args)
     else :
         #parallel conversion with nultiprocessing
         logger.info('Launching PARALLEL execution of observation processing')
@@ -335,11 +350,11 @@ def _process_a_bunch_of_times(args):
         tt1 = time.time()
         #delay input data 
         delayed_args         = dask.delayed(args)
-        delayed_fst_template = dask.delayed(fst_template)
+        delayed_mv_compute_proj_obj = dask.delayed(mv_compute_proj_obj)
 
         #delayed list of results
         res_list = [dask.array.from_delayed(_dask_process_at_one_time(this_date, 
-                                                                      delayed_fst_template, 
+                                                                      delayed_mv_compute_proj_obj, 
                                                                       delayed_args), (1,), float) for this_date in args.input_date_list ]
 
         #what output do we want
@@ -523,12 +538,12 @@ def _scale_wind(uv, fact_before):
 def _dask_t_interp_at_one_time(*args, **kwargs):
 
     #setup logger for dask worker if not already done
-    command_line_args = args[1]
+    command_line_args = args[0]
     logger = _setup_logging(command_line_args, is_worker=True, sub_dir='t_interp_at_one_time')
 
     return _t_interp_at_one_time(*args, **kwargs)
 
-def _t_interp_at_one_time(out_time, args):
+def _t_interp_at_one_time(args, out_time, proj_obj):
     """nowcasting time interpolation using forward and backward advection
     """
 
@@ -565,19 +580,60 @@ def _t_interp_at_one_time(out_time, args):
         #we will create a new file; before that make sure directory exists
         dpy.parallel_mkdir(args.output_dir)
 
+    ## weight model
+    #def exp_decay(dt):
+
+    #    # weights depend on time in minutes
+    #    t = dt/60.
+
+    #    # with MED3 impact
+    #    #A = 4.670791350191597e-17
+    #    #B = 0.251576516840336
+    #    #C = 4.684302891729712e-18
+    #    #tau = 2.0070688609868617
+
+    #    abs_t = np.abs(t)
+
+    #    A = 0.7197592925023092
+    #    B = 0.2678550020451625
+    #    C = 0.012385471844791388
+    #    tau = 0.7067125168603899
+
+    #    return A*np.exp(-abs_t / tau) + B*np.exp(-abs_t / (10.*tau)) + C*np.exp(-abs_t / (100.*tau))
+
+    def nearest_neighbor(dt):
+        if dt < 0:
+            weight = 0.
+        else:
+            weight = 1.
+
+        return weight
+
+    #weight_fct = exp_decay
+    weight_fct = nearest_neighbor
+
+    # TODO, to remove
+    args.interp_max_dt = 6.*60.
+
     # all inputs within range to participate in average
     t_max = out_time + datetime.timedelta(seconds=args.interp_max_dt)
     t_min = out_time - datetime.timedelta(seconds=args.interp_max_dt)
     participating_list = []
-    for input_time in args.input_date_list:
-        if (input_time >= t_min) and (input_time <= t_max):
-            dt = (out_time - input_time).total_seconds()
-            # TODO determine a better weighting function for this
-            weight = 1./(np.abs(dt))
-            participating_list.append({'vtime'  : input_time,
-                                       'dt'     : dt,
-                                       'weight' : weight
-                                      })
+    candidate_inputs = [ this_time
+                         for this_time in args.input_date_list
+                         if t_min < this_time < t_max
+                       ]
+    for input_time in candidate_inputs:
+        dt = (out_time - input_time).total_seconds()
+        weight = weight_fct(dt)
+        if np.isclose(weight,0.):
+            continue
+        if np.isclose(weight,1.):
+            dt = 0.
+        participating_list.append({'vtime'  : input_time,
+                                   'dt'     : dt,
+                                   'weight' : weight
+                                  })
 
     # if we are extrapolating, the last output data should always be part of the list
     last_input_time = args.input_date_list[-1]
@@ -589,7 +645,9 @@ def _t_interp_at_one_time(out_time, args):
                 break
         if not last_input_is_in_list:
             dt = (out_time - last_input_time).total_seconds()
-            weight = 1./(np.abs(dt))
+            weight = weight_fct(dt)
+            if np.isclose(weight,1.):
+                dt = 0.
             participating_list.append({'vtime'  : last_input_time,
                                        'dt'     : dt,
                                        'weight' : weight
@@ -601,6 +659,7 @@ def _t_interp_at_one_time(out_time, args):
     participating_string = ''
     for item in participating_list:
         participating_string += f'{item['weight']/tot_weight:5.4f}*{item['dt']} +'
+    print('MIX', participating_string)
             
     num_participants = len(participating_list)
     if num_participants == 0:
@@ -613,9 +672,12 @@ def _t_interp_at_one_time(out_time, args):
     for pp, item in enumerate(participating_list):
 
         # the nowcasting step
-        advected_precip, advected_quality = perform_nowcast(args, item['vtime'], item['dt'])
+        advected_precip, advected_quality = perform_nowcast(args, item['vtime'], item['dt'], proj_obj=proj_obj)
+        # all -ve values were assigned to Nan in the previous step
+        rr_arr[:,:,pp] = advected_precip
+        qi_arr[:,:,pp] = advected_quality
 
-        # qi modulatoin of weights
+        # qi modulation of weights
         weights_arr[:,:,pp] = item['weight']*qi_arr[:,:,pp]
 
     #normalize weight so that column sum is one everywhere
@@ -627,8 +689,13 @@ def _t_interp_at_one_time(out_time, args):
     interpolated_quality = np.nansum(weights_arr * qi_arr, axis=2)
     
     # replace missing values where no data was availablet st
-    interpolated_precip  = np.where(np.isclose(norm_factor, 0.), missing, interpolated_precip)
     interpolated_quality = np.where(np.isclose(norm_factor, 0.), 0.,      interpolated_quality)
+    interpolated_precip  = np.where(np.isclose(norm_factor, 0.), missing, interpolated_precip)
+    interpolated_precip  = np.where((interpolated_quality > 0.) & np.isclose(interpolated_precip, missing), 0., interpolated_precip)
+    print('-ve precip set', set(interpolated_precip[interpolated_precip < 0.]))
+    print('maxmin qi', np.min(interpolated_quality), np.max(interpolated_quality))
+    
+
 
 
     etiket = 'EXTRAPOL'
@@ -649,16 +716,17 @@ def _t_interp_at_one_time(out_time, args):
 def _dask_error_f_deltat_at_one_time(*args, **kwargs):
 
     #setup logger for dask worker if not already done
-    command_line_args = args[2]
+    command_line_args = args[0]
     logger = _setup_logging(command_line_args, is_worker=True, sub_dir='error_f_deltat')
 
     return _error_f_deltat_at_one_time(*args, **kwargs)
 
-def _error_f_deltat_at_one_time(start_time, deltat_max, args):
+def _error_f_deltat_at_one_time(args, start_time, deltat_max, proj_obj):
     """nowcasting time interpolation using forward and backward advection
     """
 
     import os
+    import time
     import datetime
     from domcmc import fst_tools
     import domutils._py_tools as dpy
@@ -681,14 +749,14 @@ def _error_f_deltat_at_one_time(start_time, deltat_max, args):
         #we will create a new file; before that make sure directory exists
         dpy.parallel_mkdir(args.output_dir)
 
-
     leadtimes = np.arange(0, deltat_max, args.input_dt)
     # the nowcasting step
-    advected_precip, advected_quality = perform_nowcast(args, start_time, leadtimes)
+    logger.info('Advecting...')
+    advected_precip, advected_quality = perform_nowcast(args, start_time, leadtimes, proj_obj)
     if advected_precip is None:
         logger.info(f'nothing to work with on {start_time}')
         return np.array([1], dtype=float)
-
+    print('Done...')
 
     # --- open DB and prepare table ---
     conn = sqlite3.connect(output_file)
@@ -703,11 +771,26 @@ def _error_f_deltat_at_one_time(start_time, deltat_max, args):
     )
     """)
 
-    this_reference = advected_precip[:,:,0] 
+    desired_quantity='precip_rate'
     for tt, this_leadtime in enumerate(leadtimes):
-        this_nowcast =   advected_precip[:,:,tt]
 
-        good_pts = np.isfinite(this_reference) & np.isfinite(this_nowcast)
+        dat_dict = radar_tools.get_instantaneous(valid_date=start_time+datetime.timedelta(seconds=this_leadtime),
+                                                 desired_quantity=desired_quantity,
+                                                 data_path=args.input_data_dir,
+                                                 odim_latlon_file=args.h5_latlon_file,
+                                                 data_recipe=args.input_file_struc,
+                                                 dest_lon=args.out_lons,
+                                                 dest_lat=args.out_lats,
+                                                 input_proj_obj=proj_obj,
+                                                 median_filt=args.nowcast_median_filt,
+                                                 smooth_radius=args.nowcast_smooth_radius) 
+        this_reference = dat_dict[desired_quantity]
+        this_qi = dat_dict['total_quality_index']
+
+        this_nowcast =   advected_precip[:,:,tt]
+        this_quality =   advected_quality[:,:,tt]
+
+        good_pts = (this_qi > 0.) & (this_quality > 0.) & np.isfinite(this_reference) & np.isfinite(this_nowcast)
 
         rmse = np.sqrt(np.mean((this_reference[good_pts] - this_nowcast[good_pts])**2.))
         mae  = np.mean(  np.abs(this_reference[good_pts] - this_nowcast[good_pts]))
@@ -721,6 +804,7 @@ def _error_f_deltat_at_one_time(start_time, deltat_max, args):
             """,
             (float(this_leadtime), float(rmse), float(mae), float(fcst_eff))
         )
+        logger.info(f'leadtime {this_leadtime}, rmse {rmse}, mae {mae}, fcst_eff {fcst_eff}')
 
     # --- save and close ---
     conn.commit()
@@ -739,17 +823,37 @@ def _nowcast_t_interp(args):
     import dask
     import dask.array as da
     from domcmc import fst_tools
+    from domutils import radar_tools
 
     #logging
     logger = _setup_logging(args)
 
+
+    logger.info('Preparing projection object for advected precip')
+    t1 = time.time()
+    # note, median filter is not part of the projection object and need not be specified here
+    #       However, smooth radius and average are part of the projection object
+    valid_date = args.input_date_list[0]
+    desired_quantity='precip_rate'
+    dat_dict = radar_tools.get_instantaneous(valid_date=valid_date,
+                                             desired_quantity=desired_quantity,
+                                             data_path=args.input_data_dir,
+                                             odim_latlon_file=args.h5_latlon_file,
+                                             data_recipe=args.input_file_struc,
+                                             dest_lon=args.out_lons,
+                                             dest_lat=args.out_lats,
+                                             output_proj_obj=True,
+                                             smooth_radius=args.nowcast_smooth_radius)
+    advec_rsource_proj_obj = dat_dict['proj_obj']
+    t2 = time.time()
+    logger.info(f'Done in {t2-t1:4.2f}s')
 
     if args.ncores == 1 :
         #serial execution
         logger.info('Launching SERIAL computation of nowcast time interpolation')
 
         for out_time in args.output_date_list:
-            _t_interp_at_one_time(out_time, args)
+            _t_interp_at_one_time(args, out_time, advec_rsource_proj_obj)
     else:
         #parallel execution
         logger.info('Launching PARALLEL of nowcast time interpolation')
@@ -758,9 +862,10 @@ def _nowcast_t_interp(args):
 
         #delay input data 
         delayed_args = dask.delayed(args)
+        delayed_advec_rsource_proj_obj = dask.delayed(advec_rsource_proj_obj)
 
         #delayed list of results
-        res_list = [dask.array.from_delayed(_dask_t_interp_at_one_time(this_date, delayed_args), (1,), float) for this_date in args.output_date_list ]
+        res_list = [dask.array.from_delayed(_dask_t_interp_at_one_time(delayed_args, this_date, delayed_advec_rsource_proj_obj), (1,), float) for this_date in args.output_date_list ]
 
         #what output do we want
         res_stack = dask.array.stack(res_list)
@@ -781,9 +886,29 @@ def _error_f_deltat(args, deltat_max):
     import time
     import dask
     import dask.array as da
+    from domutils import radar_tools
 
     #logging
     logger = _setup_logging(args)
+
+    logger.info('Preparing projection object for advected precip')
+    t1 = time.time()
+    # note, median filter is not part of the projection object and need not be specified here
+    #       However, smooth radius and average are part of the projection object
+    valid_date = args.input_date_list[0]
+    desired_quantity='precip_rate'
+    dat_dict = radar_tools.get_instantaneous(valid_date=valid_date,
+                                             desired_quantity=desired_quantity,
+                                             data_path=args.input_data_dir,
+                                             odim_latlon_file=args.h5_latlon_file,
+                                             data_recipe=args.input_file_struc,
+                                             dest_lon=args.out_lons,
+                                             dest_lat=args.out_lats,
+                                             output_proj_obj=True,
+                                             smooth_radius=args.nowcast_smooth_radius)
+    advec_source_proj_obj = dat_dict['proj_obj']
+    t2 = time.time()
+    logger.info(f'Done in {t2-t1:4.2f}s')
 
 
     if args.ncores == 1 :
@@ -791,7 +916,7 @@ def _error_f_deltat(args, deltat_max):
         logger.info('Launching SERIAL computation of nowcast error_f_deltat')
 
         for start_time in args.input_date_list:
-            _error_f_deltat_at_one_time(start_time, deltat_max, args)
+            _error_f_deltat_at_one_time(args, start_time, deltat_max, advec_source_proj_obj)
     else:
         #parallel execution
         logger.info('Launching PARALLEL of nowcast error_f_deltat')
@@ -800,9 +925,10 @@ def _error_f_deltat(args, deltat_max):
 
         #delay input data 
         delayed_args = dask.delayed(args)
+        delayed_advec_source_proj_obj = dask.delayed(advec_source_proj_obj)
 
         #delayed list of results
-        res_list = [dask.array.from_delayed(_dask_error_f_deltat_at_one_time(start_time, deltat_max, args), (1,), float) for start_time in args.input_date_list ]
+        res_list = [dask.array.from_delayed(_dask_error_f_deltat_at_one_time(args, start_time, deltat_max, delayed_advec_source_proj_obj), (1,), float) for start_time in args.input_date_list ]
 
         #what output do we want
         res_stack = dask.array.stack(res_list)
@@ -998,6 +1124,7 @@ def obs_process(args=None):
     import datetime
     import domutils._py_tools as dpy
     from domcmc import fst_tools
+    from domutils import radar_tools
 
     #keep track of runtime
     time_start = time.time()
@@ -1039,35 +1166,20 @@ def obs_process(args=None):
         args.intermediate_files_dir += '/'
 
     # parse numeric inputs
-    if args.accum_len is not None :
-        if args.accum_len == 'None' :
-            args.accum_len = None
-        else:
-            args.accum_len = _parse_num(args.accum_len)
+    def _number_that_may_be_none(arg):
+        if arg is not None :
+            if arg.lower() == 'none' :
+                arg = None
+            else:
+                arg = _parse_num(arg)
+        return arg
 
-    if args.median_filt is not None :
-        if args.median_filt == 'None' :
-            args.median_filt = None
-        else:
-            args.median_filt = _parse_num(args.median_filt)
-
-    if args.avg_n_motion_vect is not None :
-        if args.avg_n_motion_vect == 'None' :
-            args.avg_n_motion_vect = None
-        else:
-            args.avg_n_motion_vect = _parse_num(args.avg_n_motion_vect)
-
-    if args.median_filt_before_mv is not None :
-        if args.median_filt_before_mv == 'None' :
-            args.median_filt_before_mv = None
-        else:
-            args.median_filt_before_mv = _parse_num(args.median_filt_before_mv)
-
-    if args.smooth_radius is not None :
-        if args.smooth_radius == 'None' :
-            args.smooth_radius = None
-        else:
-            args.smooth_radius = _parse_num(args.smooth_radius)
+    args.accum_len             = _number_that_may_be_none(args.accum_len)
+    args.preproc_median_filt   = _number_that_may_be_none(args.preproc_median_filt)
+    args.nowcast_median_filt   = _number_that_may_be_none(args.nowcast_median_filt)
+    args.preproc_smooth_radius = _number_that_may_be_none(args.preproc_smooth_radius)
+    args.nowcast_smooth_radius = _number_that_may_be_none(args.nowcast_smooth_radius)
+    args.avg_n_motion_vect     = _number_that_may_be_none(args.avg_n_motion_vect)
 
     if args.cartopy_dir == 'None':
         #if argument is not provided do nothing
@@ -1075,6 +1187,13 @@ def obs_process(args=None):
     else:
         #setup directory where shapefiles will be found
         args.cartopy_dir += '/'
+
+    if args.dask_tmp_dir == 'None':
+        #if argument is not provided do nothing
+        args.dask_tmp_dir = os.getenv('TMPDIR')
+    else:
+        #setup directory where shapefiles will be found
+        args.dask_tmp_dir += '/'
 
     if args.h5_latlon_file == 'None':
         args.h5_latlon_file = None
@@ -1140,13 +1259,14 @@ def obs_process(args=None):
     args.out_lats = fst_template['lat']
     args.out_lons = fst_template['lon']
 
+    # initialize logging
+    logger = _setup_logging(args)
+
+
     # flush logs directory if it exists
     if os.path.isdir('logs'):
         os.system('rm -rf logs')
     
-    # initialize logging
-    logger = _setup_logging(args)
-
     #log header
     logger.info('')
     logger.info('')
@@ -1200,10 +1320,9 @@ def obs_process(args=None):
     if args.ncores > 1:
         logger.info(f'Starting local dask cluster with {args.ncores} workers.')
 
-        tmp_dir = '/space/hall5/sitestore/eccc/mrd/rpndat/dja001/ten_minutes_time_interpolated/dask_tmp_dir'
         dask_client = dask.distributed.Client(processes=True, threads_per_worker=1, 
                                               n_workers=args.ncores, 
-                                              local_directory=tmp_dir, 
+                                              local_directory=args.dask_tmp_dir, 
                                               silence_logs=40) 
         logger.info('Done')
     else:
@@ -1245,20 +1364,21 @@ def obs_process(args=None):
         #args.output_dir = args.processed_dir
         #_make_motion_vectors(args)
 
-        ## 3- use nowcast for time interpolation
-        #args.output_dir = final_output_dir 
-        #args.figure_dir = args.output_figure_dir 
-        #_nowcast_t_interp(args)
+        # 3- use nowcast for time interpolation
+        args.output_dir = final_output_dir 
+        args.figure_dir = args.output_figure_dir 
+        _nowcast_t_interp(args)
 
-        # Optionnal- characterize error as function of deltat
-        args.output_dir = '/space/hall5/sitestore/eccc/mrd/rpndat/dja001/ten_minutes_time_interpolated/error_f_deltat/'
-        deltat_max = 180.*60. # seconds
-        _error_f_deltat(args, deltat_max)
+        ## Optionnal- characterize error as function of deltat
+        #args.output_dir = '/space/hall5/sitestore/eccc/mrd/rpndat/dja001/ten_minutes_time_interpolated/error_f_deltat_med3/'
+        #deltat_max = 60. *60. # seconds
+        #_error_f_deltat(args, deltat_max)
 
     else:
         raise ValueError('type of time interpolation not supported.')
 
-    dask_client.close()
+    if dask_client is not None:
+        dask_client.close()
 
     #we are done
     time_stop = time.time()
@@ -1286,13 +1406,15 @@ def _define_parser(only_arg_list=False):
           ('--output_file_format'      , str,   'npz',       "File format of processed files"),
           ('--ncores'                  , int,   1,           "number of cores for parallel execution"),
           ('--complete_dataset'        , str,   'False',     "Skip existing files, default is to clobber them"),
-          ('--median_filt'             , str,   'None',      "box size (pixels) for median filter"),
-          ('--median_filt_before_mv'   , str,   'None',      "Apply median filter on reflectivity before computing motion vectors"),
-          ('--smooth_radius'           , str,   'None',      "radius (km) where radar data be smoothed"),
+          ('--preproc_median_filt'     , str,   'None',      "Pre processing median filter; box size (pixels)"),
+          ('--nowcast_median_filt'     , str,   'None',      "Advected data  median filter; box size (pixels)"),
+          ('--preproc_smooth_radius'   , str,   'None',      "Pre processing smoothing radius (km) where radar data be smoothed"),
+          ('--nowcast_smooth_radius'   , str,   'None',      "Advected_data  smoothing radius (km) where radar data be smoothed"),
           ('--intermediate_files_dir'  , str,   'None',      "Where to store processed and motion vector files when doing nowcast interpolation"),
           ('--processed_figure_dir'    , str,   'no_figures',"If a path is provided, a figure will be created for each std file created"),
           ('--output_figure_dir'       , str,   'no_figures',"If a path is provided, a figure will be created for each std file created"),
           ('--cartopy_dir'             , str,   'None',      "Directory for cartopy shape files"),
+          ('--dask_tmp_dir'            , str,   'None',      "Directory for dask tmp files"),
           ('--figure_format'           , str,   'gif',       "File format of figure "),
           ('--log_level'               , str,   'INFO',      "minimum level of messages printed to stdout and in log files "),
           ]

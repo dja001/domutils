@@ -12,6 +12,8 @@ def get_instantaneous(valid_date:       Optional[Any]   = None,
                       latlon:           Optional[bool]  = False,
                       dest_lon:         Optional[Any]   = None,
                       dest_lat:         Optional[Any]   = None,
+                      input_proj_obj:   Optional[Any]   = None,
+                      output_proj_obj:  Optional[Any]   = False,
                       average:          Optional[bool]  = False,
                       nearest_time:     Optional[float] = None,
                       smooth_radius:    Optional[float] = None,
@@ -64,6 +66,9 @@ def get_instantaneous(valid_date:       Optional[Any]   = None,
         latlon:           Return *latitudes* and *longitudes* grid of the data
         dest_lon:         Longitudes of destination grid. If not provided data is returned on its original grid
         dest_lat:         Latitudes  of destination grid. If not provided data is returned on its original grid
+        input_proj_obj:   pre-computed geo_tools projection object to accelerate large batches of observations
+                          If not provided, it will be computed for each file
+        output_proj_obj:  Add proj_obj to outputs, for re-use later (with input_proj_obj) and acceletation of batch processing
         average:          Use the averaging method to interpolate data (see geo_tools documentation), this can be slow
         nearest_time:     If set, rewind time until a match is found to an integer number of *nearestTime*
                           For example, with nearestTime=10, time will be rewinded to the nearest integer of 10 minutes
@@ -99,6 +104,7 @@ def get_instantaneous(valid_date:       Optional[Any]   = None,
 
     import os
     import datetime
+    import time
     import copy
     import logging
     import numpy as np
@@ -303,10 +309,13 @@ def get_instantaneous(valid_date:       Optional[Any]   = None,
         logger.info('get_instantaneous, interpolating to destination grid')
 
         #projection from one grid to another
-        proj_obj = geo_tools.ProjInds(src_lon=out_dict['longitudes'], src_lat=out_dict['latitudes'],
-                                      dest_lon=dest_lon, dest_lat=dest_lat,
-                                      average=average, smooth_radius=smooth_radius,
-                                      missing=missing)
+        if input_proj_obj is not None:
+            proj_obj = input_proj_obj
+        else:
+            proj_obj = geo_tools.ProjInds(src_lon=out_dict['longitudes'], src_lat=out_dict['latitudes'],
+                                          dest_lon=dest_lon, dest_lat=dest_lat,
+                                          average=average, smooth_radius=smooth_radius,
+                                          missing=missing)
         interpolated_pr  = None
         interpolated_ref = None
         if average or smooth_radius is not None:
@@ -337,7 +346,11 @@ def get_instantaneous(valid_date:       Optional[Any]   = None,
         if interpolated_ref is not None:
             out_dict['reflectivity'] = interpolated_ref
 
+        if output_proj_obj:
+            out_dict['proj_obj'] = proj_obj
+
         logger.info('get_instantaneous, interpolation done')
+
 
     return out_dict
 
