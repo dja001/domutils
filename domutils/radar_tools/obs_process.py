@@ -609,11 +609,15 @@ def _t_interp_at_one_time(args, out_time, proj_obj):
 
         return weight
 
-    #weight_fct = exp_decay
-    weight_fct = nearest_neighbor
+    # TODO, for testing only to remove
+    args.interp_max_dt = 19.*60.
+    def linear(dt):
+        return  1. - dt/args.interp_max_dt
 
-    # TODO, to remove
-    args.interp_max_dt = 6.*60.
+    #weight_fct = exp_decay
+    #weight_fct = nearest_neighbor
+    weight_fct = linear
+
 
     # all inputs within range to participate in average
     t_max = out_time + datetime.timedelta(seconds=args.interp_max_dt)
@@ -621,7 +625,7 @@ def _t_interp_at_one_time(args, out_time, proj_obj):
     participating_list = []
     candidate_inputs = [ this_time
                          for this_time in args.input_date_list
-                         if t_min < this_time < t_max
+                         if t_min <= this_time < t_max
                        ]
     for input_time in candidate_inputs:
         dt = (out_time - input_time).total_seconds()
