@@ -66,12 +66,12 @@ def perform_nowcast(args, t0, lead_time_s, proj_obj=None):
     mv_offsets = np.arange(0., -1*args.avg_n_motion_vect, -1)
     for ii, this_offset in enumerate(mv_offsets):
         mv_time = t0 + datetime.timedelta(seconds=(this_offset*args.input_dt))
-        wind_file = args.motion_vectors_dir + mv_time.strftime('%Y%m%d%H%M_end_window.npz')
-        if not os.path.isfile(wind_file):
-            # dont do anything if wind file is not there
-            return None, None
+        mv_file = args.motion_vectors_dir + mv_time.strftime('%Y%m%d%H%M_end_window.npz')
+        if not os.path.isfile(mv_file):
+            # dont do anything if mv file is not there
+            raise ValueError(f"Unable to get mv file: {mv_file}")
 
-        raw_mv = np.load(wind_file)
+        raw_mv = np.load(mv_file)
         if ii == 0:
             mv_avg = raw_mv['uv_motion']
         else:
@@ -104,11 +104,11 @@ def perform_nowcast(args, t0, lead_time_s, proj_obj=None):
 
         # scale motion vectors
         scaling_factor = this_leadtime / args.input_dt
-        uv_scaled = _scale_wind(mv_avg, scaling_factor)
+        uv_scaled = _scale_mv(mv_avg, scaling_factor)
 
-        # advect wind at appropriate time
-        advected_precip[:,:,tt]  = np.squeeze(np.transpose(extrapolate(precip_rate,   uv_scaled, 1, outval=np.nan)))
-        advected_quality[:,:,tt] = np.squeeze(np.transpose(extrapolate(quality_index, uv_scaled, 1, outval=np.nan)))
+        # advect precip and qi at appropriate time
+        advected_precip[:,:,tt]  = np.squeeze( np.transpose(extrapolate(precip_rate,   uv_scaled, 1, outval=np.nan)) )
+        advected_quality[:,:,tt] = np.squeeze( np.transpose(extrapolate(quality_index, uv_scaled, 1, outval=np.nan)) )
 
     # adjust missing values that could have been wrongfully modified during advection
     advected_precip  = np.where(advected_precip  < 0., np.nan, advected_precip)
@@ -211,7 +211,7 @@ def _process_at_one_time(valid_date, proj_obj, args):
     #if we got nothing, fill output with nodata and zeros
     if dat_dict is None:
         logger.warning('no data found or file unreadeable, observations are set to -9999. with quality index = 0.')
-        expected_shape  = dest_lat.shape
+        expected_shape  = args.out_lats.shape
         precip_rate     = np.full(expected_shape, -9999.)
         quality_index   = np.zeros(expected_shape)
         data_valid_date = valid_date
@@ -515,8 +515,8 @@ def _make_motion_vectors(args):
     if int(np.sum(big_arr)) != len(args.input_date_list[2:]):
         raise RuntimeError('Number of sucess run is not the the same as the number of output times')
 
-def _scale_wind(uv, fact_before):
-    """scale wind vector for mid timesteps
+def _scale_mv(uv, fact_before):
+    """scale motion vectors for mid timesteps
     """
     import numpy as np
     scaled_uv = np.zeros_like(uv)
@@ -580,26 +580,26 @@ def _t_interp_at_one_time(args, out_time, proj_obj):
         #we will create a new file; before that make sure directory exists
         dpy.parallel_mkdir(args.output_dir)
 
-    ## weight model
-    #def exp_decay(dt):
+    # weight model
+    def exp_decay(dt):
 
-    #    # weights depend on time in minutes
-    #    t = dt/60.
+        # weights depend on time in minutes
+        t = dt/60.
 
-    #    # with MED3 impact
-    #    #A = 4.670791350191597e-17
-    #    #B = 0.251576516840336
-    #    #C = 4.684302891729712e-18
-    #    #tau = 2.0070688609868617
+        # with MED3 impact
+        A = 4.670791350191597e-17
+        B = 0.251576516840336
+        C = 4.684302891729712e-18
+        tau = 2.0070688609868617
 
-    #    abs_t = np.abs(t)
+        abs_t = np.abs(t)
 
-    #    A = 0.7197592925023092
-    #    B = 0.2678550020451625
-    #    C = 0.012385471844791388
-    #    tau = 0.7067125168603899
+        #A = 0.7197592925023092
+        #B = 0.2678550020451625
+        #C = 0.012385471844791388
+        #tau = 0.7067125168603899
 
-    #    return A*np.exp(-abs_t / tau) + B*np.exp(-abs_t / (10.*tau)) + C*np.exp(-abs_t / (100.*tau))
+        return A*np.exp(-abs_t / tau) + B*np.exp(-abs_t / (10.*tau)) + C*np.exp(-abs_t / (100.*tau))
 
     def nearest_neighbor(dt):
         if dt < 0:
@@ -610,13 +610,14 @@ def _t_interp_at_one_time(args, out_time, proj_obj):
         return weight
 
     # TODO, for testing only to remove
-    args.interp_max_dt = 19.*60.
+    args.interp_max_dt = 25.*60.
     def linear(dt):
-        return  1. - dt/args.interp_max_dt
+        abs_t = np.abs(dt)
+        return  1. - abs_t/args.interp_max_dt
 
-    #weight_fct = exp_decay
     #weight_fct = nearest_neighbor
     weight_fct = linear
+    #weight_fct = exp_decay
 
 
     # all inputs within range to participate in average
@@ -630,6 +631,8 @@ def _t_interp_at_one_time(args, out_time, proj_obj):
     for input_time in candidate_inputs:
         dt = (out_time - input_time).total_seconds()
         weight = weight_fct(dt)
+        if (weight < 0.) or (weight > 1.):
+            raise ValueError(f'Weight out of bounds [0, 1]: {weight=}')
         if np.isclose(weight,0.):
             continue
         #if np.isclose(weight,1.):
@@ -656,51 +659,43 @@ def _t_interp_at_one_time(args, out_time, proj_obj):
                                        'dt'     : dt,
                                        'weight' : weight
                                       })
-    # info string
-    tot_weight=0.
-    for item in participating_list:
-        tot_weight += item['weight']
-    participating_string = ''
-    for item in participating_list:
-        participating_string += f'{item['weight']/tot_weight:5.4f}*{item['dt']} +'
-    print('MIX', participating_string)
             
-    num_participants = len(participating_list)
-    if num_participants == 0:
-        raise RuntimeError(f'No input available for output at: {out_time}')
+    # info string
+    participating_string = 'MIX '
+    for item in participating_list:
+        participating_string += f'{item['weight']:5.4f}*{item['dt']} +'
+    logger.info(participating_string)
 
     # output matrices
-    rr_arr      = np.full((args.out_nx, args.out_ny, num_participants), np.nan)
-    qi_arr      = np.full((args.out_nx, args.out_ny, num_participants), np.nan)
-    weights_arr = np.full((args.out_nx, args.out_ny, num_participants), np.nan)
+    num_participants = len(participating_list)
+    rr_arr          = np.full((args.out_nx, args.out_ny, num_participants), np.nan)
+    qi_arr          = np.full((args.out_nx, args.out_ny, num_participants), np.nan)
+    weighted_qi_arr = np.full((args.out_nx, args.out_ny, num_participants), np.nan)
     for pp, item in enumerate(participating_list):
 
         # the nowcasting step
+        # all -ve values were assigned to Nan in this step
         advected_precip, advected_quality = perform_nowcast(args, item['vtime'], item['dt'], proj_obj=proj_obj)
-        # all -ve values were assigned to Nan in the previous step
+        
         rr_arr[:,:,pp] = advected_precip
         qi_arr[:,:,pp] = advected_quality
+        # make qi diminish as a result of advection
+        weighted_qi_arr[:,:,pp] = item['weight']*advected_quality
 
-        # qi modulation of weights
-        weights_arr[:,:,pp] = item['weight']*qi_arr[:,:,pp]
+    #normalize weight so that column sum is one when obtaining PR averages
+    qi_column_sum = np.nansum(weighted_qi_arr, axis=2, keepdims=True)
+    pr_weights_arr = weighted_qi_arr / qi_column_sum
+    qi_column_sum = np.squeeze(qi_column_sum)   # we don't need the 3rd dim of size 1 anymore
 
-    #normalize weight so that column sum is one everywhere
-    norm_factor = np.nansum(weights_arr, axis=2, keepdims=True)
-    weights_arr /= norm_factor
-    norm_factor = np.squeeze(norm_factor)   # we don't need the 3rd dim of size 1 anymore
+    interpolated_precip  = np.nansum(pr_weights_arr * rr_arr, axis=2)
 
-    interpolated_precip  = np.nansum(weights_arr * rr_arr, axis=2)
-    interpolated_quality = np.nansum(weights_arr * qi_arr, axis=2)
+    interpolated_quality = 1. -  np.prod( (1. - np.nan_to_num(weighted_qi_arr, nan=.0)), axis=2)
+
     
     # replace missing values where no data was availablet st
-    interpolated_quality = np.where(np.isclose(norm_factor, 0.), 0.,      interpolated_quality)
-    interpolated_precip  = np.where(np.isclose(norm_factor, 0.), missing, interpolated_precip)
-    interpolated_precip  = np.where((interpolated_quality > 0.) & np.isclose(interpolated_precip, missing), 0., interpolated_precip)
-    print('-ve precip set', set(interpolated_precip[interpolated_precip < 0.]))
-    print('maxmin qi', np.min(interpolated_quality), np.max(interpolated_quality))
-    
-
-
+    #interpolated_quality = np.where(np.isclose(qi_column_sum, 0.), 0.,      interpolated_quality)
+    interpolated_precip  = np.where(np.isclose(qi_column_sum, 0.), missing, interpolated_precip)
+    #interpolated_precip  = np.where((interpolated_quality > 0.) & np.isclose(interpolated_precip, missing), 0., interpolated_precip)
 
     etiket = 'EXTRAPOL'
     _write_fst_file(out_time, interpolated_precip, interpolated_quality, args, etiket=etiket, 
@@ -1367,6 +1362,7 @@ def obs_process(args=None):
         ## 2- compute motion vectors associated with processed outputs computed at the step above
         #args.output_dir = args.processed_dir
         #_make_motion_vectors(args)
+        
 
         # 3- use nowcast for time interpolation
         args.output_dir = final_output_dir 

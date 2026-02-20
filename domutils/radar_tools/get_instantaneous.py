@@ -124,6 +124,7 @@ def get_instantaneous(valid_date:       Optional[Any]   = None,
     #logging
     if logger is None:
         logger = logging.getLogger(__name__)
+        logger.setLevel(logging.WARNING)
 
     if verbose > 0:
         logger.warning('verbose keyword is deprecated, please set logging level in calling handler')
