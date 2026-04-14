@@ -25,9 +25,16 @@ try:
     NUMBA_AVAILABLE = True
 except ImportError:
     NUMBA_AVAILABLE = False
+
     def njit(*args, **kwargs):
+        # Called as @njit without parentheses
+        if args and callable(args[0]):
+            return args[0]
+
+        # Called as @njit(...)
         def wrapper(f):
             return f
+
         return wrapper
 
 def normalize_longitudes(lons):

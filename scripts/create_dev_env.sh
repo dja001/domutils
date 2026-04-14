@@ -9,12 +9,12 @@ else
 fi
 
 mamba create -n ${env_name} -y \
-    numpy scipy attrdict cartopy matplotlib dask \
+    python=3.13 numpy scipy attrdict cartopy matplotlib dask \
     pytest pytest-timeout pytest-cov \
     pysteps h5py pygrib cairosvg \
     sphinx sphinx_rtd_theme sphinx-gallery \
     sphinx-autodoc-typehints sphinx-argparse \
-    build packaging twine -c conda-forge
+    packaging twine -c conda-forge
 
 mamba run -n ${env_name} pip install build
 mamba run -n ${env_name} pip install -e ../domcmc_package
