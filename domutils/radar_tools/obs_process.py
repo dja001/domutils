@@ -254,24 +254,33 @@ def perform_nowcast(args, t0, lead_time_s, proj_obj=None):
     # advection method
     extrapolate = pysteps.extrapolation.interface.get_method("semilagrangian")
 
-    mv_time = t0 
-    mv_file = args.motion_vectors_dir + mv_time.strftime('%Y%m%d%H%M_end_window.npz')
-    if not os.path.isfile(mv_file):
+    # allow to look for neighbor motion vector fields if one or two go missing
+    search_n_steps = int(args.interp_max_dt / args.input_dt) + 2
+    search_times = [ t0 - datetime.timedelta(seconds=this_step*args.input_dt) for this_step in np.arange(search_n_steps) ] 
+    search_successful  = False
+    for mv_time in search_times:
+
+        mv_file = args.motion_vectors_dir + mv_time.strftime('%Y%m%d%H%M_end_window.npz')
+
+        if not os.path.isfile(mv_file):
+            continue
+
+        try:
+            mv_avg = np.load(mv_file)['uv_motion']
+            search_successful = True
+            break
+
+        except:
+            continue
+
+    if not search_successful:
         # dont do anything if mv file is not there
-        logger.warning(f"{mv_file=} does not exist, we return empty interpolated precip and data")
+        logger.warning(f"Could not find motion vectors for {t0}; we return empty interpolated precip and data")
 
         empty_precip  = np.full((args.out_nx, args.out_ny), np.nan)
         empty_quality = np.full((args.out_nx, args.out_ny), np.nan)
         return empty_precip, empty_quality
 
-    try:
-        mv_avg = np.load(mv_file)['uv_motion']
-    except:
-        logger.warning(f"Unable to read {mv_file=}, we return empty interpolated precip and data")
-
-        empty_precip  = np.full((args.out_nx, args.out_ny), np.nan)
-        empty_quality = np.full((args.out_nx, args.out_ny), np.nan)
-        return empty_precip, empty_quality
 
     # get precip and qi to extrapolate
     desired_quantity='precip_rate'
