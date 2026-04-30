@@ -8,6 +8,13 @@ Please use the following tags when editing this file:
 *Removed* for now removed features.
 *Fixed* for any bug fixes. 
 
+## [2.3.2] - 2026-04-30
+### Added 
+- added extent_crs keywork for proj_inds 
+### Changed
+- render_similarly, now blurrs images before comparison to compensate for high frequency compression noise 
+- better 
+
 ## [2.3.1] - 2026-01-10
 ### Added 
 - release process is now largely automated with scripts and a Makefile

@@ -92,6 +92,7 @@ class ProjInds():
             dest_lat:      Latitude of destination grid on which the data will be regridded
             extent:        To be used together with dest_crs, to get destination grid from a cartopy geoAxes
                            (array like) Bounds of geoAxes domain [lon_min, lon_max, lat_min, lat_max]
+            extent_crs:    Crs of extent. By default we assume PlateCarre
             dest_crs:      If provided, cartopy crs instance for the destination grid (necessary for plotting maps)
             source_crs:    Cartopy crs of the data coordinates.
                            If None, a Geodetic crs is used for using latitude/longitude coordinates.
@@ -177,6 +178,7 @@ class ProjInds():
                  dest_lon:      Optional[Any]=None,
                  dest_lat:      Optional[Any]=None,
                  extent:        Optional[Any]=None,
+                 extent_crs:    Optional[Any]=None,
                  dest_crs:      Optional[Any]=None,
                  source_crs:    Optional[Any]=None,
                  fig:           Optional[Any]=None,
@@ -211,19 +213,25 @@ class ProjInds():
             # we are projecting data onto a given projection extent in cartopy
             
             if extent is not None:
-                # we assume lat/lon extent
-                # check that values passed are compatible
-                # this expression works even if extent is passed as a tuple
-                extent = (*normalize_longitudes(extent[:2]), *extent[2:])
+                if extent_crs is None:
+                    # we assume lat/lon extent for extent
+                    extent_crs = cartopy.crs.PlateCarree()
 
-                if ((extent[0] > 180.) or (extent[0] < -180.) or
-                    (extent[1] > 180.) or (extent[1] < -180.) or
-                    (extent[2] >  90.) or (extent[2] <  -90.) or
-                    (extent[3] >  90.) or (extent[3] <  -90.)):
-                    raise ValueError(f'We assume lat/lon extent. The values provided are not compatible: {extent}')
+                if extent_crs != dest_crs:
+                    # check that values passed are compatible
+                    # this expression works even if extent is passed as a tuple
+                    extent = (*normalize_longitudes(extent[:2]), *extent[2:])
 
-                # get extent in the provided crs
-                rotated_extent = geographic_extent_to_rotated(extent, dest_crs)
+                    if ((extent[0] > 180.) or (extent[0] < -180.) or
+                        (extent[1] > 180.) or (extent[1] < -180.) or
+                        (extent[2] >  90.) or (extent[2] <  -90.) or
+                        (extent[3] >  90.) or (extent[3] <  -90.)):
+                        raise ValueError(f'We assume lat/lon extent. The values provided are not compatible: {extent}')
+
+                    # get extent in the rotated crs
+                    rotated_extent = geographic_extent_to_rotated(extent, dest_crs)
+                else:
+                    rotated_extent = extent
 
                 xx = np.linspace(rotated_extent[0], rotated_extent[1], image_res[0])
                 yy = np.linspace(rotated_extent[2], rotated_extent[3], image_res[1])

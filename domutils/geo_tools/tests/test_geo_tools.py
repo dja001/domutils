@@ -1,8 +1,6 @@
 # to run only one test
 #
-# pytest test_geo_tools.py::test_projinds_simple_example 
-# 
-# can also be added to __main__ section below
+# pytest -s test_geo_tools.py::test_projinds_simple_example 
 
 
 
@@ -30,6 +28,64 @@ def setup_values_and_palettes(setup_test_paths):
 
     return (test_data_dir, test_results_dir, 
             generated_figure_dir, reference_figure_dir)
+
+
+
+def test_projinds_rotated_extent():
+    # test the rotated extend returned by projinds with and without rotated_extent provided
+    import numpy as np
+    import cartopy
+    import domutils.geo_tools as geo_tools
+
+    # make mock data and coordinates
+    lons =     [ [-91. , -91  , -91   ],
+                 [-90. , -90  , -90   ],
+                 [-89. , -89  , -89   ] ]
+    lats =     [ [ 44  ,  45  ,  46   ],
+                 [ 44  ,  45  ,  46   ],
+                 [ 44  ,  45  ,  46   ] ]
+
+    # case 1 
+    # No extent_crs given to projInds
+    # projection different from platecarre
+    map_extent=[-94.8,-85.2,43,48.]
+    img_res = (800,600)
+    proj_aea = cartopy.crs.AlbersEqualArea(central_longitude=-94.,
+                                           central_latitude=35.,
+                                           standard_parallels=(30.,40.))
+    proj_inds = geo_tools.ProjInds(src_lon=lons, src_lat=lats,
+                                   extent=map_extent, dest_crs=proj_aea,
+                                   image_res=img_res)
+    expected = [-65663.98332383095, 721384.5716393187, 888829.3792033303, 1465303.12977621]
+    assert(np.allclose(proj_inds.rotated_extent, expected))
+
+    # case 2 
+    # No extent_crs given to projInds
+    # projection is platecarre
+    map_extent=[-94.8,-85.2,43,48.]
+    img_res = (800,600)
+    proj_aea = cartopy.crs.PlateCarree()
+    proj_inds = geo_tools.ProjInds(src_lon=lons, src_lat=lats,
+                                   extent=map_extent, dest_crs=proj_aea,
+                                   image_res=img_res)
+    expected = map_extent
+
+    assert(np.allclose(proj_inds.rotated_extent, expected))
+
+    # case 3 
+    # extent_crs is given to projInds (extent was already rotated)
+    # projection different from platecarre
+    # extent is already rotated ans goes unmodified
+    map_extent = [-65663.9, 721384.5, 888829.3, 1465303.1]
+    img_res = (800,600)
+    proj_aea = cartopy.crs.AlbersEqualArea(central_longitude=-94.,
+                                           central_latitude=35.,
+                                           standard_parallels=(30.,40.))
+    proj_inds = geo_tools.ProjInds(src_lon=lons, src_lat=lats,
+                                   extent=map_extent, extent_crs=proj_aea, dest_crs=proj_aea,
+                                   image_res=img_res)
+    expected = map_extent
+    assert(np.allclose(proj_inds.rotated_extent, expected))
 
 def test_projinds_simple_example(setup_values_and_palettes):
     (test_data_dir, test_results_dir, 
@@ -757,8 +813,10 @@ def test_latlon_to_xyz():
 if __name__ == '__main__':
     import os
 
-    test_projinds_simple_example()
+    #test_projinds_simple_example()
     #test_no_extent_in_cartopy_projection()
 
     #test_projinds_simple_example()
     #test_hrdps_projection_in_reasonable_time()
+    
+    test_projinds_rotated_extent()

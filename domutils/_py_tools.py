@@ -124,7 +124,9 @@ def render_similarly(new_image_file, reference_image_file,
     from PIL import Image
     from PIL import ImageFont
     from PIL import ImageDraw
+    from PIL import ImageFilter
     from . import _py_tools as py_tools
+    import matplotlib.font_manager as fm
     import domutils
 
 
@@ -179,10 +181,27 @@ def render_similarly(new_image_file, reference_image_file,
             print(msg)
         return False
 
-    image1_arr = np.array(image1,dtype=np.int32)    #int32 is important here to avoid byte overflow during diff calculation
-    image2_arr = np.array(image2,dtype=np.int32)
-    abs_err = np.abs(image1_arr - image2_arr )
-    mae = np.mean(abs_err)
+    # compare blurred images
+    blur_radius = 1.5
+    blurred_1 = image1.filter(ImageFilter.GaussianBlur(blur_radius))
+    blurred_2 = image2.filter(ImageFilter.GaussianBlur(blur_radius))
+    blurred_arr1 = np.array(blurred_1, float) 
+    blurred_arr2 = np.array(blurred_2, float)
+    blurred_abs_err = np.abs(blurred_arr1 - blurred_arr2)
+    blurred_mae = np.mean(blurred_abs_err)
+    mae_threshold = 0.5
+
+    # non blurred treatment
+    #image1_arr = np.array(image1,dtype=np.int32)    #int32 is important here to avoid byte overflow during diff calculation
+    #image2_arr = np.array(image2,dtype=np.int32)
+    #abs_err    = np.abs(image1_arr - image2_arr )
+    #mae        = np.mean(abs_err)
+
+    # for difference highlight figure
+    image1_arr = blurred_arr1
+    image2_arr = blurred_arr2
+    abs_err    = blurred_abs_err
+    mae        = blurred_mae
 
     #white where differences are large
     err_flag = np.nonzero(np.sum(abs_err, axis=2) > 5)
@@ -224,7 +243,9 @@ def render_similarly(new_image_file, reference_image_file,
         mosaic = np.hstack((image1_arr, abs_err, image2_arr)).astype(np.uint8)
         image_diff = Image.fromarray(mosaic)
         draw = ImageDraw.Draw(image_diff)
-        font = ImageFont.truetype("Lato-Regular.ttf", 40)
+
+        font_path = fm.findfont(fm.FontProperties(family="DejaVu Sans"))
+        font = ImageFont.truetype(font_path, 40)
         
         
         #annotations to understand what is going on

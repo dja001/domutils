@@ -288,7 +288,7 @@ def test_time_interpolation(setup_test_paths):
             print(f'done with {fig_name}')
     
             # use "convert" to make a gif out of the png
-            cmd = ['convert', '-geometry', '15%', fig_name, fig_name.replace('png', 'gif')]
+            cmd = ['convert', fig_name, '-geometry', '15%', '-quantize', 'transparent', '-dither', 'FloydSteinberg', '-colors', '256',  fig_name.replace('png', 'gif')]
             process = subprocess.Popen(cmd, stdout=subprocess.PIPE)
             output, error = process.communicate()
     
