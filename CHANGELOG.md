@@ -8,6 +8,10 @@ Please use the following tags when editing this file:
 *Removed* for now removed features.
 *Fixed* for any bug fixes. 
 
+## [2.3.3] - 2026-04-30
+### Added
+- radar_tools  nowcast interpolation can now combine multiple sources into one estimate
+
 ## [2.3.2] - 2026-04-30
 ### Added 
 - added extent_crs keywork for proj_inds 
