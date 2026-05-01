@@ -18,7 +18,9 @@ def get_accumulation(end_date:         Optional[Any]   = None,
                      nearest:          Optional[float] = None,
                      smooth_radius:    Optional[float] = None,
                      odim_latlon_file: Optional[str]   = None,
-                     verbose:          Optional[int]   = 0):
+                     allow_missing_inputs: Optional[bool]  = False,
+                     verbose:          Optional[int]   = 0,
+                     logger:           Optional[Any]   = None):
 
     """Get accumulated precipitation from instantaneous observations
 
@@ -122,7 +124,8 @@ def get_accumulation(end_date:         Optional[Any]   = None,
     import domutils.geo_tools as geo_tools
 
     #logging
-    logger = logging.getLogger(__name__)
+    if logger is None:
+        logger = logging.getLogger(__name__)
 
     if verbose > 0:
         logger.warning('verbose keyword is deprecated, please set logging level in calling handler')
@@ -200,46 +203,15 @@ def get_accumulation(end_date:         Optional[Any]   = None,
     #
     #
     #get list of times during which observations should be accumulated
-    m_list = np.arange(0, duration, input_dt)
-    date_list = [end_date - datetime.timedelta(minutes=this_min) for this_min in m_list]
+    m_list_seconds = np.arange(0, duration, input_dt) * 60.
+    date_list = [end_date - datetime.timedelta(seconds=int(this_delta)) for this_delta in m_list_seconds]
 
-
-    #
     #
     #read data
     logger.info('Reading in data')
-    #for 1st time
-    kk = 0
-    this_date = date_list[kk]
-    dat_dict = get_instantaneous(desired_quantity='precip_rate',
-                                 valid_date=this_date,
-                                 data_path=data_path,
-                                 odim_latlon_file=odim_latlon_file,
-                                 data_recipe=data_recipe,
-                                 median_filt=median_filt,
-                                 coef_a=coef_a,
-                                 coef_b=coef_b,
-                                 latlon=latlon)
-    if dat_dict is None:
-        warnings.warn('Unable to get first file in accumulation, returning None')
-        return None
 
-    data_shape = dat_dict['precip_rate'].shape
-    if latlon:
-        orig_lat = dat_dict['latitudes']
-        orig_lon = dat_dict['longitudes']
-    #init accumulation arrays
-    accum_dat = np.full( (data_shape[0], data_shape[1], len(date_list)), missing)
-    accum_qi  = np.zeros((data_shape[0], data_shape[1], len(date_list)))
-    #save data
-    accum_dat[:,:,kk] = dat_dict['precip_rate']
-    accum_qi[:,:,kk]  = dat_dict['total_quality_index']
-    #
-    #read rest of data
+    initialize_arrays = True
     for kk, this_date in enumerate(date_list):
-        #we already did the 1st one, skip it
-        if kk == 0 :
-            continue
 
         #fill accumulation arrays with data for this time
         dat_dict = get_instantaneous(desired_quantity='precip_rate',
@@ -249,31 +221,56 @@ def get_accumulation(end_date:         Optional[Any]   = None,
                                      data_recipe=data_recipe,
                                      median_filt=median_filt,
                                      coef_a=coef_a,
-                                     coef_b=coef_b)
-        if dat_dict is not None:
-            accum_dat[:,:,kk] = dat_dict['precip_rate']
-            accum_qi[:,:,kk]  = dat_dict['total_quality_index']
+                                     coef_b=coef_b,
+                                     latlon=True,
+                                     logger=logger)
 
+        if dat_dict is None:
+            warnings.warn(f'Unable to get instantaneous data at: {this_date}')
+
+            if allow_missing_inputs:
+                continue
+            else:
+                return None
+
+        if initialize_arrays:
+            # on first occurence of a valid dat_dict
+            data_shape = dat_dict['precip_rate'].shape
+            if latlon:
+                orig_lat = dat_dict['latitudes']
+                orig_lon = dat_dict['longitudes']
+            #init accumulation arrays
+            accum_dat = np.zeros(data_shape)
+            accum_qi  = np.zeros(data_shape)
+            accum_w   = np.zeros(data_shape)
+            initialize_arrays = False
+
+        #build accumulation
+        good_pts = np.asarray(dat_dict['total_quality_index'] > 0.).nonzero()
+        if good_pts[0].size > 0:
+            accum_dat[good_pts] = accum_dat[good_pts] + dat_dict['total_quality_index'][good_pts] * dat_dict['precip_rate'][good_pts]
+            accum_qi[good_pts]  = accum_qi[good_pts]  + dat_dict['total_quality_index'][good_pts] * dat_dict['total_quality_index'][good_pts]
+            accum_w[good_pts]   = accum_w[good_pts]   + dat_dict['total_quality_index'][good_pts] 
+
+    # handle case where no data was found at all
+    if initialize_arrays:
+        return None
 
     #
     #
     #average of precip_rate is weighted by quality index
     logger.info('Computing average precip rate in accumulation period')
-    sum_w  = np.sum(accum_qi, axis=2)
-    good_pts = np.asarray(sum_w > 0.).nonzero()
     #
     #average precip_rate
-    weighted_sum = np.sum(accum_dat*accum_qi, axis=2)
-    avg_pr = np.full_like(sum_w, missing)
+    avg_pr = np.full_like(accum_w, missing)
+    good_pts = np.asarray(accum_w > 0.).nonzero()
     if good_pts[0].size > 0:
-        avg_pr[good_pts] = weighted_sum[good_pts]/sum_w[good_pts]
+        avg_pr[good_pts] = accum_dat[good_pts]/accum_w[good_pts]
     #
     #compute average quality index
-    weighted_sum = np.sum(accum_qi*accum_qi, axis=2)
-    avg_qi = np.full_like(sum_w, missing)
+    avg_qi = np.full_like(accum_qi, missing)
     if good_pts[0].size > 0:
-        avg_qi[good_pts] = weighted_sum[good_pts]/sum_w[good_pts]
-
+        avg_qi[good_pts] = accum_qi[good_pts] /accum_w[good_pts]
 
     #
     #

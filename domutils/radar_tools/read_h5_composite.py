@@ -75,6 +75,7 @@ def read_h5_composite(odim_file:   str=None,
 
     #logging
     logger = logging.getLogger(__name__)
+    logger.setLevel(logging.WARNING)
 
     if verbose > 0:
         logger.warning('verbose keyword is deprecated, please set logging level in calling handler')

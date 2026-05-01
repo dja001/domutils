@@ -17,6 +17,25 @@ It is assumed that the first index (rows) represents x-y direction (longitudes):
 """
 
 from typing import Callable, Iterator, Union, Optional, List, Iterable, MutableMapping, Any
+# needs to be loaded outside of the numba using routine
+import numpy as np
+
+try:
+    from numba import njit
+    NUMBA_AVAILABLE = True
+except ImportError:
+    NUMBA_AVAILABLE = False
+
+    def njit(*args, **kwargs):
+        # Called as @njit without parentheses
+        if args and callable(args[0]):
+            return args[0]
+
+        # Called as @njit(...)
+        def wrapper(f):
+            return f
+
+        return wrapper
 
 def normalize_longitudes(lons):
     """
@@ -24,9 +43,56 @@ def normalize_longitudes(lons):
     """
     import numpy as np
 
-    
-
     return np.mod(np.asarray(lons) + 180, 360) - 180
+
+
+# Convert ragged list to flat arrays with offsets
+def prepare_for_numba(good_pts_list):
+    import numpy as np
+
+    """Convert list of arrays to flat array + offsets"""
+    offsets = np.zeros(len(good_pts_list) + 1, dtype=np.int64)
+
+    for i, pts in enumerate(good_pts_list):
+        offsets[i + 1] = offsets[i] + len(pts)
+
+    flat_indices = np.empty(offsets[-1], dtype=np.int64)
+    for i, pts in enumerate(good_pts_list):
+        flat_indices[offsets[i]:offsets[i+1]] = pts
+
+    return flat_indices, offsets
+
+@njit
+def process_kdtree_numba(flat_indices, offsets, data_flat, weights_flat, missing_v):
+    n_dest = len(offsets) - 1
+    data_accumulator = np.zeros(n_dest)
+    weights_accumulator = np.zeros(n_dest)
+    denom = np.zeros(n_dest)
+    n_hits = np.zeros(n_dest, dtype=np.int32)
+
+    for ind in range(n_dest):
+        start = offsets[ind]
+        end = offsets[ind + 1]
+
+        if start == end:  # No points
+            continue
+
+        # Get indices for this ball
+        good_pts = flat_indices[start:end]
+
+        # Process valid points
+        for i in range(len(good_pts)):
+            idx = good_pts[i]
+            val = data_flat[idx]
+
+            if (val - missing_v) > 1e-3:
+                w = weights_flat[idx]
+                data_accumulator[ind] += w * val
+                weights_accumulator[ind] += w * w
+                denom[ind] += w
+                n_hits[ind] += 1
+
+    return data_accumulator, weights_accumulator, denom, n_hits
 
 
 def geographic_extent_to_rotated(extent_geo, rotated_crs):
@@ -419,6 +485,7 @@ class ProjInds():
 
 
         """
+        import time
         import numpy as np
 
         #ensure numpy
@@ -462,21 +529,31 @@ class ProjInds():
                 #
                 #  Note for future optimisation work
                 #  for HRDPS grid with smooth_radius=3,
-                #  kdtree call takes ~15s while loop runs in ~60s
+                #  kdtree call takes ~9s while loop runs in ~30s
 
                 #KDtree call
+                t1 = time.time()
                 good_pts_list = self.kdtree.query_ball_point(self.dest_xyz, self.smooth_radius_unit)
-                for ind, good_pts in enumerate(good_pts_list):
+                t2 = time.time()
+                flat_indices, offsets = prepare_for_numba(good_pts_list)
+                data_accumulator, weights_accumulator, denom, n_hits = process_kdtree_numba(
+                    flat_indices, offsets, data_flat, weights_flat, missing_v
+                )
+                t3 = time.time()
 
-                    this_data    = data_flat[good_pts]
-                    (valid_pts,) = np.asarray((this_data - missing_v) > 1e-3).nonzero()
-                    if valid_pts.size > 0 :
-                        this_data   = this_data[valid_pts]
-                        this_weights     = weights_flat[np.asarray(good_pts)[valid_pts]]
-                        data_accumulator[ind]    = np.sum(this_weights*this_data)
-                        weights_accumulator[ind] = np.sum(this_weights*this_weights)
-                        denom[ind]       = np.sum(this_weights)
-                        n_hits[ind]      = valid_pts.size
+                #for ind, good_pts in enumerate(good_pts_list):
+
+                #    this_data    = data_flat[good_pts]
+                #    (valid_pts,) = np.asarray((this_data - missing_v) > 1e-3).nonzero()
+                #    if valid_pts.size > 0 :
+                #        this_data   = this_data[valid_pts]
+                #        this_weights     = weights_flat[np.asarray(good_pts)[valid_pts]]
+                #        data_accumulator[ind]    = np.sum(this_weights*this_data)
+                #        weights_accumulator[ind] = np.sum(this_weights*this_weights)
+                #        denom[ind]       = np.sum(this_weights)
+                #        n_hits[ind]      = valid_pts.size
+                #print('FFFFFFFFFFFFFFFFFFFFFFFFFF')
+
 
                 
             else:

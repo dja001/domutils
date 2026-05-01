@@ -56,10 +56,6 @@ def convert(pic_name, img_type, del_orig=False, density=300, geometry='100%', de
         STEP 3
           cleanup
         """
-        #delete temp file
-        if del_orig :
-            os.remove(pic_name)
-
         if made_eps :
             if del_eps and not img_type == 'eps' :
                 #ignore del_eps when desired fig type is eps
@@ -74,6 +70,11 @@ def convert(pic_name, img_type, del_orig=False, density=300, geometry='100%', de
         cmd = ['convert', '-density', str(density), '-geometry', geometry, source_file, file_name +'.' + img_type]
         process = subprocess.Popen(cmd, stdout=subprocess.PIPE)
         output, error = process.communicate()
+        
+    #delete temp file
+    if del_orig :
+        os.remove(source_file)
+
 
 
 

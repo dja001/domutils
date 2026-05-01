@@ -13,7 +13,7 @@ CONDA_CMD="$1"
 ENV_NAME="$2"
 
 # Get environment info
-ENV_INFO=$($CONDA_CMD env list | grep "^${ENV_NAME} " | awk '{print $NF}')
+ENV_INFO=$($CONDA_CMD env list | grep "^[[:space:]]*${ENV_NAME}[[:space:]]" | awk '{print $NF}')
 
 if [ -z "$ENV_INFO" ]; then
     echo "Error: Environment '${ENV_NAME}' not found"
