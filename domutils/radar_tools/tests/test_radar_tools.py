@@ -62,15 +62,15 @@ def test_obs_process(setup_test_paths):
         output_dir = generated_files_dir
         input_t0 = '201910311600'
         input_tf = '201910311600'
-        input_dt = 10
-        processed_file_struc = '%Y%m%d%H%M_mosaic.fst'
+        input_dt = '10M'
+        output_file_struc = '%Y%m%d%H%M_mosaic.fst'
         input_file_struc = '%Y/%m/%d/qcomp_%Y%m%d%H%M.h5'
         h5_latlon_file = os.path.join(test_data_dir, 'radar_continental_2.5km_2882x2032.pickle')
         output_file_format = 'fst'
         sample_pr_file = os.path.join(test_data_dir, 'hrdps_5p1_prp0.fst')
         ncores = 1
         complete_dataset = 'False'
-        figure_dir = generated_figure_dir
+        processed_figure_dir = generated_figure_dir
         figure_format = 'svg'
         log_level = 'INFO'
 
@@ -81,11 +81,11 @@ def test_obs_process(setup_test_paths):
 
     #the name of a figure we just generated figure
     generated_figure = os.path.join(generated_figure_dir, 
-                                    '20191031_1600.svg')
+                                    '20191031_160000.svg')
 
     #pre saved figure for what the results should be
     reference_figure = os.path.join(test_data_dir, 'reference_figures', 'test_radar_tools',
-                                    os.path.basename(generated_figure))
+                                    '20191031_1600.svg')
 
     #compare image with saved reference
     images_are_similar = py_tools.render_similarly(generated_figure, reference_figure,
@@ -131,18 +131,18 @@ def test_nowcast_time_interpol(setup_test_paths):
         output_dir = generated_files_dir
         input_t0  = '201910311540'
         input_tf  = '201910311610'
-        input_dt  = 10
+        input_dt  = '10M'
         output_t0 = '201910311603'
         output_tf = '201910311603'
         t_interp_method = 'nowcast'
-        processed_file_struc = '%Y%m%d%H%M_mosaic.fst'
+        output_file_struc = '%Y%m%d%H%M_mosaic.fst'
         input_file_struc = '%Y/%m/%d/qcomp_%Y%m%d%H%M.h5'
         h5_latlon_file = os.path.join(test_data_dir, 'radar_continental_2.5km_2882x2032.pickle')
         output_file_format = 'fst'
         sample_pr_file = os.path.join(test_data_dir, 'hrdps_5p1_prp0.fst')
         ncores = 1
         complete_dataset = 'True'
-        figure_dir = generated_figure_dir
+        output_figure_dir = generated_figure_dir
         figure_format = 'svg'
         log_level = 'INFO'
 
@@ -152,11 +152,12 @@ def test_nowcast_time_interpol(setup_test_paths):
     radar_tools.obs_process(args)
 
     #the name of a figure we just generated figure
-    generated_figure = os.path.join(generated_figure_dir, '20191031_1603.svg')
+    generated_figure = os.path.join(generated_figure_dir, 
+                                    '20191031_160300.svg')
 
     #pre saved figure for what the results should be
     reference_figure = os.path.join(test_data_dir, 'reference_figures', 'test_radar_tools',
-                                    os.path.basename(generated_figure))
+                                    '20191031_160300.svg')
 
     #compare image with saved reference
     images_are_similar = py_tools.render_similarly(generated_figure, reference_figure,

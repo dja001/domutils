@@ -585,11 +585,11 @@ def _motion_vector_at_one_time(this_time, args, missing=-9999., undetect=-3333.)
         if not os.path.isfile(fst_file):
             logger.warning(f'Problem with: {fst_file} file does not exist, no motion vector for {this_time}')
             return this_time, 'missing_input'
-        z_v = fst_tools.get_data(var_name='RDPR', file_name=fst_file, datev=input_time)['values']
-        if np.all(z_v <= min_dbz):
+        z_v = fst_tools.get_data(var_name='RDPR', file_name=fst_file, datev=input_time)
+        if (z_v is None )or np.all(z_v['values'] <= min_dbz):
             logger.warning(f'Problem with: {fst_file} no valid pecip, no motion vector for {this_time}')
             return this_time, 'empty_input'
-        z_acc[tt,:,:] = np.transpose(domutils.radar_tools.exponential_zr(z_v, r_to_dbz=True))
+        z_acc[tt,:,:] = np.transpose(domutils.radar_tools.exponential_zr(z_v['values'], r_to_dbz=True))
 
     # Only pixels that are genuinely missing (radar offline) in any frame
     # -9999. = nodata
@@ -665,33 +665,33 @@ def _t_interp_at_one_time(this_time, args ):
         dpy.parallel_mkdir(args.output_dir)
 
     # weight model
-    def exp_decay(dt):
+    #def exp_decay(dt):
 
-        # weights depend on time in minutes
-        t = dt/60.
+    #    # weights depend on time in minutes
+    #    t = dt/60.
 
-        # with MED3 impact
-        A = 4.670791350191597e-17
-        B = 0.251576516840336
-        C = 4.684302891729712e-18
-        tau = 2.0070688609868617
+    #    # with MED3 impact
+    #    A = 4.670791350191597e-17
+    #    B = 0.251576516840336
+    #    C = 4.684302891729712e-18
+    #    tau = 2.0070688609868617
 
-        abs_t = np.abs(t)
+    #    abs_t = np.abs(t)
 
-        #A = 0.7197592925023092
-        #B = 0.2678550020451625
-        #C = 0.012385471844791388
-        #tau = 0.7067125168603899
+    #    #A = 0.7197592925023092
+    #    #B = 0.2678550020451625
+    #    #C = 0.012385471844791388
+    #    #tau = 0.7067125168603899
 
-        return A*np.exp(-abs_t / tau) + B*np.exp(-abs_t / (10.*tau)) + C*np.exp(-abs_t / (100.*tau))
+    #    return A*np.exp(-abs_t / tau) + B*np.exp(-abs_t / (10.*tau)) + C*np.exp(-abs_t / (100.*tau))
 
-    def nearest_neighbor(dt):
-        if dt < 0:
-            weight = 0.
-        else:
-            weight = 1.
+    #def nearest_neighbor(dt):
+    #    if dt < 0:
+    #        weight = 0.
+    #    else:
+    #        weight = 1.
 
-        return weight
+    #    return weight
 
     def linear(dt):
         abs_dt = np.abs(dt)
@@ -716,6 +716,7 @@ def _t_interp_at_one_time(this_time, args ):
             raise ValueError(f'Weight out of bounds [0, 1]: {weight=}, {this_time=}')
         if np.isclose(weight,0.):
             continue
+        # for testing
         #if np.isclose(weight,1.):
         #    dt = 0.
         participating_list.append({'vtime'  : input_time,
@@ -734,6 +735,7 @@ def _t_interp_at_one_time(this_time, args ):
         if not last_input_is_in_list:
             dt = (this_time - last_input_time).total_seconds()
             weight = weight_fct(dt)
+            # for testing
             #if np.isclose(weight,1.):
             #    dt = 0.
             participating_list.append({'vtime'  : last_input_time,
@@ -1235,7 +1237,6 @@ def obs_process(args=None):
     args.nowcast_median_filt   = _number_that_may_be_none(args.nowcast_median_filt)
     args.preproc_smooth_radius = _number_that_may_be_none(args.preproc_smooth_radius)
     args.nowcast_smooth_radius = _number_that_may_be_none(args.nowcast_smooth_radius)
-    args.avg_n_motion_vect     = _number_that_may_be_none(args.avg_n_motion_vect)
 
     if args.cartopy_dir == 'None':
         #if argument is not provided do nothing
@@ -1335,7 +1336,7 @@ def obs_process(args=None):
     if args.t_interp_method == 'nowcast':
         min_time_necessary = (  args.output_t0 
                               - datetime.timedelta(seconds=args.interp_max_dt)
-                              - ((args.avg_n_motion_vect) * datetime.timedelta(seconds=args.input_dt))
+                              - datetime.timedelta(seconds=args.input_dt)
                              )
         # we want input time list to start earlier than output dt
         while args.input_t0 > min_time_necessary:
@@ -1444,15 +1445,16 @@ def obs_process(args=None):
             # 1- process radar file and write output to new files
             dates_to_process = args.input_date_list
             args.processed_data_dir = args.output_dir
+            args.proj_obj = preprocess_proj_obj
             serial_parallel_sumbit(_process_at_one_time, args, dates_to_process)
 
     elif args.t_interp_method == 'nowcast':
 
-        # set tmp files dir is specified
+        # set tmp files dir if specified
         if args.intermediate_files_dir is not None:
             intermediate_files_dir  = args.intermediate_files_dir
         else:
-            intermediate_files_dir  = final_output_dir
+            intermediate_files_dir  = args.output_dir
 
         # directories for temporary files 
         # used in step 1 and 2
@@ -1465,7 +1467,7 @@ def obs_process(args=None):
         serial_parallel_sumbit(_process_at_one_time, args, dates_to_process)
 
         # 2- compute motion vectors associated with processed outputs computed at the step above
-        dates_to_process = args.input_date_list[args.avg_n_motion_vect-1:]
+        dates_to_process = args.input_date_list
         args.motion_vectors_dir = os.path.join(intermediate_files_dir, 'motion_vectors/')
         serial_parallel_sumbit(_motion_vector_at_one_time, args, dates_to_process)
 
@@ -1505,7 +1507,6 @@ def _define_parser(only_arg_list=False):
           ('--output_dt'               , str,   'None',      "interval (minutes M or seconds S) between output radar mosaics"),
           ('--t_interp_method'         , str,   'None',      "time interpolation method"),
           ('--interp_max_dt'           , str,   'None',      "max interval (minutes M or seconds S) where data will contribute to nowcast interpolation"),
-          ('--avg_n_motion_vect'       , str,   'None',      "Number of motion vectors (separated by input_dt) to be averaged for more temporal consistency"),
           ('--sample_pr_file'          , str,   'None',      "File containing PR to establish the domain"),
           ('--output_file_format'      , str,   'npz',       "File format of processed files"),
           ('--ncores'                  , int,   1,           "number of cores for parallel execution"),

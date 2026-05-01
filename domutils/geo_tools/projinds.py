@@ -540,7 +540,6 @@ class ProjInds():
                     flat_indices, offsets, data_flat, weights_flat, missing_v
                 )
                 t3 = time.time()
-                print(f'Smooth_radius kdtree call {t2-t1:4.2f}s ; loop {t3-t2:4.2f}s')
 
                 #for ind, good_pts in enumerate(good_pts_list):
 

@@ -67,10 +67,11 @@ def test_time_interpolation(setup_test_paths):
     class ArgsClass():
         input_t0                 = '202205212050'
         input_tf                 = '202205212140'
-        input_dt                 = 10
+        input_dt                 = '10M'
         output_t0                = '202205212110'
         output_tf                = '202205212140'
-        output_dt                = 1
+        output_dt                = '1M'
+        interp_max_dt            = 'None'
         output_file_format       = 'fst'
         complete_dataset         = 'False'
         t_interp_method          = 'nowcast'
@@ -79,10 +80,10 @@ def test_time_interpolation(setup_test_paths):
         h5_latlon_file           = os.path.join(test_data_dir, 'radar_continental_2.5km_2882x2032.pickle')
         sample_pr_file           = os.path.join(test_data_dir, 'hrdps_5p1_prp0.fst')
         ncores                   = 40    # use as many cpus as you have on your system 
-        median_filt              = 3    
+        preproc_median_filt      = '3'
+        nowcast_median_filt      = '3'
         output_dir               = os.path.join(generated_files_dir, 'obs_process_t_interp')
-        processed_file_struc     = '%Y%m%d%H%M.fst'
-        tinterpolated_file_struc = '%Y%m%d%H.fst'
+        output_file_struc        = '%Y%m%d%H%M.fst'
         log_level                = 'WARNING'
 
     # DOCS:class_ends
@@ -243,7 +244,7 @@ def test_time_interpolation(setup_test_paths):
             dat_dict = radar_tools.get_instantaneous(desired_quantity='precip_rate',
                                                      valid_date=source_valid_time,
                                                      data_path=os.path.join(args.output_dir, 'processed'),
-                                                     data_recipe=args.processed_file_struc)
+                                                     data_recipe=args.output_file_struc)
             x0 = sp_w + rec_w + sp_m
             y0 = sp_h
             ax_pos = [x0, y0, rec_w, rec_h]
@@ -259,7 +260,7 @@ def test_time_interpolation(setup_test_paths):
             dat_dict = radar_tools.get_instantaneous(desired_quantity='precip_rate',
                                                      valid_date=interpolated_valid_time,
                                                      data_path=args.output_dir,
-                                                     data_recipe=args.tinterpolated_file_struc)
+                                                     data_recipe=args.output_file_struc)
             x0 = sp_w 
             y0 = sp_h
             ax_pos = [x0, y0, rec_w, rec_h]
@@ -348,7 +349,7 @@ def test_time_interpolation(setup_test_paths):
                                             duration=duration,
                                             input_dt=10., # minutes
                                             data_path=os.path.join(args.output_dir, 'processed'), 
-                                            data_recipe=args.processed_file_struc)
+                                            data_recipe=args.output_file_struc)
     x0 = 2.*sp_w + rec_w
     y0 = sp_h
     ax_pos = [x0, y0, rec_w, rec_h]
@@ -366,7 +367,7 @@ def test_time_interpolation(setup_test_paths):
                                             duration=duration,
                                             input_dt=1., # minutes
                                             data_path=args.output_dir, 
-                                            data_recipe=args.tinterpolated_file_struc)
+                                            data_recipe=args.output_file_struc)
     x0 = sp_w 
     y0 = sp_h
     ax_pos = [x0, y0, rec_w, rec_h]
@@ -386,7 +387,7 @@ def test_time_interpolation(setup_test_paths):
     #compare image with saved reference
     reference_figure = os.path.join(reference_figure_dir, os.path.basename(fig_name))
     images_are_similar = py_tools.render_similarly(fig_name, reference_figure,
-                                                   output_dir=os.path.join(test_results_dir, 'render_similarly'))
+                                                   output_dir=os.path.join(test_results_dir, 'render_similarly') )
 
     #test fails if images are not similar
     assert images_are_similar
