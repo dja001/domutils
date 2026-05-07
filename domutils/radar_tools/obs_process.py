@@ -111,74 +111,6 @@ def weighted_median_3d(values, weights, values2):
 
     return weighted_median1, weighted_median2
 
-import numpy as np
-from numba import njit, prange
-@njit(parallel=True)
-def weighted_median_3d_local3x3_numba(values, weights):
-    nx, ny, nz = values.shape
-    out = np.full((nx, ny), np.nan)
-
-    # maximum possible pooled size = 9 * nz
-    max_size = 9 * nz
-
-    for i in prange(nx):
-
-        for j in range(ny):
-
-            # determine neighborhood bounds
-            i0 = 0 if i == 0 else i - 1
-            i1 = nx if i == nx - 1 else i + 2
-            j0 = 0 if j == 0 else j - 1
-            j1 = ny if j == ny - 1 else j + 2
-
-            # temporary buffers
-            v_buf = np.empty(max_size, dtype=np.float64)
-            w_buf = np.empty(max_size, dtype=np.float64)
-
-            n = 0
-
-            # gather valid samples
-            for ii in range(i0, i1):
-                for jj in range(j0, j1):
-                    for k in range(nz):
-                        v = values[ii, jj, k]
-                        w = weights[ii, jj, k]
-
-                        if not np.isnan(v) and not np.isnan(w):
-                            v_buf[n] = v
-                            w_buf[n] = w
-                            n += 1
-
-            if n == 0:
-                continue
-
-            # slice to valid length
-            v_valid = v_buf[:n]
-            w_valid = w_buf[:n]
-
-            total_weight = 0.0
-            for t in range(n):
-                total_weight += w_valid[t]
-
-            if total_weight == 0.0:
-                continue
-
-            # sort by value
-            order = np.argsort(v_valid)
-            v_sorted = v_valid[order]
-            w_sorted = w_valid[order]
-
-            # cumulative sum until half weight
-            half_weight = 0.5 * total_weight
-            cumsum = 0.0
-
-            for t in range(n):
-                cumsum += w_sorted[t]
-                if cumsum >= half_weight:
-                    out[i, j] = v_sorted[t]
-                    break
-
-    return out
 
 def serial_parallel_sumbit(this_function, args, dates_to_process):
     """ launch function in serial or in parallel depending on existence of dast_client
@@ -746,7 +678,7 @@ def _t_interp_at_one_time(this_time, args ):
     # info string
     participating_string = ''
     for item in participating_list:
-        participating_string += f'{item['weight']:5.4f}*{item['dt']} +'
+        participating_string += f'{item["weight"]:5.4f}*{item["dt"]} +'
     logger.info(f'Mix for {this_time=}' + participating_string)
 
     # output matrices
@@ -769,7 +701,6 @@ def _t_interp_at_one_time(this_time, args ):
     ### Weighted median filter of all nowcasts together
     ##interpolated_precip, interpolated_quality = weighted_median_3d(rr_arr, weighted_qi_arr, qi_arr)
 
-    #interpolated_precip = weighted_median_3d_local3x3_numba(rr_arr, weighted_qi_arr)
     #interpolated_quality = qi_arr[:,:,0]
     #interpolated_precip  = np.where(np.isfinite(interpolated_precip), interpolated_precip, missing)
     #interpolated_quality  = np.where(np.isfinite(interpolated_quality), interpolated_quality, missing)
@@ -1011,6 +942,7 @@ def _write_fst_file(out_date, precip_rate, quality_index, args, etiket='',
     """ write precip to a fst file
     """
     import os
+    import subprocess
     import copy
     import rpnpy.librmn.all as rmn
     from rpnpy.rpndate import RPNDate
@@ -1090,6 +1022,12 @@ def _write_fst_file(out_date, precip_rate, quality_index, args, etiket='',
 
     #close file
     rmn.fstcloseall(iunit)
+
+    # compress it
+    tmp_file = f'{output_file.replace(".fst", "_compressed.fst")}'
+    result = subprocess.run(('fstcompress', '-fstin', output_file, '-fstout', tmp_file))
+    # replace output_file by its compessed counterpart
+    os.replace(tmp_file, output_file)
 
     # release lock on file to allow other processes to write to it
     _release_lock(output_file)
@@ -1484,12 +1422,20 @@ def obs_process(args=None):
     else:
         raise ValueError('type of time interpolation not supported.')
 
-    if args.dask_client is not None:
-        args.dask_client.close()
-
     #we are done
     time_stop = time.time()
     logger.info(f'Python code completed, Runtime was : {time_stop-time_start} seconds')
+    logger.info(f'')
+    logger.info(f'Disregard errors below if any, this is the cluster making a fuss while being shutdown')
+    logger.info(f'')
+    logger.info(f'')
+    logger.info(f'')
+    logger.info(f'')
+    logger.info(f'')
+
+    if args.dask_client is not None:
+        args.dask_client.close()
+
 
 
 def _define_parser(only_arg_list=False):

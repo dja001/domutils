@@ -8,6 +8,12 @@ Please use the following tags when editing this file:
 *Removed* for now removed features.
 *Fixed* for any bug fixes. 
 
+## [2.3.4] - 2026-05-07
+### Changed
+- radar_tools  obs_process now compresses fst files after creating them
+- radar_tools  numba dependency removed
+
+
 ## [2.3.3] - 2026-04-30
 ### Added
 - radar_tools  nowcast interpolation can now combine multiple sources into one estimate
