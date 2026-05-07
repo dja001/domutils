@@ -199,10 +199,11 @@ echo "Please perform:"
 echo "  - Push dev branch"
 echo "  - Open and merge PR on GitHub"
 echo
+VERSION=$(cat ./VERSION)
 echo "Then tag and push:"
-echo "  git checkout master"
-echo "  git pull github master"
-echo "  git tag -a vX.Y.Z -m 'Release vX.Y.Z'"
+echo "  git checkout main"
+echo "  git pull github main"
+echo "  git tag -a v${VERSION} -m 'Release v${VERSION}'"
 echo "  git push github --tags"
 pause
 

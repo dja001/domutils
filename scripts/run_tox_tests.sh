@@ -2,7 +2,7 @@
 
 set -e
 
-mamba=/fs/homeu2/eccc/mrd/rpndat/dja001/mambaforge/bin/mamba
+mamba=/space/hall7/sitestore/eccc/mrd/rpnad/dja001/mambaforge/bin/mamba
 
 # Test all versions
 for PY_VER in 39 310 311 311b 312 313 ; do
@@ -11,5 +11,5 @@ for PY_VER in 39 310 311 311b 312 313 ; do
 done
 
 ### Or individual
-#PY_VER='310'
+#PY_VER='313'
 #${mamba} run -n toxtest_py${PY_VER} tox -e py${PY_VER}
