@@ -8,11 +8,14 @@ Please use the following tags when editing this file:
 *Removed* for now removed features.
 *Fixed* for any bug fixes. 
 
+## [2.3.5] - 2026-06-30
+### Changed
+- radar_tools  plotting routine in obs_process now used matplotlib's backend for saving different image formats
+
 ## [2.3.4] - 2026-05-07
 ### Changed
 - radar_tools  obs_process now compresses fst files after creating them
 - radar_tools  numba dependency removed
-
 
 ## [2.3.3] - 2026-04-30
 ### Added
