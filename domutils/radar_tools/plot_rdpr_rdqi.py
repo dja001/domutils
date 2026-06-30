@@ -95,7 +95,7 @@ def plot_rdpr_rdqi(fst_file:   str=None,
 
     #setup figure properties
     ratio = 0.5
-    fig_name_recipe = '%Y%m%d_%H%M%S.svg'
+    fig_name_recipe = f'%Y%m%d_%H%M%S.{fig_format}'
     # all sizes are inches for consistency with matplotlib
     rec_w = 6.            # Horizontal size of a panel  /2.54 for dimensions in cm
     rec_h = ratio * rec_w # Vertical size of a panel
@@ -357,13 +357,10 @@ def plot_rdpr_rdqi(fst_file:   str=None,
 
 
     #save figure
-    svg_name = figure_dir + this_date.strftime(fig_name_recipe)
+    fig_name = figure_dir + this_date.strftime(fig_name_recipe)
 
-    logger.info('Saving figure:'+svg_name)
-    plt.savefig(svg_name)
-
-    if fig_format != 'svg':
-        dpy.convert(svg_name, fig_format, del_orig=True, density=dpi, geometry='50%')
+    logger.info('Saving figure:'+fig_name)
+    plt.savefig(fig_name)
 
     #not sure what is accumulating but adding this garbage collection step 
     #prevents jobs from aborting when a large number of files are made 
