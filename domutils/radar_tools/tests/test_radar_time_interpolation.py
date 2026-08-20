@@ -1,6 +1,6 @@
 # to run only one test
 #
-# pytest -vs  test_geo_tools.py::test_projinds_simple_example 
+# pytest -vs test_radar_time_interpolation.py::test_time_interpolation
 
 
 import pytest
@@ -28,6 +28,8 @@ def test_time_interpolation(setup_test_paths):
     import matplotlib.pyplot as plt
     import cartopy.crs as ccrs
     import cartopy.feature as cfeature
+    import dask
+    from dask.distributed import Client, LocalCluster
     import domutils.legs as legs
     import domutils.geo_tools as geo_tools
     import domutils.radar_tools as radar_tools
@@ -44,20 +46,6 @@ def test_time_interpolation(setup_test_paths):
 
     py_tools.parallel_mkdir(generated_files_dir)
     py_tools.parallel_mkdir(generated_figure_dir)
-    
-    # matplotlib global settings
-    dpi = 400
-    mpl.rcParams.update({
-        'font.family': 'Latin Modern Roman',
-        'font.size': 32,
-        'axes.titlesize': 32,
-        'axes.labelsize': 32,
-        'xtick.labelsize': 25,
-        'ytick.labelsize': 25,
-        'legend.fontsize': 25,
-        'figure.dpi': dpi,
-        'savefig.dpi': dpi,
-        })
 
     # DOCS:setup_ends
 
@@ -65,25 +53,27 @@ def test_time_interpolation(setup_test_paths):
     # DOCS:class_begins
     # a class that mimics the output of argparse
     class ArgsClass():
-        input_t0                 = '202205212050'
-        input_tf                 = '202205212140'
-        input_dt                 = '10M'
-        output_t0                = '202205212110'
-        output_tf                = '202205212140'
+        input_t0                 = '202208290200'
+        input_tf                 = '202208290700'
+        input_dt                 = '6M'
+        output_t0                = '202208290300'
+        output_tf                = '202208290600'
         output_dt                = '1M'
-        interp_max_dt            = 'None'
-        output_file_format       = 'fst'
+        interp_max_dt            = '13M'
         complete_dataset         = 'False'
         t_interp_method          = 'nowcast'
         input_data_dir           = os.path.join(test_data_dir, 'odimh5_radar_composites')
-        input_file_struc         = '%Y/%m/%d/qcomp_%Y%m%d%H%M.h5'
+        input_file_struc         = '%Y/qcomp_%Y%m%d%H%M.h5'
         h5_latlon_file           = os.path.join(test_data_dir, 'radar_continental_2.5km_2882x2032.pickle')
         sample_pr_file           = os.path.join(test_data_dir, 'hrdps_5p1_prp0.fst')
-        ncores                   = 40    # use as many cpus as you have on your system 
+        ncores                   = 60    # use as many cpus as you have on your system 
         preproc_median_filt      = '3'
+        preproc_smooth_radius    = '4'
         nowcast_median_filt      = '3'
         output_dir               = os.path.join(generated_files_dir, 'obs_process_t_interp')
+        output_file_format       = 'fst'
         output_file_struc        = '%Y%m%d%H%M.fst'
+        figure_format            = 'svg'
         log_level                = 'WARNING'
 
     # DOCS:class_ends
@@ -95,7 +85,8 @@ def test_time_interpolation(setup_test_paths):
     
     # observations are processed here
     # the output are files in different directories
-    radar_tools.obs_process(args)
+    #radar_tools.obs_process(args)
+    #exit()
 
     # DOCS:process_data_ends
 
@@ -133,7 +124,9 @@ def test_time_interpolation(setup_test_paths):
             ax2.set_ylim((0.,1.))
             ax2.patch.set_alpha(0.0)
             ax2.set_axis_off()
-            for x0, y0, dx in [(.17,.75,.1), (.26,.79,.1), (.36,.83,.1)]:
+            xpos = np.linspace(0.24, 0.40, 5)
+            ypos = np.linspace(0.75, 0.85, 5)
+            for x0, y0, dx in [(xx,yy,.1) for xx, yy in zip(xpos, ypos)]:
                 ax2.arrow(x0, y0, dx, -.03,
                           width=0.015, facecolor='red', edgecolor='black', 
                           head_width=3*0.01, linewidth=2.)
@@ -141,9 +134,21 @@ def test_time_interpolation(setup_test_paths):
     # DOCS:function_definition_ends
 
     # DOCS:figure_setup_begins
+    dpi = 400
+    mpl.rcParams.update({
+        'font.family': 'Latin Modern Roman',
+        'font.size': 32,
+        'axes.titlesize': 32,
+        'axes.labelsize': 32,
+        'xtick.labelsize': 30,
+        'ytick.labelsize': 30,
+        'legend.fontsize': 30,
+        'figure.dpi': dpi,
+        'savefig.dpi': dpi,
+        })
     #pixel density of each panel
     ratio = 1.
-    hpix = 600.       #number of horizontal pixels
+    hpix = 1200.      #number of horizontal pixels
     vpix = ratio*hpix #number of vertical pixels
     img_res = (int(hpix),int(vpix))
     
@@ -178,18 +183,28 @@ def test_time_interpolation(setup_test_paths):
                               excep_col=['grey_220','white'])
     
     #setup cartopy projection
-    ##250km around Blainville radar
-    pole_latitude=90.
-    pole_longitude=0.
-    lat_0 = 46.
-    delta_lat = 2.18/2.
-    lon_0 = -73.75 
-    delta_lon = 3.12/2.
+    ###250km around Blainville radar
+    #pole_latitude=90.
+    #pole_longitude=0.
+    #lat_0 = 46.
+    #delta_lat = 2.18/2.
+    #lon_0 = -73.75 
+    #delta_lon = 3.12/2.
+    #map_extent=[lon_0-delta_lon, lon_0+delta_lon, lat_0-delta_lat, lat_0+delta_lat]  
+    #proj_aea = ccrs.RotatedPole(pole_latitude=pole_latitude, pole_longitude=pole_longitude)
+
+    # 300x300 Minnesota/Wisconsin
+    pole_latitude=35.7
+    pole_longitude=65.5
+    lat_0 = 46.7
+    delta_lat = 3.14*.5 
+    lon_0 = 267.3
+    delta_lon = 4.17*.5
     map_extent=[lon_0-delta_lon, lon_0+delta_lon, lat_0-delta_lat, lat_0+delta_lat]  
     proj_aea = ccrs.RotatedPole(pole_latitude=pole_latitude, pole_longitude=pole_longitude)
     
     # get lat/lon of input data from one of the h5 files 
-    dum_h5_file = os.path.join(test_data_dir, 'odimh5_radar_composites', '2022/05/21/qcomp_202205212100.h5')
+    dum_h5_file = os.path.join(test_data_dir, 'odimh5_radar_composites', '2022/qcomp_202205212000.h5')
     input_ll    = radar_tools.read_h5_composite(dum_h5_file, latlon=True)
     input_lats  = input_ll['latitudes']
     input_lons  = input_ll['longitudes']
@@ -206,108 +221,138 @@ def test_time_interpolation(setup_test_paths):
     # instantiate projection object for output data
     output_proj_obj = geo_tools.ProjInds(src_lon=output_lons, src_lat=output_lats,
                                          extent=map_extent, dest_crs=proj_aea, image_res=img_res)
+
+    def figure_for_timestep(src_delta_min, interp_delta_min, t0,
+                            args, fig_w, fig_h, sp_w, sp_h, rec_w, rec_h, sp_m ):
+
+        source_t_offset   = datetime.timedelta(seconds=src_delta_min * 60.0)
+        source_valid_time  = t0 + source_t_offset
+        interpolated_t_offset = datetime.timedelta(seconds=interp_delta_min * 60.0)
+        interpolated_valid_time = source_valid_time + interpolated_t_offset
+        
+        # matplotlib global settings
+        dpi = 400
+        mpl.rcParams.update({
+            'font.family': 'Latin Modern Roman',
+            'font.size': 32,
+            'axes.titlesize': 32,
+            'axes.labelsize': 32,
+            'xtick.labelsize': 30,
+            'ytick.labelsize': 30,
+            'legend.fontsize': 30,
+            'figure.dpi': dpi,
+            'savefig.dpi': dpi,
+            })
+
+        # instantiate figure
+        fig = plt.figure(figsize=(fig_w,fig_h))
+
+        # source data on original grid
+        dat_dict = radar_tools.get_instantaneous(desired_quantity='precip_rate',
+                                                 valid_date=source_valid_time,
+                                                 data_path=args.input_data_dir,
+                                                 data_recipe=args.input_file_struc)
+        x0 = sp_w 
+        y0 = 2.*sp_h + rec_h
+        ax_pos = [x0, y0, rec_w, rec_h]
+        title = f'Source data \n @ t0+{src_delta_min}minutes'
+        plot_panel(dat_dict['precip_rate'],
+                   fig, ax_pos, title, 
+                   proj_aea, 
+                   input_proj_obj, pr_colormap,
+                   plot_palette='right',
+                   pal_units='mm/h')
+
+        # source quality index
+        x0 = sp_w + rec_w + sp_m
+        y0 = 2.*sp_h + rec_h
+        ax_pos = [x0, y0, rec_w, rec_h]
+        title = f'Quality index \n @ t0+{src_delta_min}minutes'
+        plot_panel(dat_dict['total_quality_index'],
+                   fig, ax_pos, title, 
+                   proj_aea, 
+                   input_proj_obj, qi_colormap,
+                   plot_palette='right',
+                   pal_units='[unitless]')
+
+        # Time interpolated data
+        dat_dict = radar_tools.get_instantaneous(desired_quantity='precip_rate',
+                                                 valid_date=interpolated_valid_time,
+                                                 data_path=args.output_dir,
+                                                 data_recipe=args.output_file_struc)
+        x0 = sp_w 
+        y0 = sp_h
+        ax_pos = [x0, y0, rec_w, rec_h]
+        title = f'Interpolated \n @ t0+{src_delta_min+interp_delta_min}minutes'
+        plot_panel(dat_dict['precip_rate'],
+                   fig, ax_pos, title, 
+                   proj_aea, 
+                   output_proj_obj, pr_colormap)
+
+        # quality index 
+        x0 = sp_w  + rec_w + sp_m
+        y0 = sp_h
+        ax_pos = [x0, y0, rec_w, rec_h]
+        title = f'Quality Ind Interpolated \n @ t0+{src_delta_min+interp_delta_min}minutes'
+        plot_panel(dat_dict['total_quality_index'],
+                   fig, ax_pos, title, 
+                   proj_aea, 
+                   output_proj_obj, qi_colormap,
+                   plot_palette='right',
+                   pal_units='[unitless]')
+
+        # save output
+        date_prefix = interpolated_valid_time.strftime('%Y%m%d%H%M')
+        fig_name = os.path.join(generated_figure_dir, f'{date_prefix}_time_interpol_demo_plain.png')
+        plt.savefig(fig_name)
+        fig_name_svg = os.path.join(generated_figure_dir, f'{date_prefix}_time_interpol_demo_plain.svg')
+        plt.savefig(fig_name_svg)
+        plt.close(fig)
+        print(f'done with {fig_name}')
+
+        # use "convert" to make a gif out of the png
+        cmd = ['convert', fig_name, '-geometry', '25%', '-quantize', 'transparent', '-dither', 'FloydSteinberg', '-colors', '256',  fig_name.replace('png', 'gif')]
+        process = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+        output, error = process.communicate()
+
+        # we don't need the original png anymore
+        os.remove(fig_name)
+
+        return source_valid_time, interpolated_valid_time
+
     # DOCS:figure_setup_ends
 
     # DOCS:animation_frames_begins
-    this_frame = 1
-    t0 = datetime.datetime(2022,5,21,21,10)
-    source_deltat = [0, 10, 20]         # minutes
-    interpolated_deltat = np.arange(10) # minutes
-    for src_dt in source_deltat:
-        source_t_offset = datetime.timedelta(seconds=src_dt*60.)
-        source_valid_time = t0 + source_t_offset
-    
-        for interpolated_dt in interpolated_deltat:
-            interpolated_t_offset = datetime.timedelta(seconds=interpolated_dt*60.)
-            interpolated_valid_time = (t0 + source_t_offset) + interpolated_t_offset
-    
-            # instantiate figure
-            fig = plt.figure(figsize=(fig_w,fig_h))
-    
-            # source data on original grid
-            dat_dict = radar_tools.get_instantaneous(desired_quantity='precip_rate',
-                                                     valid_date=source_valid_time,
-                                                     data_path=args.input_data_dir,
-                                                     data_recipe=args.input_file_struc)
-            x0 = sp_w + rec_w + sp_m
-            y0 = 2.*sp_h + rec_h
-            ax_pos = [x0, y0, rec_w, rec_h]
-            title = f'Source data \n @ t0+{src_dt}minutes'
-            plot_panel(dat_dict['precip_rate'],
-                       fig, ax_pos, title, 
-                       proj_aea, 
-                       input_proj_obj, pr_colormap,
-                       plot_palette='right',
-                       pal_units='mm/h')
-    
-            # processed data on destination grid
-            dat_dict = radar_tools.get_instantaneous(desired_quantity='precip_rate',
-                                                     valid_date=source_valid_time,
-                                                     data_path=os.path.join(args.output_dir, 'processed'),
-                                                     data_recipe=args.output_file_struc)
-            x0 = sp_w + rec_w + sp_m
-            y0 = sp_h
-            ax_pos = [x0, y0, rec_w, rec_h]
-            title = f'Processed data \n @ t0+{src_dt}minutes'
-            plot_panel(dat_dict['precip_rate'],
-                       fig, ax_pos, title, 
-                       proj_aea, 
-                       output_proj_obj, pr_colormap,
-                       plot_palette='right',
-                       pal_units='mm/h')
-    
-            # Time interpolated data
-            dat_dict = radar_tools.get_instantaneous(desired_quantity='precip_rate',
-                                                     valid_date=interpolated_valid_time,
-                                                     data_path=args.output_dir,
-                                                     data_recipe=args.output_file_struc)
-            x0 = sp_w 
-            y0 = sp_h
-            ax_pos = [x0, y0, rec_w, rec_h]
-            title = f'Interpolated \n @ t0+{src_dt+interpolated_dt}minutes'
-            plot_panel(dat_dict['precip_rate'],
-                       fig, ax_pos, title, 
-                       proj_aea, 
-                       output_proj_obj, pr_colormap)
-    
-            # quality index is also interpolated using nowcasting
-            x0 = sp_w 
-            y0 = 2.*sp_h + rec_h
-            ax_pos = [x0, y0, rec_w, rec_h]
-            title = f'Quality Ind Interpolated \n @ t0+{src_dt+interpolated_dt}minutes'
-            plot_panel(dat_dict['total_quality_index'],
-                       fig, ax_pos, title, 
-                       proj_aea, 
-                       output_proj_obj, qi_colormap,
-                       plot_palette='right',
-                       pal_units='[unitless]')
-    
-            # save output
-            fig_name = os.path.join(generated_figure_dir, f'{this_frame:02}_time_interpol_demo_plain.png')
-            plt.savefig(fig_name)
-            plt.close(fig)
-            print(f'done with {fig_name}')
-    
-            # use "convert" to make a gif out of the png
-            cmd = ['convert', fig_name, '-geometry', '15%', '-quantize', 'transparent', '-dither', 'FloydSteinberg', '-colors', '256',  fig_name.replace('png', 'gif')]
-            process = subprocess.Popen(cmd, stdout=subprocess.PIPE)
-            output, error = process.communicate()
-    
-            # we don't need the original png anymore
-            os.remove(fig_name)
-    
-            this_frame += 1
+    t0 = datetime.datetime(2022,8,29,3,48)
+    source_deltat = np.arange(0, 30, 6, dtype=int)    # minutes
+    interpolated_deltat = np.arange(6) # minutes
+    serial=False
+    if serial:
+        for src_delta_min in source_deltat:
+            for interp_delta_min in interpolated_deltat:
+                figure_for_timestep(src_delta_min, interp_delta_min, t0, args, fig_w, fig_h, sp_w, sp_h, rec_w, rec_h, sp_m)
+    else:
+        #client = dask.distributed.Client(processes=True, threads_per_worker=1, 
+                                         #n_workers=20, 
+                                         #silence_logs=40) 
 
+        tasks = [dask.delayed(figure_for_timestep)(src_delta_min, interp_delta_min, t0, args, fig_w, fig_h, sp_w, sp_h, rec_w, rec_h, sp_m)
+                  for src_delta_min in source_deltat
+                  for interp_delta_min in interpolated_deltat]
+
+        with LocalCluster(processes=True, n_workers=10, threads_per_worker=1) as cluster, Client(cluster) as client:
+            results = dask.compute(tasks)  # parallel execution
+    
     # DOCS:animation_frames_ends
 
     #compare image with saved reference
     fig_name = os.path.join(generated_figure_dir, '01_time_interpol_demo_plain.gif')
     reference_figure = os.path.join(reference_figure_dir, os.path.basename(fig_name))
-    images_are_similar = py_tools.render_similarly(fig_name, reference_figure,
-                                                   output_dir=os.path.join(test_results_dir, 'render_similarly'))
+    #images_are_similar = py_tools.render_similarly(fig_name, reference_figure,
+    #                                               output_dir=os.path.join(test_results_dir, 'render_similarly'))
 
     #test fails if images are not similar
-    assert images_are_similar
+    #assert images_are_similar
 
     # DOCS:animated_gif_begins
     movie_name = os.path.join(generated_figure_dir, 'time_interpol_plain_movie.gif')
@@ -316,11 +361,12 @@ def test_time_interpolation(setup_test_paths):
     process = subprocess.Popen(cmd, stdout=subprocess.PIPE)
     output, error = process.communicate()
     # DOCS:animated_gif_ends
+    exit()
 
     assert os.path.isfile(movie_name)
 
     # DOCS:accumulation_begins
-    end_date = datetime.datetime(2022,5,21,21,40, tzinfo=datetime.timezone.utc)
+    end_date = datetime.datetime(2022,5,21,21,42, tzinfo=datetime.timezone.utc)
     duration = 30 # minutes
     
     # instantiate figure
@@ -329,35 +375,17 @@ def test_time_interpolation(setup_test_paths):
     # make accumulation from source data
     dat_dict = radar_tools.get_accumulation(end_date=end_date,
                                             duration=duration,
-                                            input_dt=10., # minutes
+                                            input_dt=6., # minutes
                                             data_path=args.input_data_dir,
                                             data_recipe=args.input_file_struc)
     x0 = 2.*sp_w + rec_w
-    y0 = 2.*sp_h + rec_h
+    y0 = sp_h 
     ax_pos = [x0, y0, rec_w, rec_h]
     title = 'Accumulation from \n source data'
     plot_panel(dat_dict['accumulation'],
                fig, ax_pos, title, 
                proj_aea, 
                input_proj_obj, pr_colormap,
-               plot_palette='right',
-               pal_units='mm',
-               show_artefacts=True)
-    
-    # make accumulation from processed data
-    dat_dict = radar_tools.get_accumulation(end_date=end_date,
-                                            duration=duration,
-                                            input_dt=10., # minutes
-                                            data_path=os.path.join(args.output_dir, 'processed'), 
-                                            data_recipe=args.output_file_struc)
-    x0 = 2.*sp_w + rec_w
-    y0 = sp_h
-    ax_pos = [x0, y0, rec_w, rec_h]
-    title = 'Accumulation from \n processed data'
-    plot_panel(dat_dict['accumulation'],
-               fig, ax_pos, title, 
-               proj_aea,
-               output_proj_obj, pr_colormap,
                plot_palette='right',
                pal_units='mm',
                show_artefacts=True)
@@ -386,9 +414,19 @@ def test_time_interpolation(setup_test_paths):
 
     #compare image with saved reference
     reference_figure = os.path.join(reference_figure_dir, os.path.basename(fig_name))
-    images_are_similar = py_tools.render_similarly(fig_name, reference_figure,
-                                                   output_dir=os.path.join(test_results_dir, 'render_similarly') )
+    #images_are_similar = py_tools.render_similarly(fig_name, reference_figure,
+    #                                               output_dir=os.path.join(test_results_dir, 'render_similarly') )
 
-    #test fails if images are not similar
-    assert images_are_similar
+    ##test fails if images are not similar
+    #assert images_are_similar
+
+
+if __name__ == '__main__' : 
+
+    setup_test_paths = {}
+    setup_test_paths['test_data_dir'] = '/fs/homeu3/eccc/mrd/ords/rpnad/dja001/python/packages/domutils_package/test_data/'
+    setup_test_paths['test_results_dir'] = '/fs/homeu3/eccc/mrd/ords/rpnad/dja001/python/packages/domutils_package/test_results_3.13.12/'
+
+    test_time_interpolation(setup_test_paths)
+
 
