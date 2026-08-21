@@ -123,3 +123,39 @@ containing all the test data.
 
     
 
+Documentation assets
+------------------------------------
+
+Two static directories feed the documentation and they are not interchangeable:
+
+*docs/_static/*
+   The reference figures, downloaded from the zenodo archive. It is **erased and
+   repopulated on every build** by *scripts/download_test_data.sh*, so anything
+   written there by hand is lost. It is also in *.gitignore*.
+
+*docs/_static_custom/*
+   The hand written assets, currently the style sheet and the script making code
+   blocks collapsible. This one is versioned.
+
+Sphinx merges both into the single *_static/* directory of the generated site,
+so urls are the same either way.
+
+Collapsible code blocks
+------------------------------------
+
+Long listings that a reader can safely skip, plotting helpers and figure setup
+for instance, can be folded behind a *Show code* toggle by giving them the
+*collapse-code* class:
+
+    .. code-block:: rst
+
+       .. literalinclude:: ../domutils/radar_tools/tests/test_radar_tutorial.py
+          :language: python
+          :class: collapse-code
+          :start-after: DOCS:plot_img_begins
+          :end-before: DOCS:plot_img_ends
+
+Folding is opt in, a block is only collapsed when it asks to be. To instead fold
+every long block automatically, set *AUTO_COLLAPSE_LINES* in
+*docs/_static_custom/collapsible_code.js* to a number of lines; individual blocks
+can then be kept unfolded with *:class: no-collapse-code*.

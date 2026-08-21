@@ -97,5 +97,14 @@ html_theme_path = ["_themes", ]
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['_static']
+#
+# _static holds the reference figures downloaded from zenodo; it is erased and
+# repopulated on every build (see scripts/download_test_data.sh) so hand written
+# assets live in _static_custom instead. Sphinx merges both directories into the
+# single _static/ directory of the output, urls are unaffected.
+html_static_path = ['_static', '_static_custom']
+
+html_css_files = ['collapsible_code.css']
+
+html_js_files = ['collapsible_code.js']
 

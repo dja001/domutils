@@ -28,6 +28,7 @@ Lets start with the required imports and directory setup:
 
 .. literalinclude:: ../domutils/radar_tools/tests/test_radar_time_interpolation.py
    :language: python
+   :class: collapse-code
    :start-after: DOCS:setup_begins
    :end-before: DOCS:setup_ends
 
@@ -68,6 +69,7 @@ each individual panels.
 
 .. literalinclude:: ../domutils/radar_tools/tests/test_radar_time_interpolation.py
    :language: python
+   :class: collapse-code
    :start-after: DOCS:function_definition_begins
    :end-before: DOCS:function_definition_ends
     
@@ -76,6 +78,7 @@ See :ref:`Legs Tutorial` for information on the definition of color mapping obje
 
 .. literalinclude:: ../domutils/radar_tools/tests/test_radar_time_interpolation.py
    :language: python
+   :class: collapse-code
    :start-after: DOCS:figure_setup_begins
    :end-before: DOCS:figure_setup_ends
 
@@ -90,8 +93,8 @@ Finally, an animated gif is constructed from the frames we just made,
 
 .. literalinclude:: ../domutils/radar_tools/tests/test_radar_time_interpolation.py
    :language: python
-   :start-after: DOCS:animation_frames_begins
-   :end-before: DOCS:animation_frames_ends
+   :start-after: DOCS:animated_gif_begins
+   :end-before: DOCS:animated_gif_ends
 
 .. image:: _static/test_radar_time_interpolation/time_interpol_plain_movie.gif
     :align: center

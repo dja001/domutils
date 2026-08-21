@@ -1,0 +1,94 @@
+/*
+ * Styling for the <details> elements built by collapsible_code.js.
+ *
+ * Lives in docs/_static_custom rather than docs/_static, which is erased and
+ * repopulated from the zenodo archive at build time.
+ */
+
+:root {
+    --collapsible-code-border: #e1e4e5;
+    --collapsible-code-bg: #f3f6f6;
+    --collapsible-code-bg-hover: #e8eced;
+    --collapsible-code-fg: #404040;
+    --collapsible-code-accent: #2980b9;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --collapsible-code-border: #45494c;
+        --collapsible-code-bg: #2b2f31;
+        --collapsible-code-bg-hover: #34393b;
+        --collapsible-code-fg: #d0d0d0;
+        --collapsible-code-accent: #6ab0de;
+    }
+}
+
+details.collapsible-code {
+    margin-bottom: 24px;
+}
+
+details.collapsible-code > summary {
+    display: block;             /* hides the native triangle in most browsers */
+    cursor: pointer;
+    padding: 4px 12px 4px 26px;
+    position: relative;
+    border: 1px solid var(--collapsible-code-border);
+    border-radius: 3px;
+    background-color: var(--collapsible-code-bg);
+    color: var(--collapsible-code-fg);
+    font-size: 90%;
+    line-height: 1.6;
+    user-select: none;
+}
+
+/* and hides it in webkit, which ignores display on the summary itself */
+details.collapsible-code > summary::-webkit-details-marker {
+    display: none;
+}
+
+details.collapsible-code > summary:hover {
+    background-color: var(--collapsible-code-bg-hover);
+}
+
+details.collapsible-code > summary:focus-visible {
+    outline: 2px solid var(--collapsible-code-accent);
+    outline-offset: 1px;
+}
+
+/* our own caret, so that it looks the same in every browser */
+details.collapsible-code > summary::before {
+    content: "";
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    width: 0;
+    height: 0;
+    border-top: 4px solid transparent;
+    border-bottom: 4px solid transparent;
+    border-left: 5px solid var(--collapsible-code-accent);
+    transform: translateY(-50%);
+    transition: transform 0.15s ease;
+}
+
+details.collapsible-code[open] > summary::before {
+    transform: translateY(-50%) rotate(90deg);
+}
+
+details.collapsible-code[open] > summary {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    margin-bottom: 0;
+}
+
+/* the code block sits flush under its summary */
+details.collapsible-code[open] > summary + * {
+    margin-top: 0;
+}
+
+/* a folded block must never hide content from a printed page; the unfolding
+   itself is done from javascript, browsers no longer let css override it */
+@media print {
+    details.collapsible-code > summary {
+        display: none;
+    }
+}

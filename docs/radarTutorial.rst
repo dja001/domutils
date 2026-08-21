@@ -9,6 +9,7 @@ data that we will be reading:
 
 .. literalinclude:: ../domutils/radar_tools/tests/test_radar_tutorial.py
    :language: python
+   :class: collapse-code
    :start-after: DOCS:plot_img_begins
    :end-before: DOCS:plot_img_ends
 
@@ -17,6 +18,7 @@ quantities that will be displayed (see :ref:`legs Tutorial` for details).
 
 .. literalinclude:: ../domutils/radar_tools/tests/test_radar_tutorial.py
    :language: python
+   :class: collapse-code
    :start-after: DOCS:values_and_palette_begins
    :end-before: DOCS:values_and_palette_ends
 
