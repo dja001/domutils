@@ -64,6 +64,15 @@ with arguments provided by the attributes of a simple object.
    :start-after: DOCS:class_begins
    :end-before: DOCS:class_ends
 
+We now instantiate this object for the case being demonstrated and define 
+the domain and the times that will be used for the figures.
+
+.. literalinclude:: ../domutils/radar_tools/tests/test_radar_time_interpolation.py
+   :language: python
+   :class: collapse-code
+   :start-after: DOCS:case_setup_begins
+   :end-before: DOCS:case_setup_ends
+
 The processing of observations and time interpolation is done 
 in one simple function call.
 

@@ -202,16 +202,14 @@ def figure_for_timestep(src_delta_min, interp_delta_min, t0,
 
 # DOCS:function_definition_ends
 
-@pytest.mark.rpnpy
-def test_time_interpolation(setup_test_paths, args, 
+def interpolate_and_animate(setup_test_paths, args, 
                             proj_aea, map_extent,
                             anim_t0, anim_source_deltat):
-    """ This test runs obs_process and generates images from the output files
+    """ Run obs_process and generate images from the output files
 
-    The docs is also copied and shown as an example in the documentation
+    This function is called once for each case being demonstrated.
 
-    As such the purpose of this test is not so much to test the code but to make 
-    sure that the documentation stays up to date. 
+    Its code is also copied and shown as an example in the documentation.
     """
 
     # DOCS:setup_begins
@@ -443,20 +441,28 @@ def test_time_interpolation(setup_test_paths, args,
     #assert images_are_similar
 
 
-if __name__ == '__main__' : 
+@pytest.mark.rpnpy
+def test_time_interpolation(setup_test_paths):
+    """ This test runs obs_process and generates images from the output files
 
-    import datetime 
+    The code of this test is also copied and shown as an example in the documentation
+
+    As such the purpose of this test is not so much to test the code but to make 
+    sure that the documentation stays up to date. 
+    """
+
+    # DOCS:case_setup_begins
     import cartopy.crs as ccrs
 
+    # a new argument object is needed for each case since obs_process
+    # modifies the arguments it receives
+    args = ArgsClass(setup_test_paths)
 
-    # 20260829 
-    setup_test_paths = {}
-    setup_test_paths['test_data_dir'] = '/fs/homeu3/eccc/mrd/ords/rpnad/dja001/python/packages/domutils_package/test_data/'
-    setup_test_paths['test_results_dir'] = '/fs/homeu3/eccc/mrd/ords/rpnad/dja001/python/packages/domutils_package/test_results_3.13.12/'
+    # times of the source data that will be displayed in the animation
     anim_t0 = datetime.datetime(2022,8,29,3,42)
     anim_source_deltat = np.arange(0, 37, 6, dtype=int)    # minutes
 
-    # 300x300 Minnesota/Wisconsin
+    # domain of the figures; 300x300 km over Minnesota/Wisconsin
     pole_latitude=35.7
     pole_longitude=65.5
     lat_0 = 46.7
@@ -465,21 +471,23 @@ if __name__ == '__main__' :
     delta_lon = 4.17*.5
     map_extent=[lon_0-delta_lon, lon_0+delta_lon, lat_0-delta_lat, lat_0+delta_lat]  
     proj_aea = ccrs.RotatedPole(pole_latitude=pole_latitude, pole_longitude=pole_longitude)
+    # DOCS:case_setup_ends
 
-    # mock argument object
-    args = ArgsClass(setup_test_paths)
-
-    test_time_interpolation(setup_test_paths, args, 
+    interpolate_and_animate(setup_test_paths, args, 
                             proj_aea, map_extent,
                             anim_t0, anim_source_deltat)
 
 
+    # second case; 250 km around the Blainville radar
+    args = ArgsClass(setup_test_paths)
+    args.input_t0  = '202205212000'
+    args.input_tf  = '202205212300'
+    args.output_t0 = '202205212100'
+    args.output_tf = '202205212200'
 
-    # 20260829 
     anim_t0 = datetime.datetime(2022,5,21,21,12)
     anim_source_deltat = np.arange(0, 37, 6, dtype=int)    # minutes
 
-    ##250km around Blainville radar
     pole_latitude=90.
     pole_longitude=0.
     lat_0 = 46.
@@ -488,13 +496,19 @@ if __name__ == '__main__' :
     delta_lon = 3.12/2.
     map_extent=[lon_0-delta_lon, lon_0+delta_lon, lat_0-delta_lat, lat_0+delta_lat]  
     proj_aea = ccrs.RotatedPole(pole_latitude=pole_latitude, pole_longitude=pole_longitude)
-    # mock argument object
-    args = ArgsClass(setup_test_paths)
-    args.input_t0  = '202205212000'
-    args.input_tf  = '202205212300'
-    args.output_t0 = '202205212100'
-    args.output_tf = '202205212200'
-    test_time_interpolation(setup_test_paths, args, 
+
+    interpolate_and_animate(setup_test_paths, args, 
                             proj_aea, map_extent,
                             anim_t0, anim_source_deltat)
+
+
+if __name__ == '__main__' : 
+
+    # when called directly, the paths normally provided by the
+    # setup_test_paths fixture are defined here
+    setup_test_paths = {}
+    setup_test_paths['test_data_dir'] = '/fs/homeu3/eccc/mrd/ords/rpnad/dja001/python/packages/domutils_package/test_data/'
+    setup_test_paths['test_results_dir'] = '/fs/homeu3/eccc/mrd/ords/rpnad/dja001/python/packages/domutils_package/test_results_3.13.12/'
+
+    test_time_interpolation(setup_test_paths)
 
