@@ -5,6 +5,7 @@
 
 import pytest
 import os
+import datetime
 import numpy as np
 
 # DOCS:class_begins
@@ -89,6 +90,7 @@ def plot_panel(data,
 
 
 def figure_for_timestep(src_delta_min, interp_delta_min, t0,
+                        proj_aea,
                         input_proj_obj, output_proj_obj,
                         pr_colormap, qi_colormap, 
                         generated_figure_dir, 
@@ -98,6 +100,7 @@ def figure_for_timestep(src_delta_min, interp_delta_min, t0,
     '''
 
     import subprocess
+    import datetime
     import matplotlib as mpl
     import matplotlib.pyplot as plt
     import domutils.radar_tools as radar_tools
@@ -217,6 +220,7 @@ def test_time_interpolation(setup_test_paths, args,
     import subprocess
     import glob
     import shutil
+    import copy
     import numpy as np
     import matplotlib as mpl
     import matplotlib.pyplot as plt
@@ -325,30 +329,36 @@ def test_time_interpolation(setup_test_paths, args,
 
     # DOCS:animation_frames_begins
     interpolated_deltat = np.arange(6) # minutes
-    serial=True
+
+    # making the figures only requires the file paths found in args
+    # obs_process attached large arrays and projection objects to this object;
+    # they are removed here so that only light-weight data is sent to the dask workers
+    plot_args = copy.copy(args)
+    for attr in ('dask_client', 'proj_obj', 'out_lats', 'out_lons'):
+        setattr(plot_args, attr, None)
+
+    serial=False
     if serial:
         for src_delta_min in anim_source_deltat:
             for interp_delta_min in interpolated_deltat:
                 figure_for_timestep(src_delta_min, interp_delta_min, anim_t0, 
+                                    proj_aea,
                                     input_proj_obj, output_proj_obj,
                                     pr_colormap, qi_colormap, 
                                     generated_figure_dir, 
-                                    args, fig_w, fig_h, sp_w, sp_h, rec_w, rec_h, sp_m)
+                                    plot_args, fig_w, fig_h, sp_w, sp_h, rec_w, rec_h, sp_m)
     else:
-        #client = dask.distributed.Client(processes=True, threads_per_worker=1, 
-                                         #n_workers=20, 
-                                         #silence_logs=40) 
-
         tasks = [dask.delayed(figure_for_timestep)(src_delta_min, interp_delta_min, anim_t0, 
+                                                   proj_aea,
                                                    input_proj_obj, output_proj_obj,
                                                    pr_colormap, qi_colormap, 
                                                    generated_figure_dir, 
-                                                   args, fig_w, fig_h, sp_w, sp_h, rec_w, rec_h, sp_m)
+                                                   plot_args, fig_w, fig_h, sp_w, sp_h, rec_w, rec_h, sp_m)
                   for src_delta_min in anim_source_deltat
                   for interp_delta_min in interpolated_deltat]
 
         with LocalCluster(processes=True, n_workers=10, threads_per_worker=1) as cluster, Client(cluster) as client:
-            results = dask.compute(tasks)  # parallel execution
+            results = dask.compute(*tasks)  # parallel execution
     
     # DOCS:animation_frames_ends
 

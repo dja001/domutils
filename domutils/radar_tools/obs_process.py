@@ -1435,6 +1435,9 @@ def obs_process(args=None):
 
     if args.dask_client is not None:
         args.dask_client.close()
+        # the client object is not serializable; leaving it attached to args
+        # would break any subsequent parallel computation using these args
+        args.dask_client = None
 
 
 
