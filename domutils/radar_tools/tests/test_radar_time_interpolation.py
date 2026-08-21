@@ -384,10 +384,11 @@ def interpolate_and_animate(setup_test_paths, args,
     duration = 30 # minutes
     end_date = anim_t0 + datetime.timedelta(minutes=30)
 
-    # the next figure is only two panels
-    fig_h /= 2
-    rec_h /= 2
-    sp_h  /= 2
+    # the next figure has only one row of panels
+    # the panels keep the same size, only the height of the figure changes
+    fig_h = 8.                         #size of figure
+    rec_h = ratio*(rec_w*fig_w)/fig_h  #size of axes
+    sp_h  = .5/fig_h                   #space between panel and border
     
     # instantiate figure
     fig = plt.figure(figsize=(fig_w,fig_h))
