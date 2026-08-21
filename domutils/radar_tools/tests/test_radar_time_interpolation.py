@@ -323,8 +323,8 @@ def test_time_interpolation(setup_test_paths):
     # DOCS:figure_setup_ends
 
     # DOCS:animation_frames_begins
-    t0 = datetime.datetime(2022,8,29,3,48)
-    source_deltat = np.arange(0, 30, 6, dtype=int)    # minutes
+    t0 = datetime.datetime(2022,8,29,3,42)
+    source_deltat = np.arange(0, 37, 6, dtype=int)    # minutes
     interpolated_deltat = np.arange(6) # minutes
     serial=False
     if serial:

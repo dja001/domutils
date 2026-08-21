@@ -697,13 +697,13 @@ def _t_interp_at_one_time(this_time, args ):
         # make qi diminish as a result of advection
         weighted_qi_arr[:,:,pp] = item['weight']*advected_quality
 
-    ###--------------------------------------------------------------------
-    ### Weighted median filter of all nowcasts together
-    ##interpolated_precip, interpolated_quality = weighted_median_3d(rr_arr, weighted_qi_arr, qi_arr)
-
-    #interpolated_quality = qi_arr[:,:,0]
-    #interpolated_precip  = np.where(np.isfinite(interpolated_precip), interpolated_precip, missing)
-    #interpolated_quality  = np.where(np.isfinite(interpolated_quality), interpolated_quality, missing)
+    # just for debugging/illustrations
+    #time_str = this_time.strftime('%Y%m%d%H%M')
+    #savename = f'/space/hall7/sitestore/eccc/mrd/rpnad/dja001/tmp/tmp_advected_data/{time_str}_adveced_data.npz'
+    #print(savename)
+    #np.savez(savename, rr_arr          = rr_arr,
+    #                   qi_arr          = qi_arr,
+    #                   weighted_qi_arr = weighted_qi_arr)
 
 
     ###--------------------------------------------------------------------
