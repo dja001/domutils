@@ -1,17 +1,25 @@
 
-Time interpolation using nowcasting
+Temporal interpolation using nowcasting
 ----------------------------------------------
 
-Sometimes, you need reflectivity or precipitation-rates at moments in time
-that do not match exactly with the time at which observational data is
-available. 
-Simple linear interpolation between two fields at different times will not do 
-a goot job because of precipitation displacement. 
+Nowcast-based temporal interpolation was developped to solve the three following 
+problems simultaneously:
 
-As a solution to this, the module `obs_process` provides a nowcast 
-interpolation functionality. The basic idea is that data at intermediate timesteps, 
-data is estimated as a weighted average of the forward advection of the 
-observations before and backward advection of the observations after. 
+1- Often, one might need data at times other than the six-minute resolution of available 
+radar mosaics. 
+For data assimilation purposes, radar data is required at time resolutions between 1 and 7.5 
+minutes depending on the timestep of the model being used.
+
+2- Prior to assimilation, smoothing is required for the spatial resolution of radar data 
+to match the effective resolution of the simulated precipitation.
+This avoids assimilating small scales that the model cannot simulate.
+Many data gaps from US radars when they use scanning routines (VCPs) > 6 minutes 
+and Canadian data in cases of network delays. 
+
+3- As a solution to this, the `obs_process` module provides a nowcast-based
+temporal interpolation functionality. 
+The basic idea is that data at intermediate timesteps, 
+is estimated as a quality-weighted aggregate of advected neighbors. 
 
 .. image:: _static/illustrative/nowcast_time_interpolation.svg
     :align: center
