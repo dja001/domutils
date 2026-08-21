@@ -42,6 +42,7 @@ information.
 
 .. literalinclude:: ../domutils/legs/tests/test_legs_tutorial.py
    :language: python
+   :class: collapse-code
    :start-after: DOCS:setup_begins
    :end-before: DOCS:setup_ends
 

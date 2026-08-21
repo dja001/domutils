@@ -8,6 +8,13 @@ Please use the following tags when editing this file:
 *Removed* for now removed features.
 *Fixed* for any bug fixes. 
 
+## [2.3.6] - 2026-08-21
+### Added
+- documentation  long code blocks can now be folded behind a "Show code" toggle with :class: collapse-code
+- documentation  hand written documentation assets now live in docs/_static_custom, docs/_static being erased at every build
+### Fixed
+- documentation  the animated gif section of the time interpolation tutorial was showing the animation frames code a second time
+
 ## [2.3.5] - 2026-06-30
 ### Changed
 - radar_tools  plotting routine in obs_process now used matplotlib's backend for saving different image formats
