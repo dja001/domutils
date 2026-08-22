@@ -8,6 +8,10 @@ Please use the following tags when editing this file:
 *Removed* for now removed features.
 *Fixed* for any bug fixes. 
 
+## [2.3.8] - 2026-08-22
+### Changed
+- Nowcast time interpolation demo in png to avoig svg issues
+
 ## [2.3.7] - 2026-08-22
 ### Changed
 - Edited description of nowcast time interpolation to match poster at ERAD conference
