@@ -30,16 +30,18 @@ Note how the interpolation bridges the gap when source data is unavailable.
     :align: center
 
 The interpolation is performed by the **obs_process** module.
-The basic idea is that data at intermediate timesteps is estimated as a
-quality-weighted aggregate of advected neighbors.
+The basic idea is that the temporally interpolated data at intermediate timesteps 
+is estimated as a quality-weighted aggregate of advected neighbors.
+By selecting :math:`\delta_t^{\text{max}}` such that 4 or 5 neighbors contribute
+to each aggregate, data gaps go mostly unnoticed. 
 
 Motion vectors are first estimated from consecutive source mosaics using the
 Lucas-Kanade optical flow of `pysteps <https://pysteps.readthedocs.io>`_.
-Every source mosaic that is closer in time than *interp_max_dt* then contributes
-to the output; each one is advected to the desired time, forward or backward,
-with a semi-Lagrangian scheme.
+Every source mosaic that is closer in time than :math:`\delta_t^{\text{max}}` 
+then contributes to the output; each one is advected to the desired time, 
+forward or backward, with a semi-Lagrangian scheme.
 The weight of each contribution decreases linearly with the duration of the
-advection and reaches zero at *interp_max_dt*.
+advection and reaches zero at :math:`\delta_t^{\text{max}}`.
 Because this weight multiplies the quality index of the advected data, an
 estimate that had to be advected over a long time interval is given less
 importance than one that comes from a nearby time.
@@ -86,6 +88,7 @@ with arguments provided by the attributes of a simple object.
 
 .. literalinclude:: ../domutils/radar_tools/tests/test_radar_time_interpolation.py
    :language: python
+   :class: collapse-code
    :start-after: DOCS:class_begins
    :end-before: DOCS:class_ends
 
@@ -115,7 +118,7 @@ function for plotting each individual panel.
    :start-after: DOCS:function_definition_begins
    :end-before: DOCS:function_definition_ends
 
-We now setup the general characteristics of the figure being generated.
+then we setup the general characteristics of the figure being generated.
 See :ref:`Legs Tutorial` for information on the definition of color mapping objects.
 
 .. literalinclude:: ../domutils/radar_tools/tests/test_radar_time_interpolation.py
@@ -124,10 +127,11 @@ See :ref:`Legs Tutorial` for information on the definition of color mapping obje
    :start-after: DOCS:figure_setup_begins
    :end-before: DOCS:figure_setup_ends
 
-Now, we make individual frames of the animation.
+Individual frames of the animation are made serially or in parallel. 
 
 .. literalinclude:: ../domutils/radar_tools/tests/test_radar_time_interpolation.py
    :language: python
+   :class: collapse-code
    :start-after: DOCS:animation_frames_begins
    :end-before: DOCS:animation_frames_ends
 
@@ -135,12 +139,13 @@ Finally, an animated gif is constructed from the frames we just made,
 
 .. literalinclude:: ../domutils/radar_tools/tests/test_radar_time_interpolation.py
    :language: python
+   :class: collapse-code
    :start-after: DOCS:animated_gif_begins
    :end-before: DOCS:animated_gif_ends
 
 The animation shown at the top of this page was obtained with the code above.
 Running the same code with different dates and a different domain gives the
-animation below, for the squall line that crossed southern Quebec on
+animation below, for the derecho that crossed southern Quebec on
 21 May 2022.
 
 .. image:: _static/test_radar_time_interpolation/202205_movie.gif

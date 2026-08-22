@@ -245,13 +245,11 @@ def interpolate_and_animate(setup_test_paths, args,
 
 
 
-    # DOCS:process_data_begins
 
-    
     # observations are processed here
     # the output are saved in individual files 
+    # DOCS:process_data_begins
     radar_tools.obs_process(args)
-
     # DOCS:process_data_ends
 
 
