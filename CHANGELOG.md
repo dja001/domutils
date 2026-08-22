@@ -8,6 +8,11 @@ Please use the following tags when editing this file:
 *Removed* for now removed features.
 *Fixed* for any bug fixes. 
 
+## [2.3.7] - 2026-08-22
+### Changed
+- Edited description of nowcast time interpolation to match poster at ERAD conference
+
+- documentation  the animated gif section of the time interpolation tutorial was showing the animation frames code a second time
 ## [2.3.6] - 2026-08-21
 ### Added
 - documentation  long code blocks can now be folded behind a "Show code" toggle with :class: collapse-code
