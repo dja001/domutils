@@ -9,7 +9,7 @@ set -v
 #DOI will be 10.5281/zenodo.${record_number}
 #
 #v1.1.2
-record_number=19953655
+record_number=22057290
 
 # this function takes one argument for downloading only the _static directory
 if [[ "$1" = "figures_only" ]] ; then
