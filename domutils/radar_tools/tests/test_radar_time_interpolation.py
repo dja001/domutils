@@ -18,11 +18,11 @@ class ArgsClass():
         generated_files_dir  = os.path.join(test_results_dir, 'generated_files',   'test_radar_time_interpolation')
         generated_figure_dir = os.path.join(test_results_dir, 'generated_figures', 'test_radar_time_interpolation')
 
-        self.input_t0                 = '202208290200'
-        self.input_tf                 = '202208290700'
+        self.input_t0                 = '202208290230'
+        self.input_tf                 = '202208290530'
         self.input_dt                 = '6M'
-        self.output_t0                = '202208290300'
-        self.output_tf                = '202208290600'
+        self.output_t0                = '202208290330'
+        self.output_tf                = '202208290430'
         self.output_dt                = '1M'
         self.interp_max_dt            = '13M'
         self.complete_dataset         = 'False'
@@ -31,7 +31,7 @@ class ArgsClass():
         self.input_file_struc         = '%Y/qcomp_%Y%m%d%H%M.h5'
         self.h5_latlon_file           = os.path.join(test_data_dir, 'radar_continental_2.5km_2882x2032.pickle')
         self.sample_pr_file           = os.path.join(test_data_dir, 'hrdps_5p1_prp0.fst')
-        self.ncores                   = 60    # use as many cpus as you have on your system 
+        self.ncores                   = 40    # use as many cpus as you have on your system 
         self.preproc_median_filt      = '3'
         self.preproc_smooth_radius    = '4'
         self.nowcast_median_filt      = '3'
@@ -141,7 +141,7 @@ def figure_for_timestep(src_delta_min, interp_delta_min, t0,
                proj_aea, 
                input_proj_obj, pr_colormap,
                plot_palette='right',
-               pal_units='mm/h')
+               pal_units='[mm/h]')
 
     # source quality index
     x0 = sp_w + rec_w + sp_m
@@ -167,7 +167,9 @@ def figure_for_timestep(src_delta_min, interp_delta_min, t0,
     plot_panel(dat_dict['precip_rate'],
                fig, ax_pos, title, 
                proj_aea, 
-               output_proj_obj, pr_colormap)
+               output_proj_obj, pr_colormap,
+               plot_palette='right',
+               pal_units='[mm/h]')
 
     # quality index 
     x0 = sp_w  + rec_w + sp_m
@@ -240,18 +242,13 @@ def interpolate_and_animate(setup_test_paths, args,
 
     py_tools.parallel_mkdir(generated_files_dir)
     py_tools.parallel_mkdir(generated_figure_dir)
-
     # DOCS:setup_ends
-
-
-
 
     # observations are processed here
     # the output are saved in individual files 
     # DOCS:process_data_begins
     radar_tools.obs_process(args)
     # DOCS:process_data_ends
-
 
     # DOCS:figure_setup_begins
     dpi = 400
@@ -484,7 +481,7 @@ def test_time_interpolation(setup_test_paths):
     args.output_t0 = '202205212100'
     args.output_tf = '202205212200'
 
-    anim_t0 = datetime.datetime(2022,5,21,21,12)
+    anim_t0 = datetime.datetime(2022,5,21,21,0)
     anim_source_deltat = np.arange(0, 37, 6, dtype=int)    # minutes
 
     pole_latitude=90.
