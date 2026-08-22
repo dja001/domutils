@@ -8,8 +8,8 @@ set -v
 #get doi for the test data associated with this version of domutils
 #DOI will be 10.5281/zenodo.${record_number}
 #
-#v1.1.2
-record_number=22057290
+#Version v12
+record_number=22057678
 
 # this function takes one argument for downloading only the _static directory
 if [[ "$1" = "figures_only" ]] ; then

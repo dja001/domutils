@@ -48,7 +48,7 @@ importance than one that comes from a nearby time.
 The precipitation rate is the average of the advected estimates weighted by
 these reduced quality indices.
 
-.. image:: _static/illustrative/nowcast_time_interpolation.svg
+.. image:: _static/illustrative/nowcast_time_interpolation.png
     :align: center
     :width: 800px
 
