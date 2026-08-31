@@ -86,7 +86,6 @@ def read_h5_vol(odim_file:   str=None,
     import pickle
     import time
     import numpy as np
-    import h5py
     import domutils.radar_tools as radar_tools
     import domutils.geo_tools   as geo_tools
 
@@ -111,7 +110,8 @@ def read_h5_vol(odim_file:   str=None,
         quantities = [qty.lower() for qty in quantities]
 
     #open odim file for reading
-    h5_obj = h5py.File(odim_file, 'r')
+    h5_obj = radar_tools.PrefixedODimH5(odim_file)
+    h5_obj.open()
 
     #dictionary as output
     out_dict = {}

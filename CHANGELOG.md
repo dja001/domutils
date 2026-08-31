@@ -8,6 +8,12 @@ Please use the following tags when editing this file:
 *Removed* for now removed features.
 *Fixed* for any bug fixes. 
 
+## [2.3.9] - 2026-08-31
+### Added
+- radar_tools  new PrefixedODimH5 context manager to open ODim-HDF5 files with an MSC telex-style text header prepended (archived CAS files); the HDF5 payload is relocated to a temp file that is removed on exit
+### Changed
+- radar_tools  read_h5_vol now uses PrefixedODimH5 to open the ODim file, so files with a text prefix can now be read
+
 ## [2.3.8] - 2026-08-22
 ### Changed
 - Nowcast time interpolation demo in png to avoid svg issues
