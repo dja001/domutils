@@ -6,7 +6,8 @@ def read_h5_vol(odim_file:   str=None,
                 quantities:       Optional[Any]  = 'all',
                 include_quality:  Optional[bool] = False,
                 no_data:          Optional[float]= -9999.,
-                undetect:         Optional[float]= -3333.) :
+                undetect:         Optional[float]= -3333.,
+                explore:          Optional[bool] = False) :
 
     """ Read reflectivity and quality index from OdimH5 composite
         
@@ -34,10 +35,15 @@ def read_h5_vol(odim_file:   str=None,
         include_quality   Quality field will be included along side quantities
         no_data:          Value that will be assigned to missing values
         undetect:         Value that will be assigned to valid measurement of no precipitation
+        explore:          When true, the function will not read the data but simply open the
+                          file and print a summary of its entire content (all data sets and
+                          metadata) on screen before returning None. Handy for inspecting an
+                          unknown ODIM H5 file.
 
     Returns:
 
         None:             If no or invalid file present or desired elevation or quantities not found.
+                          Also returned (after printing the content summary) when explore=True.
 
         or a dictionary which mimics the structure of odim h5 files::
             
@@ -96,10 +102,14 @@ def read_h5_vol(odim_file:   str=None,
     if odim_file is None :
         raise ValueError('odim_file must be provided')
     else :
-        if not os.path.isfile(odim_file) :
-            #no file present print warning and return None
-            logger.warning('odim_file: ' + odim_file + ' does not exist. Returning None.')
-            return None
+            if not os.path.isfile(odim_file) :
+                #no file present print warning and return None
+                logger.warning('odim_file: ' + odim_file + ' does not exist. Returning None.')
+                return None
+
+    if explore:
+        _explore_odimh5(odim_file)
+        return None
 
     logger.info('Reading: ' + str(quantities) +' from: ' + odim_file)
 
@@ -272,6 +282,143 @@ def read_h5_vol(odim_file:   str=None,
         return out_dict 
 
            
+
+def _explore_odimh5(odim_file: str) -> None:
+    """ Open an ODIM H5 file and print a summary of all its data and metadata.
+
+    This is a purely informational routine used when read_h5_vol is called with
+    explore=True. It walks through the whole file (file-level what/where/how,
+    every PPI cut and the data/quality entries inside them) and prints a
+    human readable report on screen. Multi-element arrays are summarised by
+    their shape and dtype and long text values are truncated to one line so
+    that the report stays easy to read.
+
+    Args:
+        odim_file:   /path/to/odim/volume.h5
+    """
+    import os
+    import numpy as np
+    import domutils.radar_tools as radar_tools
+
+    longstr_limit = 100
+
+    def _val(v):
+        # turn a raw h5py attribute value into a short printable string
+        if isinstance(v, (bytes, np.bytes_)):
+            try:
+                s = v.decode('utf-8')
+            except Exception:
+                return repr(v)
+        elif isinstance(v, np.ndarray):
+            if v.size > 8:
+                return '<array shape={} dtype={}>'.format(v.shape, v.dtype)
+            return 'array{} {}'.format(v.shape, v.tolist())
+        elif isinstance(v, np.generic):
+            return v.item()
+        else:
+            s = str(v)
+        # keep the report on one line
+        s = ' '.join(s.split())
+        if len(s) > longstr_limit:
+            s = s[:longstr_limit] + ' ... (' + str(len(s)) + ' chars total)'
+        return s
+
+    def _print_attrs(attrs, indent='    '):
+        # print a dict of attributes aligned on the key column
+        if not attrs:
+            print(indent + '(no attributes)')
+            return
+        keys = list(attrs.keys())
+        width = max(len(str(k)) for k in keys)
+        for k in keys:
+            print('{}{}:{} {}'.format(
+                indent, str(k).ljust(width), ' ', _val(attrs[k])))
+
+    def _num(key):
+        d = ''.join(ch for ch in key if ch.isdigit())
+        return int(d) if d else 0
+
+    h5_obj = radar_tools.PrefixedODimH5(odim_file)
+    h5_obj.open()
+    try:
+        sep = '=' * 72
+        print(sep)
+        print('ODIM H5 file exploration')
+        print(sep)
+        print('File:        ' + odim_file)
+        size = os.path.getsize(odim_file)
+        print('File size:   {:,} bytes ({:.2f} MB)'.format(size, size / 1e6))
+        if 'Conventions' in h5_obj.attrs:
+            print('Conventions: ' + _val(h5_obj.attrs['Conventions']))
+        print()
+
+        #file level metadata
+        top_keys = h5_obj.keys()
+        for grp in ('what', 'where', 'how'):
+            if grp in top_keys:
+                print('--- file/{} ---'.format(grp))
+                _print_attrs(dict(h5_obj[grp].attrs))
+                print()
+
+        #one dataset per PPI cut
+        datasets = [k for k in h5_obj.keys() if k.startswith('dataset')]
+        datasets.sort(key=_num)
+        print(sep)
+        print('PPI cuts (datasets) found: {}'.format(len(datasets)))
+        print(sep)
+
+        for dsname in datasets:
+            ds = h5_obj[dsname]
+            where_a = dict(ds['where'].attrs) if 'where' in ds else {}
+            what_a  = dict(ds['what'].attrs)  if 'what'  in ds else {}
+            how_a   = dict(ds['how'].attrs)   if 'how'   in ds else {}
+
+            el = where_a.get('elangle')
+            print()
+            print('--- {}  (elangle={}) ---'.format(dsname, _val(el)))
+            #geometry / range info
+            geo = {k: where_a[k] for k in
+                   ('elangle', 'nrays', 'nbins', 'rstart', 'rscale', 'a1gate')
+                   if k in where_a}
+            if geo:
+                print('  where (geometry / range):')
+                _print_attrs(geo)
+            if what_a:
+                print('  what (time / product):')
+                _print_attrs(what_a)
+
+            #data and quality entries
+            entries = [k for k in ds.keys()
+                       if k.startswith('data') or k.startswith('quality')]
+            entries.sort(key=lambda k: (not k.startswith('data'), _num(k)))
+            for ename in entries:
+                en = ds[ename]
+                shape = en['data'].shape
+                dtype = en['data'].dtype
+                w_attrs = dict(en['what'].attrs) if 'what' in en else {}
+                h_attrs = dict(en['how'].attrs)  if 'how'  in en else {}
+                conv = []
+                for ck in ('gain', 'offset', 'nodata', 'undetect'):
+                    if ck in w_attrs:
+                        conv.append('{}={}'.format(ck, _val(w_attrs[ck])))
+                conv_s = ('  [' + ', '.join(conv) + ']') if conv else ''
+                if ename.startswith('data'):
+                    qty = w_attrs.get('quantity', '?')
+                    print('  {}: quantity={:<12} shape={} dtype={}{}'.format(
+                        ename, _val(qty), shape, dtype, conv_s))
+                else:
+                    task = h_attrs.get('task', '?')
+                    print('  {}: quality     task={} shape={} dtype={}{}'.format(
+                        ename, _val(task), shape, dtype, conv_s))
+
+            #per cut how attributes (summarised)
+            if how_a:
+                print('  how attributes ({}):'.format(len(how_a)))
+                _print_attrs(how_a)
+    finally:
+        h5_obj.close()
+    print()
+
 
 if __name__ == "__main__":
     import doctest
