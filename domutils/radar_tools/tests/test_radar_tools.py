@@ -213,6 +213,56 @@ def test_read_odim_vol(setup_test_paths):
 
 
 
+def test_read_odim_vol_prefixed(setup_test_paths):
+    """ test that volume scans with an MSC telex-style text header in front
+    of the HDF5 payload are read correctly
+    """
+    import os
+    import numpy as np
+    import domutils
+    import domutils.radar_tools as radar_tools
+
+    #setting up directories
+    test_data_dir = setup_test_paths['test_data_dir']
+
+    sample_file = os.path.join(test_data_dir, 'odimh5_radar_volume_scans',
+                               '20260610T0118Z_MSC_Radar-VolumeScans_CASFW.hdf5')
+
+    #the sample file must carry a text header before the HDF5 payload,
+    #otherwise this test does not exercise the prefixed reading path
+    with open(sample_file, 'rb') as fst:
+        head = fst.read(1024)
+    offset = head.find(b'\x89HDF\r\n\x1a\n')
+    assert offset > 0, 'sample file does not start with a text header'
+
+    res = radar_tools.read_h5_vol(odim_file=sample_file,
+                                  elevations=[0.4],
+                                  quantities=['dbzh'],
+                                  include_quality=True,
+                                  latlon=True)
+    #check returned radar dictionary
+    expected = set(['radar_height', 'radar_lat', 'radar_lon', 'date_str', '0.4'])
+    assert set(res.keys()) == expected
+
+    #check returned ppi dictionary
+    ppi_keys = set(res['0.4'].keys())
+    expected = set(['dbzh', 'nominal_elevation',
+                    'azimuths', 'elevations', 'ranges', 'latitudes',
+                    'longitudes', 'm43_heights'])
+    assert ppi_keys == expected
+
+    #check returned values
+    dbz = res['0.4']['dbzh'][300, 400:410]
+    expected = np.array([6., 6., 5., 6., 7.5, 5., 9., 7.5, 7., 9.5])
+    assert np.allclose(dbz, expected)
+
+    #check returned latitudes
+    lats = res['0.4']['latitudes'][300, 400:405]
+    expected = np.array([48.97779295, 48.97385303, 48.96991303,
+                         48.96597296, 48.96203281])
+    assert np.allclose(lats, expected)
+
+
 def test_read_stageiv(setup_test_paths):
     """ test funtion that reads a stageIV
 
