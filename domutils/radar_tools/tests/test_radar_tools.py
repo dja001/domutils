@@ -263,6 +263,37 @@ def test_read_odim_vol_prefixed(setup_test_paths):
     assert np.allclose(lats, expected)
 
 
+def test_explore_odim_vol(setup_test_paths, capsys):
+    """ test that explore=True prints a summary of the file content
+    and returns None
+    """
+    import os
+    import domutils
+    import domutils.radar_tools as radar_tools
+
+    #setting up directories
+    test_data_dir = setup_test_paths['test_data_dir']
+
+    sample_file = os.path.join(test_data_dir, 'odimh5_radar_volume_scans',
+                               '20260610T0118Z_MSC_Radar-VolumeScans_CASFW.hdf5')
+
+    res = radar_tools.read_h5_vol(odim_file=sample_file, explore=True)
+    assert res is None
+
+    #the summary printed on screen
+    report = capsys.readouterr().out
+    assert 'ODIM H5 file exploration' in report
+    assert sample_file in report
+    #the sample file carries 17 PPI cuts
+    assert 'PPI cuts (datasets) found: 17' in report
+    #first and last PPI cut are in the report
+    assert 'dataset1' in report
+    assert 'dataset17' in report
+    #a few quantities found in each PPI cut
+    assert 'DBZH' in report
+    assert 'VRADH' in report
+
+
 def test_read_stageiv(setup_test_paths):
     """ test funtion that reads a stageIV
 
