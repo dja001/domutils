@@ -213,17 +213,20 @@ def test_read_odim_vol(setup_test_paths):
 
 
 
-def test_read_odim_vol_prefixed(setup_test_paths):
+def test_read_odim_vol_prefixed(setup_test_paths, monkeypatch):
     """ test that volume scans with an MSC telex-style text header in front
     of the HDF5 payload are read correctly
     """
     import os
+    import tempfile
     import numpy as np
     import domutils
     import domutils.radar_tools as radar_tools
+    import domutils._py_tools as py_tools
 
     #setting up directories
-    test_data_dir = setup_test_paths['test_data_dir']
+    test_data_dir    = setup_test_paths['test_data_dir']
+    test_results_dir = setup_test_paths['test_results_dir']
 
     sample_file = os.path.join(test_data_dir, 'odimh5_radar_volume_scans',
                                '20260610T0118Z_MSC_Radar-VolumeScans_CASFW.hdf5')
@@ -262,6 +265,39 @@ def test_read_odim_vol_prefixed(setup_test_paths):
                          48.96597296, 48.96203281])
     assert np.allclose(lats, expected)
 
+    #the temporary copy of the stripped file can be placed in a custom directory
+    tmp_dir = os.path.join(test_results_dir, 'tmp_dir')
+    py_tools.parallel_mkdir(tmp_dir)
+
+    #monkeypatch is a pytest fixture: setattr replaces an attribute for the
+    #duration of the test and restores the original afterwards, even if the
+    #test fails (pytest's take on unittest.mock.patch, without the
+    #context manager boilerplate).
+    #PrefixedODimH5.__enter__ does 'import tempfile' itself and calls
+    #tempfile.mkstemp at call time, so patching the attribute on the tempfile
+    #module intercepts that call.
+    #mkstemp_recorder logs which directory was requested, then does the real
+    #work so the temporary file is genuinely created and cleaned up.
+    real_mkstemp = tempfile.mkstemp
+    captured_dir = []
+    def mkstemp_recorder(*args, **kwargs):
+        captured_dir.append(kwargs.get('dir', None))
+        return real_mkstemp(*args, **kwargs)
+    monkeypatch.setattr(tempfile, 'mkstemp', mkstemp_recorder)
+
+    res = radar_tools.read_h5_vol(odim_file=sample_file,
+                                  elevations=[0.4],
+                                  quantities=['dbzh'],
+                                  tmp_dir=tmp_dir)
+    #the temporary file must have been created in the requested directory
+    assert captured_dir == [tmp_dir]
+    #and cleaned up when the file was closed
+    assert os.listdir(tmp_dir) == []
+
+    #returned values are unaffected
+    expected = np.array([6., 6., 5., 6., 7.5, 5., 9., 7.5, 7., 9.5])
+    assert np.allclose(res['0.4']['dbzh'][300, 400:410], expected)
+
 
 def test_explore_odim_vol(setup_test_paths, capsys):
     """ test that explore=True prints a summary of the file content
@@ -280,7 +316,10 @@ def test_explore_odim_vol(setup_test_paths, capsys):
     res = radar_tools.read_h5_vol(odim_file=sample_file, explore=True)
     assert res is None
 
-    #the summary printed on screen
+    #capsys is a pytest fixture that captures everything written to
+    #sys.stdout/sys.stderr during the test; readouterr() returns that output
+    #since the last call as a namedtuple with .out and .err, so we can assert
+    #on the printed summary instead of letting it leak into the pytest output
     report = capsys.readouterr().out
     assert 'ODIM H5 file exploration' in report
     assert sample_file in report
