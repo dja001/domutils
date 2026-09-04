@@ -10,4 +10,5 @@ from .read_stage4_composite import read_stage4_composite
 from .read_mrms             import read_mrms
 from .plot_rdpr_rdqi        import plot_rdpr_rdqi
 from .obs_process           import obs_process
+from .prefixed_odimh5       import PrefixedODimH5
 from .                      import median_filter

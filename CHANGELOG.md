@@ -8,6 +8,14 @@ Please use the following tags when editing this file:
 *Removed* for now removed features.
 *Fixed* for any bug fixes. 
 
+## [2.3.9] - 2026-09-04
+### Added
+- radar_tools  new header stripping class (PrefixedODimH5) to open ODim-HDF5 files with a MSC telex-style text header prepended (archived CAS files); dearchived volume scans have such a header in front of the HDF5 signature and are otherwise unreadable, the HDF5 payload is relocated to a temp file that is removed on exit
+- radar_tools  read_h5_vol accepts a new explore keyword argument that prints a summary of the entire content of an ODim H5 file and returns None
+- new test volume scan with an MSC telex-style text header, and tests for prefixed reading, the explore option, no_data/undetect handling, all/multi-elevation reads and not-found behaviour
+### Changed
+- radar_tools  read_h5_vol now uses PrefixedODimH5 to open the ODim file, so files with a text prefix can now be read
+
 ## [2.3.8] - 2026-08-22
 ### Changed
 - Nowcast time interpolation demo in png to avoid svg issues

@@ -213,6 +213,258 @@ def test_read_odim_vol(setup_test_paths):
 
 
 
+def test_read_odim_vol_prefixed(setup_test_paths, monkeypatch):
+    """ test that volume scans with an MSC telex-style text header in front
+    of the HDF5 payload are read correctly
+    """
+    import os
+    import tempfile
+    import numpy as np
+    import domutils
+    import domutils.radar_tools as radar_tools
+    import domutils._py_tools as py_tools
+
+    #setting up directories
+    test_data_dir    = setup_test_paths['test_data_dir']
+    test_results_dir = setup_test_paths['test_results_dir']
+
+    sample_file = os.path.join(test_data_dir, 'odimh5_radar_volume_scans',
+                               '20260610T0118Z_MSC_Radar-VolumeScans_CASFW.hdf5')
+
+    #the sample file must carry a text header before the HDF5 payload,
+    #otherwise this test does not exercise the prefixed reading path
+    with open(sample_file, 'rb') as fst:
+        head = fst.read(1024)
+    offset = head.find(b'\x89HDF\r\n\x1a\n')
+    assert offset > 0, 'sample file does not start with a text header'
+
+    res = radar_tools.read_h5_vol(odim_file=sample_file,
+                                  elevations=[0.4],
+                                  quantities=['dbzh'],
+                                  include_quality=True,
+                                  latlon=True)
+    #check returned radar dictionary
+    expected = set(['radar_height', 'radar_lat', 'radar_lon', 'date_str', '0.4'])
+    assert set(res.keys()) == expected
+
+    #check returned ppi dictionary
+    ppi_keys = set(res['0.4'].keys())
+    expected = set(['dbzh', 'nominal_elevation',
+                    'azimuths', 'elevations', 'ranges', 'latitudes',
+                    'longitudes', 'm43_heights'])
+    assert ppi_keys == expected
+
+    #check returned values
+    dbz = res['0.4']['dbzh'][300, 400:410]
+    expected = np.array([6., 6., 5., 6., 7.5, 5., 9., 7.5, 7., 9.5])
+    assert np.allclose(dbz, expected)
+
+    #check returned latitudes
+    lats = res['0.4']['latitudes'][300, 400:405]
+    expected = np.array([48.97779295, 48.97385303, 48.96991303,
+                         48.96597296, 48.96203281])
+    assert np.allclose(lats, expected)
+
+    #the temporary copy of the stripped file can be placed in a custom directory
+    tmp_dir = os.path.join(test_results_dir, 'tmp_dir')
+    py_tools.parallel_mkdir(tmp_dir)
+
+    #monkeypatch is a pytest fixture: setattr replaces an attribute for the
+    #duration of the test and restores the original afterwards, even if the
+    #test fails (pytest's take on unittest.mock.patch, without the
+    #context manager boilerplate).
+    #PrefixedODimH5.__enter__ does 'import tempfile' itself and calls
+    #tempfile.mkstemp at call time, so patching the attribute on the tempfile
+    #module intercepts that call.
+    #mkstemp_recorder logs which directory was requested, then does the real
+    #work so the temporary file is genuinely created and cleaned up.
+    real_mkstemp = tempfile.mkstemp
+    captured_dir = []
+    def mkstemp_recorder(*args, **kwargs):
+        captured_dir.append(kwargs.get('dir', None))
+        return real_mkstemp(*args, **kwargs)
+    monkeypatch.setattr(tempfile, 'mkstemp', mkstemp_recorder)
+
+    res = radar_tools.read_h5_vol(odim_file=sample_file,
+                                  elevations=[0.4],
+                                  quantities=['dbzh'],
+                                  tmp_dir=tmp_dir)
+    #the temporary file must have been created in the requested directory
+    assert captured_dir == [tmp_dir]
+    #and cleaned up when the file was closed
+    assert os.listdir(tmp_dir) == []
+
+    #returned values are unaffected
+    expected = np.array([6., 6., 5., 6., 7.5, 5., 9., 7.5, 7., 9.5])
+    assert np.allclose(res['0.4']['dbzh'][300, 400:410], expected)
+
+
+def test_explore_odim_vol(setup_test_paths, capsys):
+    """ test that explore=True prints a summary of the file content
+    and returns None
+    """
+    import os
+    import domutils
+    import domutils.radar_tools as radar_tools
+
+    #setting up directories
+    test_data_dir = setup_test_paths['test_data_dir']
+
+    sample_file = os.path.join(test_data_dir, 'odimh5_radar_volume_scans',
+                               '20260610T0118Z_MSC_Radar-VolumeScans_CASFW.hdf5')
+
+    res = radar_tools.read_h5_vol(odim_file=sample_file, explore=True)
+    assert res is None
+
+    #capsys is a pytest fixture that captures everything written to
+    #sys.stdout/sys.stderr during the test; readouterr() returns that output
+    #since the last call as a namedtuple with .out and .err, so we can assert
+    #on the printed summary instead of letting it leak into the pytest output
+    report = capsys.readouterr().out
+    assert 'ODIM H5 file exploration' in report
+    assert sample_file in report
+    #the sample file carries 17 PPI cuts
+    assert 'PPI cuts (datasets) found: 17' in report
+    #first and last PPI cut are in the report
+    assert 'dataset1' in report
+    assert 'dataset17' in report
+    #a few quantities found in each PPI cut
+    assert 'DBZH' in report
+    assert 'VRADH' in report
+
+
+def test_read_odim_vol_nodata_undetect(setup_test_paths):
+    """ test that bytes marked nodata or undetect in the file are replaced
+    by the requested no_data and undetect values
+    """
+    import os
+    import numpy as np
+    import domutils
+    import domutils.radar_tools as radar_tools
+
+    #setting up directories
+    test_data_dir = setup_test_paths['test_data_dir']
+
+    sample_file = os.path.join(test_data_dir, 'odimh5_radar_volume_scans',
+                               '2019071120_24_ODIMH5_PVOL6S_VOL.qc.casbv.h5')
+
+    res = radar_tools.read_h5_vol(odim_file=sample_file,
+                                  elevations=[0.4],
+                                  quantities=['dbzh'])
+    dbz = res['0.4']['dbzh']
+
+    #cell with a nodata byte is replaced by the default no_data
+    assert dbz[603, 56] == -9999.
+    #cell with an undetect byte is replaced by the default undetect
+    assert dbz[0, 0] == -3333.
+    #neighbouring valid cells are unaffected
+    expected = np.array([13.5, 15.])
+    assert np.allclose(dbz[600, 64:66], expected)
+
+    #same with user supplied values
+    res = radar_tools.read_h5_vol(odim_file=sample_file,
+                                  elevations=[0.4],
+                                  quantities=['dbzh'],
+                                  no_data=-1., undetect=-2.)
+    dbz = res['0.4']['dbzh']
+    assert dbz[603, 56] == -1.
+    assert dbz[0, 0] == -2.
+    assert np.allclose(dbz[600, 64:66], expected)
+
+
+def test_read_odim_vol_all(setup_test_paths):
+    """ test that elevations='all' with quantities='all' retrieves every
+    PPI cut and every quantity in the file
+    """
+    import os
+    import numpy as np
+    import domutils
+    import domutils.radar_tools as radar_tools
+
+    #setting up directories
+    test_data_dir = setup_test_paths['test_data_dir']
+
+    sample_file = os.path.join(test_data_dir, 'odimh5_radar_volume_scans',
+                               '2019071120_24_ODIMH5_PVOL6S_VOL.qc.casbv.h5')
+
+    res = radar_tools.read_h5_vol(odim_file=sample_file,
+                                  elevations='all',
+                                  quantities='all')
+    #all 17 PPI cuts of the file are present
+    elevations = ['0.4', '0.8', '1.2', '1.6', '2.0', '2.8', '3.6', '4.4',
+                  '5.2', '6.8', '8.4', '10.0', '11.6', '14.8', '18.0',
+                  '21.2', '24.4']
+    expected = set(elevations) | set(['radar_height', 'radar_lat', 'radar_lon',
+                                      'date_str'])
+    assert set(res.keys()) == expected
+    #all 11 quantities of the file are present in each PPI cut
+    expected = set(['dbzh', 'vradh', 'th', 'rhohv', 'uphidp', 'wradh',
+                    'phidp', 'zdr', 'dr', 'kdp', 'sqih',
+                    'nominal_elevation', 'azimuths', 'elevations', 'ranges'])
+    for this_elevation in elevations:
+        assert set(res[this_elevation].keys()) == expected
+
+    #check a few returned values
+    expected = np.array([43.,  41.,  42.,  41.5, 41.5, 42.5, 44.5, 42.,  43.,  40.5])
+    assert np.allclose(res['0.4']['dbzh'][700, 300:310], expected)
+    assert res['24.4']['dbzh'][237, 41] == -10.5
+
+
+def test_read_odim_vol_multi_elevations(setup_test_paths):
+    """ test that reading several elevations at once returns one PPI
+    dictionary per requested elevation
+    """
+    import os
+    import numpy as np
+    import domutils
+    import domutils.radar_tools as radar_tools
+
+    #setting up directories
+    test_data_dir = setup_test_paths['test_data_dir']
+
+    sample_file = os.path.join(test_data_dir, 'odimh5_radar_volume_scans',
+                               '2019071120_24_ODIMH5_PVOL6S_VOL.qc.casbv.h5')
+
+    res = radar_tools.read_h5_vol(odim_file=sample_file,
+                                  elevations=[0.4, 24.4],
+                                  quantities=['dbzh'])
+    expected = set(['radar_height', 'radar_lat', 'radar_lon', 'date_str',
+                    '0.4', '24.4'])
+    assert set(res.keys()) == expected
+
+    #check a returned value from each PPI cut
+    expected = np.array([43.,  41.,  42.,  41.5, 41.5, 42.5, 44.5, 42.,  43.,  40.5])
+    assert np.allclose(res['0.4']['dbzh'][700, 300:310], expected)
+    assert res['24.4']['dbzh'][237, 41] == -10.5
+
+
+def test_read_odim_vol_not_found(setup_test_paths):
+    """ test that None is returned when the requested elevation or
+    quantity is not present in the file
+    """
+    import os
+    import domutils
+    import domutils.radar_tools as radar_tools
+
+    #setting up directories
+    test_data_dir = setup_test_paths['test_data_dir']
+
+    sample_file = os.path.join(test_data_dir, 'odimh5_radar_volume_scans',
+                               '2019071120_24_ODIMH5_PVOL6S_VOL.qc.casbv.h5')
+
+    #elevation not in file
+    res = radar_tools.read_h5_vol(odim_file=sample_file,
+                                  elevations=[99.],
+                                  quantities=['dbzh'])
+    assert res is None
+
+    #quantity not in file
+    res = radar_tools.read_h5_vol(odim_file=sample_file,
+                                  elevations=[0.4],
+                                  quantities=['not_a_quantity'])
+    assert res is None
+
+
 def test_read_stageiv(setup_test_paths):
     """ test funtion that reads a stageIV
 
