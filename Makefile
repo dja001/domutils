@@ -1,4 +1,4 @@
-.PHONY: help env test docs tox clean release
+.PHONY: help env test docs tox clean release check_test_data
 
 help:
 	@echo "Common targets:"
@@ -8,6 +8,7 @@ help:
 	@echo "  make tox        Run tox matrix"
 	@echo "  make clean      Clean build artifacts"
 	@echo "  make release    Build + upload to PyPI"
+	@echo "  make check_test_data  Check test_data against its zenodo record"
 
 env:
 	./scripts/create_dev_env.sh dev_env_20260126
@@ -29,4 +30,7 @@ clean:
 release: clean
 	python -m build
 	twine upload dist/*
+
+check_test_data:
+	./scripts/download_test_data.sh check
 

@@ -125,7 +125,14 @@ echo "    eg  5497958"
 echo 
 echo " 6. Adjust version and record number in scripts/download_test_data.sh"
 echo 
-echo " 7. Re-download test_data and re-run tests"
+echo " 7. Check that test_data is identical to the new zenodo record:"
+echo "    make check_test_data"
+echo
+echo "    If it prints 'Identical content in test_data and record #X# on zenodo',"
+echo "    the local test data is already up to date:"
+echo "    no need to re-download or re-test."
+echo "    Otherwise re-download test_data (./scripts/download_test_data.sh)"
+echo "    and re-run tests."
 echo
 echo "If NOT needed, you may skip this step."
 pause
